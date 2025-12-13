@@ -1,45 +1,80 @@
 #pragma once
 
-// 64-bit
 typedef unsigned long long UINT64;
-typedef unsigned long long QWORD;
 typedef unsigned long long ULONGLONG;
-typedef unsigned long long SIZE_T;
-typedef long long INT64;
 typedef long long LONGLONG;
+typedef unsigned long long DWORD64;
+typedef unsigned long long ULONG64;
+typedef long long INT64;
+typedef long long LONG64;
 typedef double DOUBLE;
-// 32-bit
+typedef unsigned long long QWORD;
+
+typedef int* INT_PTR;
+typedef unsigned int* UINT_PTR;
+typedef long* LONG_PTR;
+typedef unsigned long* ULONG_PTR;
+typedef unsigned long long SIZE_T;
+typedef SIZE_T* PSIZE_T;
+
 typedef unsigned long UINT32;
 typedef unsigned long DWORD;
 typedef unsigned long UINTN;
+typedef unsigned long ULONG;
 typedef long INT32;
 typedef long LONG;
 typedef float FLOAT;
 typedef int INT;
-// 16-bit
+
 typedef unsigned short UINT16;
 typedef unsigned short WORD;
 typedef short INT16;
 typedef short SHORT;
+typedef unsigned short USHORT;
 typedef wchar_t WCHAR;
-// 8-bit
+
 typedef unsigned char UINT8;
 typedef unsigned char BYTE;
 typedef unsigned char UCHAR;
 typedef char INT8;
 typedef char CHAR;
-// boolean
+
 typedef bool BOOLEAN;
-// void
+typedef int BOOL;
+
 typedef void VOID;
-// pointers
+
 typedef const void* PCVOID;
 typedef void* PVOID;
 typedef const char* PCSTR;
 typedef const wchar_t* PCWSTR;
 typedef unsigned char* PBYTE;
-//other
+typedef unsigned char* LPBYTE;
+typedef char* PCHAR;
+typedef unsigned short* PUSHORT;
+typedef short* PSHORT;
+typedef long* PLONG;
+typedef unsigned long* PULONG;
+typedef unsigned int* PUINT;
+typedef const char* LPCSTR;
+typedef const wchar_t* LPCWSTR;
+typedef char* LPSTR;
+typedef wchar_t* LPWSTR;
+typedef void* LPVOID;
+
+typedef INT_PTR* PINT_PTR;
+typedef UINT_PTR* PUINT_PTR;
+typedef ULONG_PTR* PULONG_PTR;
+
+typedef DWORD* PDWORD;
+typedef DWORD64* PDWORD64;
+typedef BOOLEAN* PBOOLEAN;
+
+typedef long HRESULT;
 typedef long NTSTATUS;
+typedef unsigned long long PHYSICAL_ADDRESS;
+typedef long HANDLE;
+typedef long* PHANDLE;
 
 
 
@@ -53,7 +88,31 @@ DeclDataType(struct, LARGE_INTEGER);
 DeclDataType(struct, LIST_ENTRY);
 DeclDataType(struct, MMPTE_HARDWARE);
 DeclDataType(struct, RTL_AVL_TREE);
+DeclDataType(struct, RTL_BALANCED_NODE);
 DeclDataType(struct, DRIVER_OBJECT);
+DeclDataType(struct, EPROCESS);
+DeclDataType(struct, CONTEXT);
+DeclDataType(struct, XSAVE_FORMAT);
+DeclDataType(struct, M128A);
+DeclDataType(struct, IRP);
+DeclDataType(struct, MDL);
+DeclDataType(struct, IO_STATUS_BLOCK);
+DeclDataType(struct, IO_STACK_LOCATION);
+DeclDataType(struct, FILE_OBJECT);
+DeclDataType(struct, KEVENT);
+DeclDataType(struct, DISPATCHER_HEADER);
+DeclDataType(struct, KDEVICE_QUEUE_ENTRY);
+DeclDataType(struct, ETHREAD);
+DeclDataType(struct, KTHREAD);
+DeclDataType(struct, KAPC);
+DeclDataType(struct, KAPC_STATE);
+DeclDataType(enum, KPROCESSOR_MODE);
+DeclDataType(struct, OBJECT_ATTRIBUTES);
+DeclDataType(struct, CLIENT_ID);
+
+typedef NTSTATUS(*_KSTART_ROUTINE)(PVOID StartContext);
+typedef _KSTART_ROUTINE KSTART_ROUTINE;
+typedef _KSTART_ROUTINE* PKSTART_ROUTINE;
 
 #undef DeclDataType
 
@@ -66,9 +125,15 @@ DeclDataType(struct, DRIVER_OBJECT);
 #define _Inout_
 #define _In_opt_
 #define _Out_opt_
+#define _Inout_opt_
+
+#define va_list __builtin_va_list
+#define va_start __builtin_va_start
+#define va_end __builtin_va_end
 
 #define NAKED __attribute__((naked))
 #define PACKED __attribute__((packed))
+#define FORCEINLINE __attribute__((always_inline)) inline
 #define ALIGN(alignment) __attribute__((aligned(alignment)))
 
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
@@ -87,8 +152,34 @@ extern "C"
     int __cdecl memcmp(void* dst, void* src, size_t size);
     void* __cdecl memcpy(void* Destination, const void* Source, size_t Length);
     void* __cdecl memset(void* Destination, int Value, size_t Length);
-    void* __cdecl malloc(size_t size);
-	void __cdecl free(void* ptr);
+
+	size_t __cdecl strlen(const char* str);
+	size_t __cdecl wcslen(const wchar_t* str);
+	char __cdecl tolower(char ch);
+    wchar_t __cdecl towlower(wchar_t ch);
+	char __cdecl toupper(char ch);	
+    wchar_t __cdecl towupper(wchar_t ch);
+	int __cdecl strcmp(const char* str1, const char* str2, size_t max);
+	int __cdecl wcscmp(const wchar_t* str1, const wchar_t* str2, size_t max);
+
+	UINT64 __readcr0();
+	UINT64 __readcr2();
+	UINT64 __readcr3();
+	UINT64 __readcr4();
+	UINT64 __readcr8();
+	VOID __writecr0(_In_ UINT64 value);
+	VOID __writecr2(_In_ UINT64 value);
+	VOID __writecr3(_In_ UINT64 value);
+	VOID __writecr4(_In_ UINT64 value);
+	VOID __writecr8(_In_ UINT64 value);
+	VOID __invlpg(_In_ PVOID address);
+	UINT64 __readmsr(_In_ UINT32 msr);
+	VOID __writemsr(_In_ UINT32 msr, _In_ UINT64 value);
+	VOID __sidt(_In_ PVOID idtr);
+	VOID __sgdt(_In_ PVOID gdtr);
+	VOID __vmrun(_Inout_ PHYSICAL_ADDRESS hsave);
+	VOID __vmsave(_In_ PHYSICAL_ADDRESS vmcb);
+	VOID __vmload(_Inout_ PHYSICAL_ADDRESS hsave);
 }
 
 class FnPtr {
@@ -99,264 +190,3 @@ public:
         return ((Ret(__fastcall*)(Args...))this)(args...);
     }
 };
-
-
-
-static inline size_t strnlen_s(const char* str, size_t strsz)
-{
-    size_t len = 0;
-    while (len < strsz && str[len] != '\0') {
-        len++;
-    }
-    return len;
-}
-
-static inline size_t strnlen(const char* str)
-{
-    return strnlen_s(str, 128);
-}
-
-static inline size_t wcsnlen_s(const wchar_t* str, size_t strsz)
-{
-    size_t len = 0;
-    while (len < strsz && str[len] != L'\0') {
-        len++;
-    }
-    return len;
-}
-
-static inline size_t wcsnlen(const wchar_t* str)
-{
-    return wcsnlen_s(str, 128);
-}
-
-static inline char tolower(char str)
-{
-    if (str >= 'A' && str <= 'Z')
-        return str + 32;
-    return str;
-}
-
-static inline wchar_t tolower(wchar_t str)
-{
-    if (str >= L'A' && str <= L'Z')
-        return str + 32;
-    return str;
-}
-
-static inline int strncmp_s(const char* str1, const char* str2, size_t max = 255)
-{
-    while (*str1 && *str2 && tolower(*str1) == tolower(*str2))
-    {
-        str1++;
-        str2++;
-        if (--max == 0)
-            return 0;
-    }
-    return tolower(*str1) - tolower(*str2);
-}
-
-static inline int strncmp(const char* str1, const char* str2)
-{
-    return strncmp_s(str1, str2, 255);
-}
-
-static inline int wcsncmp_s(const wchar_t* str1, const wchar_t* str2, size_t max = 255)
-{
-    while (*str1 && *str2 && tolower(*str1) == tolower(*str2))
-    {
-        str1++;
-        str2++;
-        if (--max == 0)
-            return 0;
-    }
-    return tolower(*str1) - tolower(*str2);
-}
-
-static inline int wcsncmp(const wchar_t* str1, const wchar_t* str2)
-{
-    return wcsncmp_s(str1, str2, 255);
-}
-
-static QWORD __readcr0()
-{
-    QWORD result = 0;
-    __asm {
-        mov rax, cr0
-        mov[result], rax
-    }
-    return result;
-}
-
-static void __writecr0(QWORD value)
-{
-    __asm {
-        mov rax, value
-        mov cr0, rax
-    }
-}
-
-static QWORD __readcr2()
-{
-    QWORD result = 0;
-    __asm {
-        mov rax, cr2
-        mov[result], rax
-    }
-    return result;
-}
-
-static void __writecr2(QWORD value)
-{
-    __asm {
-        mov rax, value
-        mov cr2, rax
-    }
-}
-
-static QWORD __readcr3()
-{
-    QWORD result = 0;
-    __asm {
-        mov rax, cr3
-        mov[result], rax
-    }
-    return result;
-}
-
-static void __writecr3(QWORD value)
-{
-    __asm {
-        mov rax, value
-        mov cr3, rax
-    }
-}
-
-static QWORD __readcr4()
-{
-    QWORD result = 0;
-    __asm {
-        mov rax, cr4
-        mov[result], rax
-    }
-    return result;
-}
-
-static void __writecr4(QWORD value)
-{
-    __asm {
-        mov rax, value
-        mov cr4, rax
-    }
-}
-
-static QWORD __readcr8()
-{
-    QWORD result = 0;
-    __asm {
-        mov rax, cr8
-        mov[result], rax
-    }
-    return result;
-}
-
-static void __writecr8(QWORD value)
-{
-    __asm {
-        mov rax, value
-        mov cr8, rax
-    }
-}
-
-static inline void __invlpg(void* address)
-{
-    __asm {
-        mov rax, address
-        invlpg[rax]
-    }
-}
-
-static inline QWORD __readmsr(DWORD msr)
-{
-    DWORD low, high;
-    __asm {
-        mov ecx, msr
-        rdmsr
-        mov low, eax
-        mov high, edx
-    }
-    QWORD result = (QWORD)high << 32 | low;
-    return result;
-}
-
-static inline void __writemsr(DWORD msr, QWORD value)
-{
-    DWORD low = (DWORD)(value & 0xFFFFFFFF);
-    DWORD high = (DWORD)(value >> 32);
-    __asm {
-        mov ecx, msr
-        mov eax, low
-        mov edx, high
-        wrmsr
-    }
-    return;
-}
-
-//__sidt
-//__sgdt
-
-static inline void __sidt(void* idtr)
-{
-    __asm {
-        mov rax, idtr
-        sidt[rax]
-    }
-}
-
-static inline void __sgdt(void* gdtr)
-{
-    __asm {
-        mov rax, gdtr
-        sgdt[rax]
-    }
-}
-
-//__vmrun
-static void __vmrun(QWORD vmcb_pa)
-{
-    __asm {
-        mov rax, vmcb_pa
-        vmrun rax
-    }
-    return;
-}
-
-//__vmsave
-static inline void __vmsave(QWORD vmcb_pa)
-{
-    __asm {
-        mov rax, vmcb_pa
-        vmsave rax
-    }
-    return;
-}
-
-//__vmload
-
-static inline void __vmload(QWORD vmcb_pa)
-{
-    __asm {
-        mov rax, vmcb_pa
-        vmload rax
-    }
-    return;
-}
-
-//__vmlaunch
-
-static void __vmlaunch(QWORD vmcb_pa)
-{
-    __vmload(vmcb_pa);
-    __vmrun(vmcb_pa);
-    __vmsave(vmcb_pa);
-}

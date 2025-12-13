@@ -56,5 +56,14 @@
     <ClInclude Include="utils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="nt_exports.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="nt_structs.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="nt_methods.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

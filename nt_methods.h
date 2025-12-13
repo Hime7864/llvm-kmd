@@ -1,0 +1,234 @@
+#pragma once
+
+inline _ExAllocatePool fn_ExAllocatePool = nullptr;
+
+PVOID FORCEINLINE ExAllocatePool(
+	_In_ ULONG PoolType, 
+	_In_ SIZE_T NumberOfBytes
+)
+{
+	return fn_ExAllocatePool(PoolType, NumberOfBytes);
+}
+
+inline _ExFreePool fn_ExFreePool = nullptr;
+
+VOID FORCEINLINE ExFreePool(
+	_In_ PVOID P
+)
+{
+	return fn_ExFreePool(P);
+}
+
+inline _DbgPrintEx fn_DbgPrintEx = nullptr;
+ULONG FORCEINLINE DbgPrintEx(
+	_In_ ULONG ComponentId,
+	_In_ ULONG Level,
+	_In_ PCSTR Format,
+	_In_opt_ ...
+)
+{
+	va_list args;
+	va_start(args, Format);
+	ULONG ret = fn_DbgPrintEx(
+		ComponentId,
+		Level,
+		Format,
+		args
+	);
+	va_end(args);
+	return ret;
+}
+
+inline _IoAllocateMdl fn_IoAllocateMdl = nullptr;
+
+PMDL FORCEINLINE IoAllocateMdl(
+	_In_opt_ PVOID VirtualAddress,
+	_In_ ULONG Length,
+	_In_ BOOLEAN SecondaryBuffer,
+	_In_ BOOLEAN ChargeQuota,
+	_Inout_opt_ PIRP Irp
+)
+{
+	return fn_IoAllocateMdl(
+		VirtualAddress,
+		Length,
+		SecondaryBuffer,
+		ChargeQuota,
+		Irp
+	);
+}
+
+inline _IoFreeMdl fn_IoFreeMdl = nullptr;
+VOID FORCEINLINE IoFreeMdl(
+	_In_ PMDL Mdl
+)
+{
+	return fn_IoFreeMdl(Mdl);
+}
+
+inline _KeQueryActiveProcessorCount fn_KeQueryActiveProcessorCount = nullptr;
+
+ULONG FORCEINLINE KeQueryActiveProcessorCount(
+	ULONG GroupNumber
+)
+{
+	return fn_KeQueryActiveProcessorCount(GroupNumber);
+}
+
+inline _MmGetPhysicalAddress fn_MmGetPhysicalAddress = nullptr;
+
+PHYSICAL_ADDRESS FORCEINLINE MmGetPhysicalAddress(
+	_In_ PVOID BaseAddress
+)
+{
+	return fn_MmGetPhysicalAddress(BaseAddress);
+}
+
+inline _MmGetVirtualForPhysical fn_MmGetVirtualForPhysical = nullptr;
+
+PVOID FORCEINLINE MmGetVirtualForPhysical(
+	_In_ PHYSICAL_ADDRESS PhysicalAddress
+)
+{
+	return fn_MmGetVirtualForPhysical(PhysicalAddress);
+}
+
+inline _MmCopyMemory fn_MmCopyMemory = nullptr;
+
+NTSTATUS FORCEINLINE MmCopyMemory(
+	_Out_ PVOID Target,
+	_In_ UINT64 Source,
+	_In_ SIZE_T Length,
+	_In_ ULONG Flags,
+	_Out_opt_ PSIZE_T NumberOfBytesCopied
+)
+{
+	return fn_MmCopyMemory(
+		Target,
+		Source,
+		Length,
+		Flags,
+		NumberOfBytesCopied
+	);
+}
+
+inline _MmMapIoSpace fn_MmMapIoSpace = nullptr;
+
+PVOID FORCEINLINE MmMapIoSpace(
+	_In_ PHYSICAL_ADDRESS PhysicalAddress,
+	_In_ SIZE_T NumberOfBytes,
+	_In_ ULONG Protect
+)
+{
+	return fn_MmMapIoSpace(
+		PhysicalAddress,
+		NumberOfBytes,
+		Protect
+	);
+}
+
+inline _MmUnmapIoSpace fn_MmUnmapIoSpace = nullptr;
+
+VOID FORCEINLINE MmUnmapIoSpace(
+	_In_ PVOID BaseAddress,
+	_In_ SIZE_T NumberOfBytes
+)
+{
+	return fn_MmUnmapIoSpace(
+		BaseAddress,
+		NumberOfBytes
+	);
+}
+
+inline _RtlCaptureContext fn_RtlCaptureContext = nullptr;
+
+VOID FORCEINLINE RtlCaptureContext(
+	_Inout_ PCONTEXT ContextRecord
+)
+{
+	return fn_RtlCaptureContext(ContextRecord);
+}
+
+inline _KeStackAttachProcess fn_KeStackAttachProcess = nullptr;
+
+VOID FORCEINLINE KeStackAttachProcess(
+	_In_ PEPROCESS   PROCESS,
+	_Inout_ PKAPC_STATE ApcState
+)
+{
+	return fn_KeStackAttachProcess(
+		PROCESS,
+		ApcState
+	);
+}
+
+inline _KeUnstackDetachProcess fn_KeUnstackDetachProcess = nullptr;
+
+VOID FORCEINLINE KeUnstackDetachProcess(
+	_Inout_ PKAPC_STATE ApcState
+)
+{
+	return fn_KeUnstackDetachProcess(
+		ApcState
+	);
+}
+
+inline _KeDelayExecutionThread fn_KeDelayExecutionThread = nullptr;
+
+NTSTATUS FORCEINLINE KeDelayExecutionThread(
+	_In_ KPROCESSOR_MODE WaitMode,
+	_In_ BOOLEAN         Alertable,
+	_In_ PLARGE_INTEGER  Interval
+)
+{
+	return fn_KeDelayExecutionThread(
+		WaitMode,
+		Alertable,
+		Interval
+	);
+}
+
+inline _PsCreateSystemThread fn_PsCreateSystemThread = nullptr;
+
+NTSTATUS FORCEINLINE PsCreateSystemThread(
+	_Out_ PHANDLE ThreadHandle,
+	_In_ ULONG DesiredAccess,
+	_In_opt_ POBJECT_ATTRIBUTES ObjectAttributes,
+	_In_opt_ HANDLE ProcessHandle,
+	_Out_opt_ PCLIENT_ID ClientId,
+	_In_ PKSTART_ROUTINE StartRoutine,
+	_In_opt_ PVOID StartContext
+)
+{
+	return fn_PsCreateSystemThread(
+		ThreadHandle,
+		DesiredAccess,
+		ObjectAttributes,
+		ProcessHandle,
+		ClientId,
+		StartRoutine,
+		StartContext
+	);
+}
+
+inline _PsTerminateSystemThread fn_PsTerminateSystemThread = nullptr;
+
+NTSTATUS FORCEINLINE PsTerminateSystemThread(
+	_In_ NTSTATUS ExitStatus
+)
+{
+	return fn_PsTerminateSystemThread(ExitStatus);
+}
+
+inline _KeIpiGenericCall fn_KeIpiGenericCall = nullptr;
+
+PVOID FORCEINLINE KeIpiGenericCall(
+	_In_ PVOID BroadcastFunction,
+	_In_ PVOID Context
+)
+{
+	return fn_KeIpiGenericCall(
+		BroadcastFunction,
+		Context
+	);
+}

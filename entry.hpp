@@ -1,5 +1,5 @@
 #pragma once
 
-void resolve_imports();
+NTSTATUS resolve_imports();
 
 NTSTATUS start();
