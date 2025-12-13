@@ -5,6 +5,17 @@ NTSTATUS resolve_imports()
 	auto kernel_base = Utils::GetKernelBase();
 	if (!kernel_base)
 		return STATUS_UNSUCCESSFUL;
+
+	fn_DbgPrintEx = (_DbgPrintEx)Utils::GetProcAddress(
+		kernel_base,
+		"DbgPrintEx"
+	);
+
+	fn_MmGetPhysicalAddress = (_MmGetPhysicalAddress)Utils::GetProcAddress(
+		kernel_base,
+		"MmGetPhysicalAddress"
+	);
+
 	fn_ExAllocatePool = (_ExAllocatePool)Utils::GetProcAddress(
 		kernel_base,
 		"ExAllocatePool"
@@ -94,6 +105,8 @@ NTSTATUS resolve_imports()
 		kernel_base,
 		"KeIpiGenericCall"
 	);
+
+	return STATUS_SUCCESS;
 }
 
 NTSTATUS start()

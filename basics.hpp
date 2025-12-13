@@ -129,6 +129,7 @@ typedef _KSTART_ROUTINE* PKSTART_ROUTINE;
 
 #define va_list __builtin_va_list
 #define va_start __builtin_va_start
+#define va_arg(args, type) __builtin_va_arg(args, type)
 #define va_end __builtin_va_end
 
 #define NAKED __attribute__((naked))

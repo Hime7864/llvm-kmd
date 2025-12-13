@@ -6,7 +6,7 @@ QWORD Utils::deref(BYTE count, QWORD address)
         return address + *(int*)(address + count) + count + 4;
     return 0;
 }
-#define TO_BYTE(x) ((x >= '0' && x <= '9') ? (x - '0') : ((x >= 'A' && x <= 'F') ? (x - 'A' + 10) : ((x >= 'a' && x <= 'f') ? (x - 'a' + 10) : 0)))
+#define TO_BYTE(c) ((c) >= '0' && (c) <= '9' ? (c) - '0' : ((c) >= 'A' && (c) <= 'F' ? (c) - 'A' + 10 : ((c) >= 'a' && (c) <= 'f' ? (c) - 'a' + 10 : 0)))
 
 QWORD Utils::sig_scan(QWORD scan_start, QWORD max_scan, const char* ida_sig)
 {
@@ -88,14 +88,11 @@ QWORD Utils::GetProcAddress(QWORD module, const char* export_name)
     DWORD address_of_names = *(DWORD*)(export_table + 0x20);
     DWORD address_of_name_ordinals = *(DWORD*)(export_table + 0x24);
 
-    for (DWORD i = 0; i < number_of_names; ++i)
+    for (DWORD i = 0; i < number_of_names; i++)
     {
         DWORD name_rva = *(DWORD*)(module + address_of_names + i * 4);
         const char* function_name = (const char*)(module + name_rva);
-        const char* p1 = export_name;
-        const char* p2 = function_name;
-        while (*p1 && *p2 && *p1 == *p2) { ++p1; ++p2; }
-        if (*p1 == '\0' && *p2 == '\0')
+        if (strcmp(function_name, export_name, strlen(export_name)) == 0)
         {
             WORD ordinal = *(WORD*)(module + address_of_name_ordinals + i * 2);
             DWORD function_rva = *(DWORD*)(module + address_of_functions + ordinal * 4);

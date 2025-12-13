@@ -20,24 +20,13 @@ VOID FORCEINLINE ExFreePool(
 }
 
 inline _DbgPrintEx fn_DbgPrintEx = nullptr;
-ULONG FORCEINLINE DbgPrintEx(
-	_In_ ULONG ComponentId,
-	_In_ ULONG Level,
-	_In_ PCSTR Format,
-	_In_opt_ ...
+#define DbgPrintEx(ComponentId, Level, Format, ...) \
+	fn_DbgPrintEx( \
+		ComponentId, \
+		Level, \
+		Format, \
+		__VA_ARGS__\
 )
-{
-	va_list args;
-	va_start(args, Format);
-	ULONG ret = fn_DbgPrintEx(
-		ComponentId,
-		Level,
-		Format,
-		args
-	);
-	va_end(args);
-	return ret;
-}
 
 inline _IoAllocateMdl fn_IoAllocateMdl = nullptr;
 

@@ -7,12 +7,20 @@
       "RelativeMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|solutionrelative:entry.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\basics.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|solutionrelative:basics.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\utils.cpp||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|solutionrelative:utils.cpp||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\entry.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|solutionrelative:entry.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\basics.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|solutionrelative:basics.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\Main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|solutionrelative:Main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\nt_methods.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
@@ -21,14 +29,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\nt_exports.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|solutionrelative:nt_exports.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|solutionrelative:main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\utils.cpp||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{C31D662A-A0AA-400C-BC40-8BA2771D3A34}|llvm-kmd.vcxproj|solutionrelative:utils.cpp||{8B382828-6202-11D1-8870-0000F87579D2}"
     }
   ],
   "DocumentGroupContainers": [
@@ -42,7 +42,19 @@
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 4,
+              "Title": "Main.cpp",
+              "DocumentMoniker": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\Main.cpp",
+              "RelativeDocumentMoniker": "Main.cpp",
+              "ToolTip": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\Main.cpp",
+              "RelativeToolTip": "Main.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-12-13T21:50:57.389Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "entry.hpp",
               "DocumentMoniker": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\entry.hpp",
               "RelativeDocumentMoniker": "entry.hpp",
@@ -50,25 +62,23 @@
               "RelativeToolTip": "entry.hpp",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-12-13T20:34:16.555Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-13T20:34:16.555Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 2,
               "Title": "utils.cpp",
               "DocumentMoniker": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\utils.cpp",
               "RelativeDocumentMoniker": "utils.cpp",
               "ToolTip": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\utils.cpp",
               "RelativeToolTip": "utils.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAEcAAAAAAAAAAAAlwGUAAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-12-13T20:31:52.679Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-13T20:31:52.679Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "basics.hpp",
               "DocumentMoniker": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\basics.hpp",
               "RelativeDocumentMoniker": "basics.hpp",
@@ -76,12 +86,11 @@
               "RelativeToolTip": "basics.hpp",
               "ViewState": "AgIAAHIAAAAAAAAAAAAAAH4AAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-12-13T20:30:03.443Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-13T20:30:03.443Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 6,
               "Title": "nt_exports.h",
               "DocumentMoniker": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\nt_exports.h",
               "RelativeDocumentMoniker": "nt_exports.h",
@@ -89,34 +98,19 @@
               "RelativeToolTip": "nt_exports.h",
               "ViewState": "AgIAACoAAAAAAAAAAAAAABYAAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-12-13T20:29:58.848Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-13T20:29:58.848Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 5,
-              "Title": "main.cpp",
-              "DocumentMoniker": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\main.cpp",
-              "RelativeDocumentMoniker": "main.cpp",
-              "ToolTip": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\main.cpp",
-              "RelativeToolTip": "main.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-12-13T20:29:17.988Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
               "Title": "nt_methods.h",
               "DocumentMoniker": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\nt_methods.h",
               "RelativeDocumentMoniker": "nt_methods.h",
               "ToolTip": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\nt_methods.h",
               "RelativeToolTip": "nt_methods.h",
-              "ViewState": "AgIAAAwAAAAAAAAAAAAcwBMAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAACQAAAAAAAAAAAAIwCwAAAAOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-12-13T20:28:58.058Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-13T20:28:58.058Z"
             },
             {
               "$type": "Document",
@@ -126,7 +120,7 @@
               "RelativeDocumentMoniker": "entry.cpp",
               "ToolTip": "C:\\Users\\Admin\\Documents\\GitHub\\llvm-kmd\\entry.cpp",
               "RelativeToolTip": "entry.cpp",
-              "ViewState": "AgIAAAEAAAAAAAAAAAAIwGUAAAAnAAAAAAAAAA==",
+              "ViewState": "AgIAAFQAAAAAAAAAAAAAAFkAAAAOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-12-13T20:27:48.755Z",
               "EditorCaption": ""
