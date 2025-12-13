@@ -120,6 +120,9 @@ typedef _KSTART_ROUTINE* PKSTART_ROUTINE;
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 
+#define TRUE true
+#define FALSE false
+
 #define _In_
 #define _Out_
 #define _Inout_

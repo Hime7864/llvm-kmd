@@ -1,9 +1,9 @@
 c:\users\admin\documents\github\llvm-kmd\llvm-kmd\x64\debug\entry.obj
-c:\users\admin\documents\github\llvm-kmd\llvm-kmd\x64\debug\utils.obj
+c:\users\admin\documents\github\llvm-kmd\llvm-kmd\x64\debug\cpuid.obj
 c:\users\admin\documents\github\llvm-kmd\llvm-kmd\x64\debug\main.obj
 c:\users\admin\documents\github\llvm-kmd\llvm-kmd\x64\debug\msr.obj
-c:\users\admin\documents\github\llvm-kmd\llvm-kmd\x64\debug\cpuid.obj
 c:\users\admin\documents\github\llvm-kmd\llvm-kmd\x64\debug\basics.obj
+c:\users\admin\documents\github\llvm-kmd\llvm-kmd\x64\debug\utils.obj
 c:\users\admin\documents\github\llvm-kmd\x64\debug\llvm-kmd.pdb
 c:\users\admin\documents\github\llvm-kmd\x64\debug\llvm-kmd.sys
 c:\users\admin\documents\github\llvm-kmd\x64\debug\llvm-kmd.lib

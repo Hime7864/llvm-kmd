@@ -14,5 +14,12 @@
 #define printf(Format, ...)
 #endif
 
+inline void Sleep(_In_ UINT32 milliseconds)
+{
+	LARGE_INTEGER interval;
+	interval.QuadPart = -(10 * 1000 * (__int64)milliseconds); // Negative value for relative time
+	KeDelayExecutionThread(KernelMode, FALSE, &interval);
+}
+
 #include "Entry.hpp"
 #include "Main.hpp"
