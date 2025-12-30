@@ -16,6 +16,18 @@ typedef ULONG(__stdcall* _DbgPrintEx)(
 	_In_opt_...
 	);
 
+typedef int(__stdcall* _sprintf)(
+	_Out_ char* Buffer,
+	_In_ PCSTR Format,
+	_In_opt_...
+	);
+
+typedef int(__stdcall* _swprintf)(
+	_Out_ wchar_t* Buffer,
+	_In_ PCWSTR Format,
+	_In_opt_...
+	);
+
 typedef PMDL(__stdcall* _IoAllocateMdl)(
 	_In_opt_ PVOID VirtualAddress,
 	_In_ ULONG Length,

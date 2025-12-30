@@ -75,8 +75,8 @@ typedef BOOLEAN* PBOOLEAN;
 typedef long HRESULT;
 typedef long NTSTATUS;
 typedef unsigned long long PHYSICAL_ADDRESS;
-typedef long HANDLE;
-typedef long* PHANDLE;
+typedef long long HANDLE;
+typedef long long* PHANDLE;
 
 typedef DWORD ACCESS_MASK;
 typedef ACCESS_MASK* PACCESS_MASK;
@@ -200,7 +200,7 @@ typedef _KSTART_ROUTINE* PKSTART_ROUTINE;
 #define APC_LEVEL 1
 #define DISPATCH_LEVEL 2
 
-#define 	OBJ_KERNEL_HANDLE   0x00000200
+#define 	OBJ_KERNEL_HANDLE   0x00000200L
 #define InitializeObjectAttributes(p, n, a, r, s) { \
        (p)->Length = sizeof(_OBJECT_ATTRIBUTES); \
        (p)->RootDirectory = r; \

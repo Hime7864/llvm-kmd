@@ -28,6 +28,22 @@ inline _DbgPrintEx fn_DbgPrintEx = nullptr;
 		__VA_ARGS__\
 )
 
+inline _sprintf fn_sprintf = nullptr;
+#define sprintf(Buffer, Format, ...) \
+	fn_DbgPrintEx( \
+		Buffer, \
+		Format, \
+		__VA_ARGS__\
+)
+
+inline _swprintf fn_swprintf = nullptr;
+#define swprintf(Buffer, Format, ...) \
+	fn_swprintf( \
+		Buffer, \
+		Format, \
+		__VA_ARGS__\
+)
+
 inline _IoAllocateMdl fn_IoAllocateMdl = nullptr;
 
 PMDL FORCEINLINE IoAllocateMdl(

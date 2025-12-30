@@ -11,6 +11,16 @@ NTSTATUS resolve_imports()
 		"DbgPrintEx"
 	);
 
+	fn_sprintf = (_sprintf)Utils::GetProcAddress(
+		kernel_base,
+		"sprintf"
+	);
+
+	fn_swprintf = (_swprintf)Utils::GetProcAddress(
+		kernel_base,
+		"swprintf"
+	);
+
 	fn_MmGetPhysicalAddress = (_MmGetPhysicalAddress)Utils::GetProcAddress(
 		kernel_base,
 		"MmGetPhysicalAddress"
