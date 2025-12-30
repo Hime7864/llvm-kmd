@@ -704,40 +704,48 @@ QWORD NOINLINE CallOnHost(FnPtr* func, ...)
 	return function_result;
 }
 
-void imlp_CopySinglePage(PVOID dest, UINT64 source)
+void imlp_CopySinglePage(PVOID dest, UINT64 source, UINT64 count)
 {
 	__invlpg(dest);
 	__invlpg((PVOID)source);
 
-	memcpy(dest, (PVOID)source, 0x1000);
+	memcpy(dest, (PVOID)source, count);
 }
 
-bool CopySinglePage(PVOID buffer, PHYSICAL_ADDRESS pa)
+bool CopyReclaimedMemory(PVOID buffer, PHYSICAL_ADDRESS physical, SIZE_T count)
 {
-	pa = pa & ~0xFFF;
-	buffer = (PVOID)((QWORD)buffer & ~0xFFF);
+	auto cb = count & ~0xFFF;
+	QWORD buf = (QWORD)((QWORD)buffer & ~0xFFF);
+	auto pa = (QWORD)(physical & ~0xFFF);
 
-	auto pte = Utils::GetPTE((QWORD)buffer);
-	if (!pte.AsUINT64)
-		return false;
-	// destination mapping
-	auto status = CreateLinearAddress(
-		MmKmd->hostDTB,
-		buffer,
-		pte
-	);
-	if (!status)
-		return false;
-	// source mapping
-	pte.PageFrameNumber = (DWORD)(pa >> 12);
-	status = CreateLinearAddress(
-		MmKmd->hostDTB,
-		pa,
-		pte
-	);
-	if (!status)
-		return false;
-	CallOnHost((FnPtr*)imlp_CopySinglePage, buffer, pa, 0x1000);
+	for (int i = 0; i < cb; i += 0x1000)
+	{
+		auto pte = Utils::GetPTE((QWORD)buf);
+		if (!pte.AsUINT64)
+			return false;
+		// destination mapping
+		auto status = CreateLinearAddress(
+			MmKmd->hostDTB,
+			buf,
+			pte
+		);
+		if (!status)
+			return false;
+		// source mapping
+		pte.PageFrameNumber = (DWORD)(pa >> 12);
+		status = CreateLinearAddress(
+			MmKmd->hostDTB,
+			pa,
+			pte
+		);
+		if (!status)
+			return false;
+
+		buf += 0x1000;
+		pa += 0x1000;
+	}
+
+	CallOnHost((FnPtr*)imlp_CopySinglePage, buffer, physical, count);
 	return true;
 }
 
@@ -782,19 +790,32 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
 	GetPhysicalMemoryDump(memory_ranges);
 
-	auto range = &memory_ranges->ranges[memory_ranges->range_count - 1];
-	printf("Last physical address range: %p - %p (%p)\n", range->Start, range->End, range->End - range->Start);
+	for (int i = 0; i < memory_ranges->range_count; i++)
+	{
+		if (!memory_ranges->ranges[i].Flags.OsCommited)
+		{
+			printf("Non OS Commited %02d: %p - %p (%p)\n", i,
+				memory_ranges->ranges[i].Start,
+				memory_ranges->ranges[i].End,
+				memory_ranges->ranges[i].End - memory_ranges->ranges[i].Start);
+		}
+	}
 
-	auto single_page = (PVOID)ExAllocatePool(NonPagedPool, 0x1000);
-	RtlFillMemory(single_page, 0x1000, 0xCC);
-	auto pa = range->Start + 0x1003000;//0x2180000
-	auto test = CopySinglePage(single_page, pa);
-	if(!test)
-		printf("CopySinglePage failed\n");
-	else
-		dbg_print_page((QWORD)single_page, pa);
-
-	ExFreePool(single_page);
+	auto range = &memory_ranges->ranges[12];
+	auto page_count = 4;
+	auto page_bytes = 0x1000 * page_count;
+	auto multi_page = (PVOID)ExAllocatePool(NonPagedPool, page_bytes);
+	RtlFillMemory(multi_page, page_bytes, 0x00);
+	auto pa = range->Start;
+	if (CopyReclaimedMemory(multi_page, pa, page_bytes))
+	{
+		for (int i = 0; i < page_count; i++)
+		{
+			auto test = *(QWORD*)(((QWORD)multi_page) + i * 0x1000);
+			printf("%p\n", test);
+		}
+	}
+	ExFreePool(multi_page);
 
 	CleanupMemoryManager();
 
