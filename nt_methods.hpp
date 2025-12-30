@@ -3,7 +3,7 @@
 inline _ExAllocatePool fn_ExAllocatePool = nullptr;
 
 PVOID FORCEINLINE ExAllocatePool(
-	_In_ ULONG PoolType, 
+	_In_ ULONG PoolType,
 	_In_ SIZE_T NumberOfBytes
 )
 {
@@ -220,4 +220,85 @@ PVOID FORCEINLINE KeIpiGenericCall(
 		BroadcastFunction,
 		Context
 	);
+}
+
+inline _MmGetPhysicalMemoryRanges fn_MmGetPhysicalMemoryRanges = nullptr;
+PPHYSICAL_MEMORY_RANGE FORCEINLINE MmGetPhysicalMemoryRanges()
+{
+	return fn_MmGetPhysicalMemoryRanges();
+}
+
+inline _RtlCopyMemory fn_RtlCopyMemory = nullptr;
+PVOID FORCEINLINE RtlCopyMemory(
+	_In_ VOID* Destination,
+	_In_ CONST VOID* Source,
+	_In_ SIZE_T Length
+)
+{
+	return fn_RtlCopyMemory(
+		Destination,
+		Source,
+		Length
+	);
+}
+
+inline _RtlFillMemory fn_RtlFillMemory = nullptr;
+VOID FORCEINLINE RtlFillMemory(
+	_Out_ VOID* Destination,
+	_In_ SIZE_T Length,
+	_In_ BYTE Fill
+)
+{
+	return fn_RtlFillMemory(
+		Destination,
+		Length,
+		Fill
+	);
+}
+
+inline _MmAllocateContiguousMemorySpecifyCacheNode fn_MmAllocateContiguousMemorySpecifyCacheNode = nullptr;
+PVOID FORCEINLINE MmAllocateContiguousMemorySpecifyCacheNode(
+	_In_ SIZE_T NumberOfBytes,
+	_In_ PHYSICAL_ADDRESS LowestAcceptableAddress,
+	_In_ PHYSICAL_ADDRESS HighestAcceptableAddress,
+	_In_ PHYSICAL_ADDRESS BoundaryAddressMultiple,
+	_In_ MEMORY_CACHING_TYPE CacheType,
+	_In_ ULONG PreferredNode
+)
+{
+	return fn_MmAllocateContiguousMemorySpecifyCacheNode(
+		NumberOfBytes,
+		LowestAcceptableAddress,
+		HighestAcceptableAddress,
+		BoundaryAddressMultiple,
+		CacheType,
+		PreferredNode
+	);
+}
+
+inline _MmFreeContiguousMemorySpecifyCache fn_MmFreeContiguousMemorySpecifyCache = nullptr;
+
+VOID FORCEINLINE MmFreeContiguousMemorySpecifyCache(
+	_In_ PVOID BaseAddress,
+	_In_ SIZE_T NumberOfBytes,
+	_In_ MEMORY_CACHING_TYPE CacheType
+)
+{
+	return fn_MmFreeContiguousMemorySpecifyCache(
+		BaseAddress,
+		NumberOfBytes,
+		CacheType
+	);
+}
+
+inline _PsInitialSystemProcess fn_PsInitialSystemProcess = nullptr;
+PEPROCESS FORCEINLINE PsInitialSystemProcess()
+{
+	return *(PEPROCESS*)fn_PsInitialSystemProcess;
+}
+
+inline _MmPfnDatabase fn_MmPfnDatabase = nullptr;
+PMMPFN FORCEINLINE MmPfnDatabase()
+{
+	return *(PMMPFN*)fn_MmPfnDatabase;
 }

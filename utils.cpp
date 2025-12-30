@@ -1,4 +1,4 @@
-#include "imports.h"
+#include "imports.hpp"
 
 QWORD Utils::deref(BYTE count, QWORD address)
 {
@@ -6,6 +6,7 @@ QWORD Utils::deref(BYTE count, QWORD address)
         return address + *(int*)(address + count) + count + 4;
     return 0;
 }
+
 #define TO_BYTE(c) ((c) >= '0' && (c) <= '9' ? (c) - '0' : ((c) >= 'A' && (c) <= 'F' ? (c) - 'A' + 10 : ((c) >= 'a' && (c) <= 'f' ? (c) - 'a' + 10 : 0)))
 
 QWORD Utils::sig_scan(QWORD scan_start, QWORD max_scan, const char* ida_sig)
@@ -32,7 +33,6 @@ QWORD Utils::sig_scan(QWORD scan_start, QWORD max_scan, const char* ida_sig)
 
     return 0;
 }
-
 
 QWORD Utils::sig_scan_reverse(QWORD scan_start, QWORD max_scan, const char* ida_sig)
 {
@@ -62,8 +62,8 @@ QWORD Utils::sig_scan_reverse(QWORD scan_start, QWORD max_scan, const char* ida_
 
 QWORD Utils::GetKernelBase()
 {
-	auto sig = sig_scan(MSR::read_lstar() & ~0xFFFFFULL, 0xA00000ULL, "66 89 05 ? ? ? ? 48 8D 05 ? ? ? ? 48 89");
-    if(!sig) return 0;
+    auto sig = sig_scan(MSR::read_lstar() & ~0xFFFFFULL, 0xA00000ULL, "66 89 05 ? ? ? ? 48 8D 05 ? ? ? ? 48 89");
+    if (!sig) return 0;
     return *(QWORD*)(*(QWORD*)deref(3, sig + 0x07) + 0x30);
 }
 
@@ -127,3 +127,191 @@ NTSTATUS Utils::GetSectionInfo(QWORD module_base, const char* section_name, QWOR
     }
     return STATUS_UNSUCCESSFUL;
 }
+
+NTSTATUS ReadPhysicalAddress(QWORD TargetAddress, PVOID lpBuffer, QWORD Size, QWORD* BytesRead = nullptr)
+{
+    if (BytesRead)
+        return MmCopyMemory(lpBuffer, TargetAddress, Size, MM_COPY_MEMORY_PHYSICAL, BytesRead);
+    QWORD _BytesRead = 0;
+    return !MmCopyMemory(lpBuffer, TargetAddress, Size, MM_COPY_MEMORY_PHYSICAL, &_BytesRead);
+}
+
+template <typename T>
+T PhysRead(QWORD pa)
+{
+    T buffer;
+    ReadPhysicalAddress(pa, &buffer, sizeof(T));
+    return buffer;
+}
+
+QWORD Utils::GetPPTE(QWORD virtual_address)
+{
+    QWORD cr3 = __readcr3();
+    if (cr3 & 0xFFF)
+        cr3 &= ~0xFFF; // Ensure CR3 is page-aligned
+
+    auto va = virtual_address;
+
+    // Validate canonical address (48-bit virtual address space)
+    if (((va >> 47) & 0x1FFFF) != 0 && ((va >> 47) & 0x1FFFF) != 0x1FFFF)
+        return  { 0 };
+
+    MMPTE_HARDWARE PTE;
+    PTE = PhysRead<MMPTE_HARDWARE>(cr3 + (((va >> 39) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return { 0 };
+
+    // PDPT
+    QWORD next_addr = (QWORD)PTE.PageFrameNumber << 12;
+    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 30) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return  { 0 };
+
+    // Check for 1GB page
+    if (PTE.LargePage)
+        return next_addr + (((va >> 30) & 0x1ff) * 8);
+
+    // PDT
+    next_addr = (QWORD)PTE.PageFrameNumber << 12;
+    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 21) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return  { 0 };
+
+    // Check for 2MB page
+    if (PTE.LargePage)
+        return next_addr + (((va >> 21) & 0x1ff) * 8);
+
+    // PT
+    next_addr = (QWORD)PTE.PageFrameNumber << 12;
+    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 12) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return  { 0 };
+
+    // 4KB page
+    return next_addr + (((va >> 12) & 0x1ff) * 8);
+}
+
+MMPTE_HARDWARE Utils::GetPTE(QWORD va)
+{
+    QWORD cr3 = __readcr3();
+    if (cr3 & 0xFFF)
+        cr3 &= ~0xFFF; // Ensure CR3 is page-aligned
+
+    // Validate canonical address (48-bit virtual address space)
+    if (((va >> 47) & 0x1FFFF) != 0 && ((va >> 47) & 0x1FFFF) != 0x1FFFF)
+        return  { 0 };
+
+    MMPTE_HARDWARE PTE;
+    PTE = PhysRead<MMPTE_HARDWARE>(cr3 + (((va >> 39) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return { 0 };
+
+    // PDPT
+    QWORD next_addr = (QWORD)PTE.PageFrameNumber << 12;
+    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 30) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return  { 0 };
+
+    // Check for 1GB page
+    if (PTE.LargePage)
+        return PTE;
+
+    // PDT
+    next_addr = (QWORD)PTE.PageFrameNumber << 12;
+    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 21) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return  { 0 };
+
+    // Check for 2MB page
+    if (PTE.LargePage)
+        return PTE;
+
+    // PT
+    next_addr = (QWORD)PTE.PageFrameNumber << 12;
+    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 12) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return  { 0 };
+
+    // 4KB page
+    return PTE;
+}
+
+NTSTATUS Utils::SelfModuleBase(QWORD* module_base)
+{
+    if (!module_base)
+        return STATUS_INVALID_PARAMETER;
+
+    auto page_map = GetPPTE((QWORD)&Utils::SelfModuleBase);
+    if (!page_map)
+        return STATUS_UNSUCCESSFUL;
+
+
+    auto index = (page_map & 0xFFF) / 8;
+    MMPTE_HARDWARE last_pte = PhysRead<MMPTE_HARDWARE>(page_map);
+    for (int i = 0; i < index; i++)
+    {
+        page_map -= 8;
+        auto pte = PhysRead<MMPTE_HARDWARE>(page_map);
+        if (!pte.Valid)
+            break;
+        else
+            last_pte = pte;
+    }
+    if (last_pte.Valid)
+    {
+        *module_base = (QWORD)MmGetVirtualForPhysical(last_pte.PageFrameNumber << 12);
+        return STATUS_SUCCESS;
+    }
+
+    return STATUS_UNSUCCESSFUL;
+}
+
+bool Utils::IsAddressValid(QWORD address)
+{
+    MMPTE_HARDWARE pte = GetPTE(address);
+    return pte.Valid;
+}
+
+MMPTE_HARDWARE Utils::GetPTE(QWORD ctx, QWORD va)
+{
+    QWORD cr3 = ctx;
+    if (cr3 & 0xFFF)
+        cr3 &= ~0xFFF; // Ensure CR3 is page-aligned
+    // Validate canonical address (48-bit virtual address space)
+    if (((va >> 47) & 0x1FFFF) != 0 && ((va >> 47) & 0x1FFFF) != 0x1FFFF)
+        return  { 0 };
+    MMPTE_HARDWARE PTE;
+    PTE = PhysRead<MMPTE_HARDWARE>(cr3 + (((va >> 39) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return { 0 };
+    // PDPT
+    QWORD next_addr = (QWORD)PTE.PageFrameNumber << 12;
+    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 30) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return  { 0 };
+    // Check for 1GB page
+    if (PTE.LargePage)
+        return PTE;
+    // PDT
+    next_addr = (QWORD)PTE.PageFrameNumber << 12;
+    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 21) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return  { 0 };
+    // Check for 2MB page
+    if (PTE.LargePage)
+        return PTE;
+    // PT
+    next_addr = (QWORD)PTE.PageFrameNumber << 12;
+    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 12) & 0x1ff) * 8));
+    if (!PTE.Valid)
+        return  { 0 };
+    // 4KB page
+    return PTE;
+}
+
+bool Utils::IsAddressValid(QWORD ctx, QWORD address)
+{
+    MMPTE_HARDWARE pte = GetPTE(ctx, address);
+    return pte.Valid;
+}
+

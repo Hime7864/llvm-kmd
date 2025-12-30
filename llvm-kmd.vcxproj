@@ -116,6 +116,8 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <ExceptionHandling>false</ExceptionHandling>
+      <Optimization>Full</Optimization>
+      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,6 +137,8 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <ExceptionHandling>false</ExceptionHandling>
+      <Optimization>Full</Optimization>
+      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -154,12 +158,12 @@
     <ClInclude Include="basics.hpp" />
     <ClInclude Include="cpuid.hpp" />
     <ClInclude Include="entry.hpp" />
-    <ClInclude Include="imports.h" />
+    <ClInclude Include="imports.hpp" />
     <ClInclude Include="main.hpp" />
-    <ClInclude Include="nt_exports.h" />
+    <ClInclude Include="nt_exports.hpp" />
     <ClInclude Include="msr.hpp" />
-    <ClInclude Include="nt_methods.h" />
-    <ClInclude Include="nt_structs.h" />
+    <ClInclude Include="nt_methods.hpp" />
+    <ClInclude Include="nt_structs.hpp" />
     <ClInclude Include="utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

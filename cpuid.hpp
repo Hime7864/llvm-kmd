@@ -51,14 +51,14 @@ public:
 	static constexpr DWORD _CPUID_PROCESSOR_VENDOR = 0x0000000UL;
 
 	static constexpr DWORD _CPUID_EXTENDED_TOPOLOGY = 0x0000000BU;
-	
-	static UINT32 CurrentCoreNumber();
 
-	static CPUID_SVM_REVISION SvmRevision();
+	static UINT32 current_core_number();
 
-	static CPUID_SVM_REVISION_AND_FEATURE_IDENTIFICATION SvmRevisionAndFeatureIdentification();
+	static CPUID_SVM_REVISION svm_revision();
 
-	static CPUID_SVM_FEATURE_IDENTIFICATION SvmFeatureIdentification();
+	static CPUID_SVM_REVISION_AND_FEATURE_IDENTIFICATION svm_revision_and_feature_identification();
 
-	static LPSTR VendorString();
+	static CPUID_SVM_FEATURE_IDENTIFICATION svm_feature_identification();
+
+	static LPSTR vendor_string();
 };

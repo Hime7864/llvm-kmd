@@ -2,11 +2,11 @@
 #include "basics.hpp"
 #include "cpuid.hpp"
 #include "msr.hpp"
-#include "Utils.hpp"
+#include "utils.hpp"
 
-#include "nt_exports.h"
-#include "nt_structs.h"
-#include "nt_methods.h"
+#include "nt_exports.hpp"
+#include "nt_structs.hpp"
+#include "nt_methods.hpp"
 
 #ifdef _DEBUG
 #define printf(Format, ...) DbgPrintEx(0, 0, Format, __VA_ARGS__)
@@ -21,5 +21,5 @@ inline void Sleep(_In_ UINT32 milliseconds)
 	KeDelayExecutionThread(KernelMode, FALSE, &interval);
 }
 
-#include "Entry.hpp"
-#include "Main.hpp"
+#include "entry.hpp"
+#include "main.hpp"

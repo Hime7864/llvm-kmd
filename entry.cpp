@@ -1,4 +1,4 @@
-#include "imports.h"
+#include "imports.hpp"
 
 NTSTATUS resolve_imports()
 {
@@ -106,12 +106,69 @@ NTSTATUS resolve_imports()
 		"KeIpiGenericCall"
 	);
 
+	fn_MmGetPhysicalMemoryRanges = (_MmGetPhysicalMemoryRanges)Utils::GetProcAddress(
+		kernel_base,
+		"MmGetPhysicalMemoryRanges"
+	);
+
+	fn_RtlCopyMemory = (_RtlCopyMemory)Utils::GetProcAddress(
+		kernel_base,
+		"RtlCopyMemory"
+	);
+
+	fn_RtlFillMemory = (_RtlFillMemory)Utils::GetProcAddress(
+		kernel_base,
+		"RtlFillMemory"
+	);
+
+	fn_MmAllocateContiguousMemorySpecifyCacheNode = (_MmAllocateContiguousMemorySpecifyCacheNode)Utils::GetProcAddress(
+		kernel_base,
+		"MmAllocateContiguousMemorySpecifyCacheNode"
+	);
+
+	fn_MmFreeContiguousMemorySpecifyCache = (_MmFreeContiguousMemorySpecifyCache)Utils::GetProcAddress(
+		kernel_base,
+		"MmFreeContiguousMemorySpecifyCache"
+	);
+
+	fn_PsInitialSystemProcess = (_PsInitialSystemProcess)Utils::GetProcAddress(
+		kernel_base,
+		"PsInitialSystemProcess"
+	);
+
 	return STATUS_SUCCESS;
 }
 
-NTSTATUS start()
+NTSTATUS resolve_sigged_imports()
 {
-	if(NT_SUCCESS(resolve_imports()))
-		return DriverEntry(nullptr, nullptr);
-	return STATUS_UNSUCCESSFUL;
+	auto kernel_base = Utils::GetKernelBase();
+	if (!kernel_base)
+		return STATUS_UNSUCCESSFUL;
+
+	QWORD kernel_text_base, kernel_text_size;
+	if (!NT_SUCCESS(Utils::GetSectionInfo(kernel_base, ".text", &kernel_text_base, (DWORD*)&kernel_text_size)))
+		return STATUS_UNSUCCESSFUL;
+
+	fn_MmPfnDatabase = (_MmPfnDatabase)Utils::deref(3, Utils::sig_scan(kernel_text_base, kernel_text_size, "48 8B 3D ? ? ? ? 48 C1 EF 09"));
+
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS volatile start()
+{
+	NTSTATUS status = STATUS_UNSUCCESSFUL;
+	if (NT_SUCCESS(resolve_imports()))
+	{
+		auto krnl_dtb = *(QWORD*)(((QWORD)PsInitialSystemProcess()) + 0x28);
+		auto driver_dtb = __readcr3();
+		__writecr3(krnl_dtb);
+
+		if(NT_SUCCESS(resolve_sigged_imports()))
+		{
+			status = DriverEntry(nullptr, nullptr);
+		}
+
+		__writecr3(driver_dtb);
+	}
+	return status;
 }

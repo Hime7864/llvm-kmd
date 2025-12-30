@@ -72,11 +72,11 @@ private:
 	static constexpr DWORD _MSR_HSAVE_PA = 0xC0010117UL;
 public:
 	static MSR_VM_CR read_vm_cr();
-	static void write_vm_cr(MSR_VM_CR* vm_cr);
+	static void write_vm_cr(MSR_VM_CR vm_cr);
 	static MSR_EFER read_efer();
-	static void write_efer(MSR_EFER* efer);
+	static void write_efer(MSR_EFER efer);
 	static MSR_PAT read_pat();
-	static void write_pat(MSR_PAT* pat);
+	static void write_pat(MSR_PAT pat);
 	static UINT64 read_lstar();
 	static void write_lstar(UINT64 lstar);
 	static UINT64 read_fs_base();

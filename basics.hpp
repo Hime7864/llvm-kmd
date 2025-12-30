@@ -1,10 +1,12 @@
 #pragma once
 
+typedef unsigned __int128 UINT128;
 typedef unsigned long long UINT64;
 typedef unsigned long long ULONGLONG;
 typedef long long LONGLONG;
 typedef unsigned long long DWORD64;
 typedef unsigned long long ULONG64;
+typedef __int128 INT128;
 typedef long long INT64;
 typedef long long LONG64;
 typedef double DOUBLE;
@@ -109,6 +111,13 @@ DeclDataType(struct, KAPC_STATE);
 DeclDataType(enum, KPROCESSOR_MODE);
 DeclDataType(struct, OBJECT_ATTRIBUTES);
 DeclDataType(struct, CLIENT_ID);
+DeclDataType(struct, DESCRIPTOR_TABLE_REGISTER);
+DeclDataType(struct, SEGMENT_SELECTOR);
+DeclDataType(struct, PHYSICAL_MEMORY_RANGE);
+DeclDataType(enum, POOL_TYPE);
+DeclDataType(struct, MACHINE_FRAME);
+DeclDataType(enum, MEMORY_CACHING_TYPE); 
+DeclDataType(struct, MMPFN);
 
 typedef NTSTATUS(*_KSTART_ROUTINE)(PVOID StartContext);
 typedef _KSTART_ROUTINE KSTART_ROUTINE;
@@ -130,6 +139,8 @@ typedef _KSTART_ROUTINE* PKSTART_ROUTINE;
 #define _Out_opt_
 #define _Inout_opt_
 
+#define CONST const
+
 #define va_list __builtin_va_list
 #define va_start __builtin_va_start
 #define va_arg(args, type) __builtin_va_arg(args, type)
@@ -138,6 +149,7 @@ typedef _KSTART_ROUTINE* PKSTART_ROUTINE;
 #define NAKED __attribute__((naked))
 #define PACKED __attribute__((packed))
 #define FORCEINLINE __attribute__((always_inline)) inline
+#define NOINLINE __attribute__((noinline))
 #define ALIGN(alignment) __attribute__((aligned(alignment)))
 
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
@@ -145,24 +157,97 @@ typedef _KSTART_ROUTINE* PKSTART_ROUTINE;
 #define STATUS_UNSUCCESSFUL 0xC0000001UL
 #define STATUS_NOT_IMPLEMENTED 0xC0000002UL
 #define STATUS_INVALID_PARAMETER 0xC000000DL
+#define STATUS_INSUFFICIENT_RESOURCES 0xC000009AL
+
+#define MM_COPY_MEMORY_PHYSICAL             0x1
+#define MM_COPY_MEMORY_VIRTUAL              0x2
+
+#define MM_ANY_NODE_OK 0x80000000UL
 
 #define PASSIVE_LEVEL 0
 #define APC_LEVEL 1
 #define DISPATCH_LEVEL 2
 
+#define 	OBJ_KERNEL_HANDLE   0x00000200
+#define InitializeObjectAttributes(p, n, a, r, s) { \
+       (p)->Length = sizeof(_OBJECT_ATTRIBUTES); \
+       (p)->RootDirectory = r; \
+       (p)->Attributes = a; \
+       (p)->ObjectName = n; \
+       (p)->SecurityDescriptor = s; \
+       (p)->SecurityQualityOfService = NULL; \
+       }
+
+struct PACKED SEGMENT_REGISTER
+{
+	UINT16 Limit;
+	UINT64 Base;
+
+	inline UINT32 limit(USHORT selector)
+	{
+		auto sr = this;
+		if (!sr)
+			return 0;
+		UINT16 idx = selector >> 3;
+		UINT64 offset = idx * 8;
+		if (offset + 7 > sr->Limit)
+			return 0;
+		auto DescBytes = reinterpret_cast<UCHAR*>(sr->Base + offset);
+
+		UINT32 limitLow = *(reinterpret_cast<UINT16*>(&DescBytes[0]));
+		UCHAR granFlags = DescBytes[6];
+		UINT32 limitHigh = granFlags & 0x0F;
+		UINT32 segLimit = (limitHigh << 16) | limitLow;
+
+		if ((granFlags & 0x80) != 0)
+			segLimit = (segLimit << 12) | 0xFFF;
+		return segLimit;
+	}
+
+	inline USHORT attribute(USHORT selector)
+	{
+		const auto sr = this;
+		if (!sr)
+			return 0;
+		UINT16 idx = selector >> 3;
+		UINT64 offset = idx * 8;
+		if (offset + 7 > sr->Limit)
+			return 0;
+		auto DescBytes = reinterpret_cast<UCHAR*>(sr->Base + offset);
+		return static_cast<USHORT>(DescBytes[5]) | (static_cast<USHORT>(DescBytes[6]) << 8);
+	}
+
+	inline UINT64 base(USHORT selector)
+	{
+		const auto sr = this;
+		if (!sr)
+			return 0;
+		UINT16 idx = selector >> 3;
+		UINT64 offset = idx * 8;
+		if (offset + 7 > sr->Limit)
+			return 0;
+		auto DescBytes = reinterpret_cast<UCHAR*>(sr->Base + offset);
+		UINT32 baseLow = *(reinterpret_cast<UINT16*>(&DescBytes[2]));
+		UINT32 baseMid = DescBytes[4];
+		UINT32 baseHigh = DescBytes[7];
+		UINT64 segBase = (static_cast<UINT64>(baseHigh) << 24) | (static_cast<UINT64>(baseMid) << 16) | baseLow;
+		return segBase;
+	}
+};
+
 
 extern "C"
 {
-    int __cdecl memcmp(void* dst, void* src, size_t size);
-    void* __cdecl memcpy(void* Destination, const void* Source, size_t Length);
-    void* __cdecl memset(void* Destination, int Value, size_t Length);
+	int __cdecl memcmp(void* dst, void* src, size_t size);
+	void* __cdecl memcpy(void* Destination, const void* Source, size_t Length);
+	void* __cdecl memset(void* Destination, int Value, size_t Length);
 
 	size_t __cdecl strlen(const char* str);
 	size_t __cdecl wcslen(const wchar_t* str);
 	char __cdecl tolower(char ch);
-    wchar_t __cdecl towlower(wchar_t ch);
-	char __cdecl toupper(char ch);	
-    wchar_t __cdecl towupper(wchar_t ch);
+	wchar_t __cdecl towlower(wchar_t ch);
+	char __cdecl toupper(char ch);
+	wchar_t __cdecl towupper(wchar_t ch);
 	int __cdecl strcmp(const char* str1, const char* str2, size_t max);
 	int __cdecl wcscmp(const wchar_t* str1, const wchar_t* str2, size_t max);
 
@@ -179,8 +264,8 @@ extern "C"
 	VOID __invlpg(_In_ PVOID address);
 	UINT64 __readmsr(_In_ UINT32 msr);
 	VOID __writemsr(_In_ UINT32 msr, _In_ UINT64 value);
-	VOID __sidt(_In_ PVOID idtr);
-	VOID __sgdt(_In_ PVOID gdtr);
+	VOID __sidt(_In_ SEGMENT_REGISTER* idtr);
+	VOID __sgdt(_In_ SEGMENT_REGISTER* gdtr);
 	VOID __vmrun(_Inout_ PHYSICAL_ADDRESS hsave);
 	VOID __vmsave(_In_ PHYSICAL_ADDRESS vmcb);
 	VOID __vmload(_Inout_ PHYSICAL_ADDRESS hsave);
@@ -188,9 +273,9 @@ extern "C"
 
 class FnPtr {
 public:
-    template<typename Ret, typename ...Args>
-    inline Ret invoke(Args ...args)
-    {
-        return ((Ret(__fastcall*)(Args...))this)(args...);
-    }
+	template<typename Ret, typename ...Args>
+	inline Ret invoke(Args ...args)
+	{
+		return ((Ret(__fastcall*)(Args...))this)(args...);
+	}
 };

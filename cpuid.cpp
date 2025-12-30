@@ -1,6 +1,6 @@
-#include "imports.h"
+#include "imports.hpp"
 
-LPSTR CPUID::VendorString()
+LPSTR CPUID::vendor_string()
 {
     DWORD leaf = CPUID::_CPUID_PROCESSOR_VENDOR;
     static char results[13]{ 0 };
@@ -16,7 +16,7 @@ LPSTR CPUID::VendorString()
     return results;
 }
 
-UINT32 CPUID::CurrentCoreNumber()
+UINT32 CPUID::current_core_number()
 {
     DWORD leaf = CPUID::_CPUID_EXTENDED_TOPOLOGY;
     static UINT32 results = 0;
@@ -31,10 +31,10 @@ UINT32 CPUID::CurrentCoreNumber()
 }
 
 
-CPUID_SVM_REVISION CPUID::SvmRevision()
+CPUID_SVM_REVISION CPUID::svm_revision()
 {
     DWORD leaf = CPUID::_CPUID_SVM_REVISION_IDENTIFICATION;
-	static UINT32 results{ 0 };
+    static UINT32 results{ 0 };
     __asm
     {
         mov eax, leaf
@@ -45,7 +45,7 @@ CPUID_SVM_REVISION CPUID::SvmRevision()
     return { .AsUINT32 = results };
 }
 
-CPUID_SVM_REVISION_AND_FEATURE_IDENTIFICATION CPUID::SvmRevisionAndFeatureIdentification()
+CPUID_SVM_REVISION_AND_FEATURE_IDENTIFICATION CPUID::svm_revision_and_feature_identification()
 {
     DWORD leaf = CPUID::_CPUID_SVM_REVISION_IDENTIFICATION;
     static UINT32 results{ 0 };
@@ -59,7 +59,7 @@ CPUID_SVM_REVISION_AND_FEATURE_IDENTIFICATION CPUID::SvmRevisionAndFeatureIdenti
     return { .NASID = results };
 }
 
-CPUID_SVM_FEATURE_IDENTIFICATION CPUID::SvmFeatureIdentification()
+CPUID_SVM_FEATURE_IDENTIFICATION CPUID::svm_feature_identification()
 {
     DWORD leaf = _CPUID_SVM_REVISION_IDENTIFICATION;
     static UINT32 results{ 0 };

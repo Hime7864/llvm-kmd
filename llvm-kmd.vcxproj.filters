@@ -30,9 +30,7 @@
     <ClCompile Include="utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="basics.hpp">
@@ -44,9 +42,6 @@
     <ClInclude Include="entry.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="imports.h">
-      <Filter>Resource Files</Filter>
-    </ClInclude>
     <ClInclude Include="main.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -56,14 +51,15 @@
     <ClInclude Include="utils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="nt_exports.h">
+    <ClInclude Include="nt_exports.hpp">
       <Filter>Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="nt_structs.h">
+    <ClInclude Include="nt_structs.hpp">
       <Filter>Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="nt_methods.h">
+    <ClInclude Include="nt_methods.hpp">
       <Filter>Resource Files</Filter>
     </ClInclude>
+    <ClInclude Include="imports.hpp" />
   </ItemGroup>
 </Project>

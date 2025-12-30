@@ -28,4 +28,28 @@ public:
         QWORD* section_address,
         DWORD* section_size
     );
+    static MMPTE_HARDWARE GetPTE(
+        QWORD virtual_address
+    );
+    static QWORD GetPPTE(
+        QWORD virtual_address
+    );
+    static bool IsAddressValid(
+        QWORD address
+    );
+    static MMPTE_HARDWARE GetPTE(
+        QWORD ctx,
+        QWORD virtual_address
+    );
+    static QWORD GetPPTE(
+        QWORD ctx,
+        QWORD virtual_address
+    );
+    static bool IsAddressValid(
+        QWORD ctx,
+        QWORD address
+    );
+    static NTSTATUS SelfModuleBase(
+        QWORD* module_base
+    );
 };

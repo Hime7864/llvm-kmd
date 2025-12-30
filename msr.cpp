@@ -1,13 +1,13 @@
-#include "imports.h"
+#include "imports.hpp"
 
 MSR_VM_CR MSR::read_vm_cr()
 {
 	return { .AsUINT64 = __readmsr(_MSR_VM_CR) };
 }
 
-void MSR::write_vm_cr(MSR_VM_CR* vm_cr)
+void MSR::write_vm_cr(MSR_VM_CR vm_cr)
 {
-	return __writemsr(_MSR_VM_CR, vm_cr->AsUINT64);
+	return __writemsr(_MSR_VM_CR, vm_cr.AsUINT64);
 }
 
 MSR_EFER MSR::read_efer()
@@ -15,9 +15,9 @@ MSR_EFER MSR::read_efer()
 	return { .AsUINT64 = __readmsr(_MSR_EFER) };
 }
 
-void MSR::write_efer(MSR_EFER* efer)
+void MSR::write_efer(MSR_EFER efer)
 {
-	return __writemsr(_MSR_EFER, efer->AsUINT64);
+	return __writemsr(_MSR_EFER, efer.AsUINT64);
 }
 
 MSR_PAT MSR::read_pat()
@@ -25,9 +25,9 @@ MSR_PAT MSR::read_pat()
 	return { .AsUINT64 = __readmsr(_MSR_PAT) };
 }
 
-void MSR::write_pat(MSR_PAT* pat)
+void MSR::write_pat(MSR_PAT pat)
 {
-	return __writemsr(_MSR_PAT, pat->AsUINT64);
+	return __writemsr(_MSR_PAT, pat.AsUINT64);
 }
 
 UINT64 MSR::read_lstar()
