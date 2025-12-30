@@ -33,3 +33,5 @@ llvm-kmd/x64/Debug/vcpkg.applocal.log
 x64/Debug/llvm-kmd.lib
 x64/Debug/llvm-kmd.pdb
 x64/Debug/llvm-kmd.sys
+.vs/llvm-kmd/v17/DocumentLayout.backup.json
+/.vs
