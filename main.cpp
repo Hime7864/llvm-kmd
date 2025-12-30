@@ -745,8 +745,15 @@ bool CopyReclaimedMemory(PVOID buffer, PHYSICAL_ADDRESS physical, SIZE_T count)
 		pa += 0x1000;
 	}
 
+	auto last_irql = __readcr8();
+	__writecr8(DISPATCH_LEVEL);
+
 	CallOnHost((FnPtr*)imlp_CopySinglePage, buffer, physical, count);
+
+	__writecr8(last_irql);
+
 	return true;
+
 }
 
 UINT8 sanitize_char(UINT8 c)
@@ -839,9 +846,6 @@ NTSTATUS WriteDataToDiskKernel(
 	if (!NT_SUCCESS(Status)) {
 		printf("Failed to write to file: 0x%X\n", Status);
 	}
-	else {
-		printf("Successfully wrote %llu bytes to file.\n", IoStatusBlock.Information);
-	}
 
 	// Close the file handle
 	if (FileHandle) {
@@ -854,6 +858,7 @@ NTSTATUS WriteDataToDiskKernel(
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
+	
 	auto memory_ranges = (PMEMORY_RANGES)ExAllocatePool(NonPagedPool, 0x1000);
 
 	SetupMemoryManager();
@@ -862,7 +867,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
 	GetPhysicalMemoryDump(memory_ranges);
 
-	for (int i = 0; i < memory_ranges->range_count; i++)
+	for (int i = 1; i < memory_ranges->range_count; i++)
 	{
 		if (!memory_ranges->ranges[i].Flags.OsCommited)
 		{
@@ -870,35 +875,67 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 				memory_ranges->ranges[i].Start,
 				memory_ranges->ranges[i].End,
 				memory_ranges->ranges[i].End - memory_ranges->ranges[i].Start);
+			//auto range = &memory_ranges->ranges[i];
+			//auto range_size = range->End - range->Start;
+			//auto multi_page = (PVOID)ExAllocatePool(NonPagedPool, range_size);
+			//RtlFillMemory(multi_page, range_size, 0x00);
+			//
+			//auto pa = range->Start;
+			//if (CopyReclaimedMemory(multi_page, pa, range_size))
+			//{
+			//	auto file_path = (wchar_t*)ExAllocatePool(NonPagedPool, 0x1000);
+			//	RtlFillMemory(file_path, 0x1000, 0x00);
+			//	//L"\\??\\C:\\Temp\\Log.txt"
+			//	swprintf(file_path, L"\\??\\C:\\Temp\\PhysicalMemoryRange_%p-%p.dmp",
+			//		range->Start,
+			//		range->End
+			//	);
+			//	WriteDataToDiskKernel(
+			//		file_path,  // File path
+			//		multi_page,                         // Data buffer
+			//		range_size                  // Size of data
+			//	);
+			//	ExFreePool(file_path);
+			//}
+			//ExFreePool(multi_page);
 		}
 	}
 
-	auto range = &memory_ranges->ranges[0];
+	auto range = &memory_ranges->ranges[10];
 	auto range_size = range->End - range->Start;
 	auto multi_page = (PVOID)ExAllocatePool(NonPagedPool, range_size);
-	RtlFillMemory(multi_page, range_size, 0x00);
-
-	auto pa = range->Start;
-	if (CopyReclaimedMemory(multi_page, pa, range_size))
+	if (multi_page)
 	{
-		auto file_path = (wchar_t*)ExAllocatePool(NonPagedPool, 0x1000);
-		RtlFillMemory(file_path, 0x1000, 0x00);
-		//L"\\??\\C:\\Temp\\Log.txt"
-		swprintf(file_path, L"\\??\\C:\\Temp\\PhysicalMemoryRange_%p-%p.dmp",
-			range->Start,
-			range->End
-		);
-		WriteDataToDiskKernel(
-			file_path,  // File path
-			multi_page,                         // Data buffer
-			range_size                  // Size of data
-		);
-		ExFreePool(file_path);
+		RtlFillMemory(multi_page, range_size, 0x00);
+
+		auto pa = range->Start;
+		if (CopyReclaimedMemory(multi_page, pa, range_size))
+		{
+			auto file_path = (wchar_t*)ExAllocatePool(NonPagedPool, 0x1000);
+			RtlFillMemory(file_path, 0x1000, 0x00);
+			//L"\\??\\C:\\Temp\\Log.txt"
+			swprintf(file_path, L"\\??\\C:\\Temp\\%p-%p.dmp",
+				range->Start,
+				range->End
+			);
+			WriteDataToDiskKernel(
+				file_path,  // File path
+				multi_page,                         // Data buffer
+				range_size                  // Size of data
+			);
+			ExFreePool(file_path);
+		}
 	}
+	else
+		printf("Failed to allocate multi_page buffer\n");
+	
 	ExFreePool(multi_page);
+
+	
 
 	CleanupMemoryManager();
 
 	ExFreePool(memory_ranges);
+
 	return STATUS_SUCCESS;
 }
