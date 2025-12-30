@@ -302,3 +302,81 @@ PMMPFN FORCEINLINE MmPfnDatabase()
 {
 	return *(PMMPFN*)fn_MmPfnDatabase;
 }
+
+inline _ZwCreateFile fn_ZwCreateFile = nullptr;
+NTSTATUS FORCEINLINE ZwCreateFile(
+	_Out_ PHANDLE FileHandle,
+	_In_ ACCESS_MASK DesiredAccess,
+	_In_ POBJECT_ATTRIBUTES ObjectAttributes,
+	_Out_ PIO_STATUS_BLOCK IoStatusBlock,
+	_In_opt_ PLARGE_INTEGER AllocationSize,
+	_In_ ULONG FileAttributes,
+	_In_ ULONG ShareAccess,
+	_In_ ULONG CreateDisposition,
+	_In_ ULONG CreateOptions,
+	_In_opt_ PVOID EaBuffer,
+	_In_ ULONG EaLength
+)
+{
+	return fn_ZwCreateFile(
+		FileHandle,
+		DesiredAccess,
+		ObjectAttributes,
+		IoStatusBlock,
+		AllocationSize,
+		FileAttributes,
+		ShareAccess,
+		CreateDisposition,
+		CreateOptions,
+		EaBuffer,
+		EaLength
+	);
+}
+
+inline _ZwWriteFile fn_ZwWriteFile = nullptr;
+NTSTATUS FORCEINLINE ZwWriteFile(
+	_Out_ HANDLE FileHandle,
+	_In_opt_ HANDLE Event,
+	_In_opt_ PIO_APC_ROUTINE ApcRoutine,
+	_In_opt_ PVOID ApcContext,
+	_Out_ PIO_STATUS_BLOCK IoStatusBlock,
+	_In_ PVOID Buffer,
+	_In_ ULONG Length,
+	_In_opt_ PLARGE_INTEGER ByteOffset,
+	_In_opt_ PULONG Key
+)
+{
+	return fn_ZwWriteFile(
+		FileHandle,
+		Event,
+		ApcRoutine,
+		ApcContext,
+		IoStatusBlock,
+		Buffer,
+		Length,
+		ByteOffset,
+		Key
+	);
+}
+
+inline _ZwClose fn_ZwClose = nullptr;
+NTSTATUS FORCEINLINE ZwClose(
+	_In_ HANDLE Handle
+)
+{
+	return fn_ZwClose(
+		Handle
+	);
+}
+
+inline _RtlInitUnicodeString fn_RtlInitUnicodeString = nullptr;
+VOID FORCEINLINE RtlInitUnicodeString(
+	_Out_ PUNICODE_STRING DestinationString,
+	_In_opt_ PCWSTR SourceString
+)
+{
+	return fn_RtlInitUnicodeString(
+		DestinationString,
+		SourceString
+	);
+}

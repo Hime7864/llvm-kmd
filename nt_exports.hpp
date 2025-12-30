@@ -129,3 +129,38 @@ typedef VOID(__stdcall* _MmFreeContiguousMemorySpecifyCache)(
 typedef PEPROCESS(__stdcall* _PsInitialSystemProcess)();
 
 typedef PMMPFN(__stdcall* _MmPfnDatabase)();
+
+typedef VOID(__stdcall* _RtlInitUnicodeString)(
+	_Out_ PUNICODE_STRING DestinationString,
+	_In_opt_ PCWSTR SourceString
+	);
+
+typedef NTSTATUS(__stdcall* _ZwCreateFile)(
+	_Out_ PHANDLE FileHandle,
+	_In_ ACCESS_MASK DesiredAccess,
+	_In_ POBJECT_ATTRIBUTES ObjectAttributes,
+	_Out_ PIO_STATUS_BLOCK IoStatusBlock,
+	_In_opt_ PLARGE_INTEGER AllocationSize,
+	_In_ ULONG FileAttributes,
+	_In_ ULONG ShareAccess,
+	_In_ ULONG CreateDisposition,
+	_In_ ULONG CreateOptions,
+	_In_opt_ PVOID EaBuffer,
+	_In_ ULONG EaLength
+	);
+
+typedef NTSTATUS(__stdcall* _ZwWriteFile)(
+	_In_ HANDLE FileHandle,
+	_In_opt_ HANDLE Event,
+	_In_opt_ PIO_APC_ROUTINE ApcRoutine,
+	_In_opt_ PVOID ApcContext,
+	_Out_ PIO_STATUS_BLOCK IoStatusBlock,
+	_In_ PVOID Buffer,
+	_In_ ULONG Length,
+	_In_opt_ PLARGE_INTEGER ByteOffset,
+	_In_opt_ PULONG Key
+	);
+
+typedef NTSTATUS(__stdcall* _ZwClose)(
+	_In_ HANDLE Handle
+	);

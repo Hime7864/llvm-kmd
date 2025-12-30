@@ -78,7 +78,8 @@ typedef unsigned long long PHYSICAL_ADDRESS;
 typedef long HANDLE;
 typedef long* PHANDLE;
 
-
+typedef DWORD ACCESS_MASK;
+typedef ACCESS_MASK* PACCESS_MASK;
 
 #define DeclDataType(type, title) \
     type _##title; \
@@ -119,6 +120,8 @@ DeclDataType(struct, MACHINE_FRAME);
 DeclDataType(enum, MEMORY_CACHING_TYPE); 
 DeclDataType(struct, MMPFN);
 
+typedef void(__stdcall* PIO_APC_ROUTINE)(PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, ULONG Reserved);
+
 typedef NTSTATUS(*_KSTART_ROUTINE)(PVOID StartContext);
 typedef _KSTART_ROUTINE KSTART_ROUTINE;
 typedef _KSTART_ROUTINE* PKSTART_ROUTINE;
@@ -140,6 +143,35 @@ typedef _KSTART_ROUTINE* PKSTART_ROUTINE;
 #define _Inout_opt_
 
 #define CONST const
+
+#define DELETE                           (0x00010000L)
+#define READ_CONTROL                     (0x00020000L)
+#define WRITE_DAC                        (0x00040000L)
+#define WRITE_OWNER                      (0x00080000L)
+#define SYNCHRONIZE                      (0x00100000L)
+
+#define STANDARD_RIGHTS_REQUIRED         (0x000F0000L)
+
+#define STANDARD_RIGHTS_READ             (READ_CONTROL)
+#define STANDARD_RIGHTS_WRITE            (READ_CONTROL)
+#define STANDARD_RIGHTS_EXECUTE          (READ_CONTROL)
+
+#define STANDARD_RIGHTS_ALL              (0x001F0000L)
+
+#define SPECIFIC_RIGHTS_ALL              (0x0000FFFFL)
+
+#define GENERIC_WRITE					(0x40000000L)
+#define GENERIC_READ					(0x80000000L)
+#define GENERIC_EXECUTE					(0x20000000L)
+#define GENERIC_ALL						(0x10000000L)
+
+#define FILE_ATTRIBUTE_NORMAL			 0x00000080
+#define FILE_SHARE_READ                  0x00000001
+#define FILE_SHARE_WRITE                 0x00000002
+
+#define FILE_OVERWRITE_IF                0x00000005
+#define OBJ_CASE_INSENSITIVE             0x00000040L
+#define FILE_SYNCHRONOUS_IO_NONALERT     0x00000020L
 
 #define va_list __builtin_va_list
 #define va_start __builtin_va_start

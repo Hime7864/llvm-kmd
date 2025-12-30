@@ -136,6 +136,26 @@ NTSTATUS resolve_imports()
 		"PsInitialSystemProcess"
 	);
 
+	fn_RtlInitUnicodeString = (_RtlInitUnicodeString)Utils::GetProcAddress(
+		kernel_base,
+		"RtlInitUnicodeString"
+	);
+
+	fn_ZwCreateFile = (_ZwCreateFile)Utils::GetProcAddress(
+		kernel_base,
+		"ZwCreateFile"
+	);
+
+	fn_ZwWriteFile = (_ZwWriteFile)Utils::GetProcAddress(
+		kernel_base,
+		"ZwWriteFile"
+	);
+
+	fn_ZwClose = (_ZwClose)Utils::GetProcAddress(
+		kernel_base,
+		"ZwClose"
+	);
+
 	return STATUS_SUCCESS;
 }
 

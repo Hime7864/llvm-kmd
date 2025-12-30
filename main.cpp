@@ -780,8 +780,100 @@ void dbg_print_page(QWORD buffer, QWORD base)
 	}
 }
 
+
+NTSTATUS WriteDataToDiskKernel(
+	PCWSTR FilePath,     // File path to write to
+	PVOID Data,          // Pointer to data buffer
+	SIZE_T DataLength    // Length of the data to write
+) {
+	NTSTATUS Status;
+	HANDLE FileHandle;
+	OBJECT_ATTRIBUTES ObjectAttributes;
+	IO_STATUS_BLOCK IoStatusBlock;
+	UNICODE_STRING UnicodeFilePath;
+
+	// Initialize the file path
+	RtlInitUnicodeString(&UnicodeFilePath, FilePath);
+
+	InitializeObjectAttributes(
+		&ObjectAttributes,
+		&UnicodeFilePath,
+		OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE,
+		NULL,
+		NULL
+	);
+
+	// Create or open the file
+	Status = ZwCreateFile(
+		&FileHandle,
+		GENERIC_WRITE,
+		&ObjectAttributes,
+		&IoStatusBlock,
+		NULL,
+		FILE_ATTRIBUTE_NORMAL,
+		0,
+		FILE_OVERWRITE_IF,
+		FILE_SYNCHRONOUS_IO_NONALERT,
+		NULL,
+		0
+	);
+
+	if (!NT_SUCCESS(Status)) {
+		printf("Failed to create/open file: 0x%X\n", Status);
+		return Status;
+	}
+
+	// Write data to the file
+	Status = ZwWriteFile(
+		FileHandle,
+		NULL,
+		NULL,
+		NULL,
+		&IoStatusBlock,
+		Data,
+		(ULONG)DataLength,
+		NULL,
+		NULL
+	);
+
+	if (!NT_SUCCESS(Status)) {
+		printf("Failed to write to file: 0x%X\n", Status);
+	}
+	else {
+		printf("Successfully wrote %llu bytes to file.\n", IoStatusBlock.Information);
+	}
+
+	// Close the file handle
+	ZwClose(FileHandle);
+
+	return Status;
+}
+
+void SaveBufferToDiskExample() {
+	UCHAR DataToWrite[] = "Hello, World!";
+	NTSTATUS Status;
+
+	Status = WriteDataToDiskKernel(
+		L"\\??\\C:\\Temp\\KernelOutput.txt",  // File path
+		DataToWrite,                         // Data buffer
+		sizeof(DataToWrite)                  // Size of data
+	);
+
+	if (NT_SUCCESS(Status)) {
+		printf("Data successfully written to disk.\n");
+	}
+	else {
+		printf("Failed to write data to disk. Error: 0x%X\n", Status);
+	}
+}
+
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
+
+	SaveBufferToDiskExample();
+
+
+	return STATUS_SUCCESS;
 	auto memory_ranges = (PMEMORY_RANGES)ExAllocatePool(NonPagedPool, 0x1000);
 
 	SetupMemoryManager();
@@ -801,18 +893,22 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 		}
 	}
 
-	auto range = &memory_ranges->ranges[12];
-	auto page_count = 4;
+	auto range = &memory_ranges->ranges[4];
+	auto range_size = range->End - range->Start;
+	auto page_count = range_size >> 12;
+	//if(page_count > 100)
+	//	page_count = 100;
 	auto page_bytes = 0x1000 * page_count;
 	auto multi_page = (PVOID)ExAllocatePool(NonPagedPool, page_bytes);
 	RtlFillMemory(multi_page, page_bytes, 0x00);
+
 	auto pa = range->Start;
 	if (CopyReclaimedMemory(multi_page, pa, page_bytes))
 	{
 		for (int i = 0; i < page_count; i++)
 		{
-			auto test = *(QWORD*)(((QWORD)multi_page) + i * 0x1000);
-			printf("%p\n", test);
+			auto test = (QWORD*)(((QWORD)multi_page) + i * 0x1000);
+			dbg_print_page((QWORD)test, pa + i * 0x1000);
 		}
 	}
 	ExFreePool(multi_page);
