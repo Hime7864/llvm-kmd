@@ -135,14 +135,14 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 {
 	if (!memory_ranges)
 		return;
+
 	RtlFillMemory(memory_ranges, 0x1000, 0);
 
 	auto MmPmr = MmGetPhysicalMemoryRanges();
 	auto last_pa_base = 0x0;
-	while (MmPmr->NumberOfBytes.QuadPart)
-	{
-		if (last_pa_base != 0)
-		{
+
+	while (MmPmr->NumberOfBytes.QuadPart) {
+		if (last_pa_base != 0) {
 			auto padding = MmPmr->BaseAddress.QuadPart - last_pa_base;
 			MmPmr--;
 
@@ -150,23 +150,25 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 			memory_ranges->ranges[memory_ranges->range_count].End = MmPmr->BaseAddress.QuadPart + MmPmr->NumberOfBytes.QuadPart;
 			memory_ranges->ranges[memory_ranges->range_count].Flags.OsCommited = true;
 			memory_ranges->range_count++;
+
 			memory_ranges->ranges[memory_ranges->range_count].Start = MmPmr->BaseAddress.QuadPart + MmPmr->NumberOfBytes.QuadPart;
 			memory_ranges->ranges[memory_ranges->range_count].End = MmPmr->BaseAddress.QuadPart + MmPmr->NumberOfBytes.QuadPart + padding;
 			memory_ranges->ranges[memory_ranges->range_count].Flags.OsCommited = false;
 			memory_ranges->range_count++;
+
 			MmPmr++;
 		}
-		else
-		{
+		else {
 			memory_ranges->ranges[memory_ranges->range_count].Start = last_pa_base;
 			memory_ranges->ranges[memory_ranges->range_count].End = MmPmr->BaseAddress.QuadPart;
 			memory_ranges->ranges[memory_ranges->range_count].Flags.OsCommited = false;
 			memory_ranges->range_count++;
 		}
+
 		last_pa_base = MmPmr->BaseAddress.QuadPart + MmPmr->NumberOfBytes.QuadPart;
 		MmPmr++;
-		if (!MmPmr->NumberOfBytes.QuadPart)
-		{
+
+		if (!MmPmr->NumberOfBytes.QuadPart) {
 			MmPmr--;
 			memory_ranges->ranges[memory_ranges->range_count].Start = MmPmr->BaseAddress.QuadPart;
 			memory_ranges->ranges[memory_ranges->range_count].End = MmPmr->BaseAddress.QuadPart + MmPmr->NumberOfBytes.QuadPart;
@@ -174,30 +176,20 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 			memory_ranges->range_count++;
 
 			QWORD value = MmPmr->BaseAddress.QuadPart + MmPmr->NumberOfBytes.QuadPart;
-			QWORD output_value = 0x0;
-			BYTE shift = 60;
-			for (int i = 0; i < 16; i++)
-			{
-				auto mask = 0xFULL << (shift - i * 4);
-				bool is_set = (value & mask) != 0;
-				if (is_set)
-				{
-					if (value & ~mask)
-						output_value = 0x1ULL << (shift - (i - 1) * 4);
-					else
-						output_value = 0x1ULL << (shift - i * 4);
-					break;
-				}
+
+			QWORD output_value = 1;
+			while (output_value < value) {
+				output_value <<= 1;
 			}
 
 			memory_ranges->ranges[memory_ranges->range_count].Start = MmPmr->BaseAddress.QuadPart + MmPmr->NumberOfBytes.QuadPart;
 			memory_ranges->ranges[memory_ranges->range_count].End = output_value;
 			memory_ranges->ranges[memory_ranges->range_count].Flags.OsCommited = false;
 
-			if (memory_ranges->ranges[memory_ranges->range_count].Start != memory_ranges->ranges[memory_ranges->range_count - 1].Start)
+			if (memory_ranges->ranges[memory_ranges->range_count].Start != memory_ranges->ranges[memory_ranges->range_count - 1].End) {
 				memory_ranges->range_count++;
-			else
-			{
+			}
+			else {
 				memory_ranges->ranges[memory_ranges->range_count].Start = 0;
 				memory_ranges->ranges[memory_ranges->range_count].End = 0;
 				memory_ranges->ranges[memory_ranges->range_count].Flags.OsCommited = 0;
@@ -214,14 +206,7 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 
 	for (int i = 0; i < memory_ranges->range_count; i++)
 	{
-		if (!memory_ranges->ranges[i].Flags.OsCommited)
-		{
-			//printf("Outside os Range %02d: Range: %p-%p (size %p)\n", i,
-			//	memory_ranges->ranges[i].Start,
-			//	memory_ranges->ranges[i].End,
-			//	memory_ranges->ranges[i].End - memory_ranges->ranges[i].Start);
-		}
-		else
+		if (memory_ranges->ranges[i].Flags.OsCommited)
 			total_os_commited += memory_ranges->ranges[i].End - memory_ranges->ranges[i].Start;
 
 		auto start = memory_ranges->ranges[i].Start;
@@ -238,7 +223,6 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 			auto next_invalid_pa = FindNextInvalid(start, end);
 			if (next_invalid_pa == end)
 			{
-				//printf("valid [%p-%p]\n", start, next_invalid_pa);
 				total_valid += (end - start);
 				break;
 			}
@@ -247,7 +231,6 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 				if (start != next_invalid_pa)
 				{
 					total_valid += (next_invalid_pa - start);
-					//printf("valid [%p-%p]\n", start, next_invalid_pa);
 				}
 			}
 			while (next_invalid_pa != end)
@@ -256,58 +239,57 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 				auto next_valid_pa = FindNextValid(start, end);
 				if (next_valid_pa == end)
 				{
-					//printf("invalid [%p-%p]\n", start, next_valid_pa);
 					total_invalid += (end - start);
 					start = next_valid_pa;
 					break;
 				}
 				else
 				{
-					//printf("invalid [%p-%p]\n", start, next_valid_pa);
 					total_invalid += (next_valid_pa - start);
 					start = next_valid_pa;
 					break;
 				}
 			}
 		}
-		//printf("free bytes %p\n", total_valid);
 		total_commited += total_valid;
 	}
-	//printf("Total commited physical memory: %p bytes\n", total_commited);
-	//printf("Total raw physical memory     : %p bytes\n", total_raw_size);
-
 	auto delta = total_physical_memory - total_os_commited;
 
 	auto gb_size = 1024.0 * 1024.0 * 1024.0;
-	printf("**************** Physical Memory Useage *****************\n"); 
+
+	printf("**************** Physical Memory Useage *****************\n");
 	auto os_commited_percent = (double)total_os_commited / gb_size;
-	auto top_os_commited_percent = (int)(os_commited_percent);
-	auto bottom_os_commited_percent = (int)(os_commited_percent * 100.f);
-	printf("*    available to windows     -> %3i.%-3i GB             *\n", top_os_commited_percent, bottom_os_commited_percent % 100);
+	int top_os_commited_percent = (int)(os_commited_percent);
+	int bottom_os_commited_percent = (int)((os_commited_percent - top_os_commited_percent) * 100.0 + 0.5);
+	printf("*    available to windows     -> %3i.%-3i GB             *\n",
+		top_os_commited_percent, bottom_os_commited_percent);
 
 	auto physical_memory_percent = (double)total_physical_memory / gb_size;
-	auto top_physical_memory_percent = (int)(physical_memory_percent);
-	auto bottom_physical_memory_percent = (int)(physical_memory_percent * 100.f);
-	printf("*    installed on system      -> %3i.%-3i GB             *\n", top_physical_memory_percent, bottom_physical_memory_percent % 100);
+	int top_physical_memory_percent = (int)(physical_memory_percent);
+	int bottom_physical_memory_percent = (int)((physical_memory_percent - top_physical_memory_percent) * 100.0 + 0.5);
+	printf("*    installed on system      -> %3i.%-3i GB             *\n",
+		top_physical_memory_percent, bottom_physical_memory_percent);
 
 	auto delta_percent = (double)delta / gb_size;
-	auto top_delta_percent = (int)(delta_percent);
-	auto bottom_delta_percent = (int)(delta_percent * 100.f);
-	printf("*    reserved for firmware    -> %3i.%-3i GB             *\n", top_delta_percent, bottom_delta_percent % 100);
+	int top_delta_percent = (int)(delta_percent);
+	int bottom_delta_percent = (int)((delta_percent - top_delta_percent) * 100.0 + 0.5);
+	printf("*    reserved for firmware    -> %3i.%-3i GB             *\n",
+		top_delta_percent, bottom_delta_percent);
 
 	auto total_commited_percent = (double)total_commited / gb_size;
-	auto top_total_commited_percent = (int)(total_commited_percent);
-	auto bottom_total_commited_percent = (int)(total_commited_percent * 100.f);
-	printf("*    commited on windows      -> %3i.%-3i GB             *\n", top_total_commited_percent, bottom_total_commited_percent % 100);
+	int top_total_commited_percent = (int)(total_commited_percent);
+	int bottom_total_commited_percent = (int)((total_commited_percent - top_total_commited_percent) * 100.0 + 0.5);
+	printf("*    commited on windows      -> %3i.%-3i GB             *\n",
+		top_total_commited_percent, bottom_total_commited_percent);
 
 	auto percent_used = (total_commited_percent + delta_percent) / physical_memory_percent;
-	auto top_used = (int)(percent_used * 100.f);
-	auto bottom_used = (int)(percent_used * 10000.f);
-	
+	int top_used = (int)(percent_used * 100);
+	int bottom_used = (int)((percent_used * 100) - top_used);
 	auto used_gb = (double)(total_commited_percent + delta_percent);
-	auto top_used_gb = (int)(used_gb);
-	auto bottom_used_gb = (int)(used_gb * 100.f);
-	printf("*    total usage              -> %3i.%-3i GB(%3i.%-3i%% )  *\n", top_used_gb, bottom_used_gb % 100, top_used, bottom_used % 100);
+	int top_used_gb = (int)(used_gb);
+	int bottom_used_gb = (int)((used_gb - top_used_gb) * 100.0 + 0.5);
+	printf("*    total usage              -> %3i.%-3i GB(%3i.%-3i%% )  *\n",
+		top_used_gb, bottom_used_gb, top_used, bottom_used);
 	printf("*********************************************************\n");
 }
 
@@ -892,10 +874,16 @@ QWORD GetFreePage(_BASIC_RANGE* range)
 		{
 			auto ptr = (UINT8*)((QWORD)allocate_buffer + offset);
 			bool is_free = true;
+			int skip_bytes = 100;
 			for (int i = 0; i < 0x1000; i++)
 			{
 				if (ptr[i] != 0x00)
 				{
+					if (skip_bytes)
+					{
+						skip_bytes--;
+						continue;
+					}
 					is_free = false;
 					break;
 				}
@@ -908,8 +896,9 @@ QWORD GetFreePage(_BASIC_RANGE* range)
 				//return current_page;
 			}
 		}
-
 	}
+	else
+		printf(" CopyReclaimedMemory failed for range %p - %p\n", range->Start, range->End);
 	ExFreePool(allocate_buffer);
 	return 0x0ULL;
 }
@@ -974,33 +963,33 @@ void ScanForFreeUefiPages(PMEMORY_RANGES memory_ranges)
 		}
 	}
 
-	range = &memory_ranges->ranges[12];
-	if (!range->Flags.OsCommited)
-	{
-		printf("Non OS Commited %02d: %p - %p (%p)\n", 12,
-			range->Start,
-			range->End,
-			range->End - range->Start);
-		auto page = GetFreePage(range);
-		if (page)
-		{
-			printf(" Found free UEFI page at %p\n", page);
-		}
-	}
-
-	range = &memory_ranges->ranges[16];
-	if (!range->Flags.OsCommited)
-	{
-		printf("Non OS Commited %02d: %p - %p (%p)\n", 16,
-			range->Start,
-			range->End,
-			range->End - range->Start);
-		auto page = GetFreePage(range);
-		if (page)
-		{
-			printf(" Found free UEFI page at %p\n", page);
-		}
-	}
+	//range = &memory_ranges->ranges[12];
+	//if (!range->Flags.OsCommited)
+	//{
+	//	printf("Non OS Commited %02d: %p - %p (%p)\n", 12,
+	//		range->Start,
+	//		range->End,
+	//		range->End - range->Start);
+	//	auto page = GetFreePage(range);
+	//	if (page)
+	//	{
+	//		printf(" Found free UEFI page at %p\n", page);
+	//	}
+	//}
+	//
+	//range = &memory_ranges->ranges[16];
+	//if (!range->Flags.OsCommited)
+	//{
+	//	printf("Non OS Commited %02d: %p - %p (%p)\n", 16,
+	//		range->Start,
+	//		range->End,
+	//		range->End - range->Start);
+	//	auto page = GetFreePage(range);
+	//	if (page)
+	//	{
+	//		printf(" Found free UEFI page at %p\n", page);
+	//	}
+	//}
 
 
 	for (int i = 0; i < memory_ranges->range_count; i++)
