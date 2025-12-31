@@ -662,10 +662,12 @@ QWORD NOINLINE CallOnHost(FnPtr* func, ...)
 		mov r15, function_ptr
 
 		// switch to host context
+		mfence
+		cli
 		mov rsp, r10
 		mov rbp, r10
 		mov cr3, r11
-		mfence
+		
 
 		//push registers again to host stack
 		push r10
@@ -696,6 +698,7 @@ QWORD NOINLINE CallOnHost(FnPtr* func, ...)
 		mov cr3, r12
 		mov rsp, r13
 		mov rbp, r14
+		sti
 		mfence
 
 		mov function_result, r15
@@ -716,10 +719,17 @@ QWORD NOINLINE CallOnHost(FnPtr* func, ...)
 
 void imlp_CopySinglePage(PVOID dest, UINT64 source, UINT64 count)
 {
-	__invlpg(dest);
-	__invlpg((PVOID)source);
+	for (QWORD current = 0; current < count; current += 0x1000)
+	{
+		__invlpg((PVOID)((QWORD)dest + current));
+		__invlpg((PVOID)((QWORD)source + current));
 
-	memcpy(dest, (PVOID)source, count);
+		memcpy(
+			(PVOID)((QWORD)dest + current), 
+			(PVOID)((QWORD)source + current), 
+			0x1000
+		);
+	}
 	return;
 }
 
@@ -869,13 +879,37 @@ QWORD GetFreePage(_BASIC_RANGE* range)
 {
 	auto current_page = range->Start;
 	auto range_size = range->End - range->Start;
+	//range_size = 0x1000;
 	auto allocate_buffer = (PVOID)ExAllocatePool(NonPagedPool, range_size);
 	if (allocate_buffer == 0)
 		return 0x0ULL;
 
 	RtlFillMemory(allocate_buffer, range_size, 0xFF);
-	CopyReclaimedMemory(allocate_buffer, current_page, range_size);
+	bool test = CopyReclaimedMemory(allocate_buffer, current_page, range_size);
+	if (test)
+	{
+		for (QWORD offset = 0; offset < range_size; offset += 0x1000)
+		{
+			auto ptr = (UINT8*)((QWORD)allocate_buffer + offset);
+			bool is_free = true;
+			for (int i = 0; i < 0x1000; i++)
+			{
+				if (ptr[i] != 0x00)
+				{
+					is_free = false;
+					break;
+				}
+			}
+			if (is_free)
+			{
+				current_page += offset;
+				printf(" Free UEFI page found at %p\n", current_page);
+				//ExFreePool(allocate_buffer);
+				//return current_page;
+			}
+		}
 
+	}
 	ExFreePool(allocate_buffer);
 	return 0x0ULL;
 }
@@ -884,7 +918,92 @@ void ScanForFreeUefiPages(PMEMORY_RANGES memory_ranges)
 {
 	if (!memory_ranges)
 		return;
-	for (int i = 1; i < memory_ranges->range_count; i++)
+
+	auto range = &memory_ranges->ranges[4];
+	if (!range->Flags.OsCommited)
+	{
+		printf("Non OS Commited %02d: %p - %p (%p)\n", 4,
+			range->Start,
+			range->End,
+			range->End - range->Start);
+		auto page = GetFreePage(range);
+		if (page)
+		{
+			printf(" Found free UEFI page at %p\n", page);
+		}
+	}
+	range = &memory_ranges->ranges[6];
+	if (!range->Flags.OsCommited)
+	{
+		printf("Non OS Commited %02d: %p - %p (%p)\n", 6,
+			range->Start,
+			range->End,
+			range->End - range->Start);
+		auto page = GetFreePage(range);
+		if (page)
+		{
+			printf(" Found free UEFI page at %p\n", page);
+		}
+	}
+
+	range = &memory_ranges->ranges[8];
+	if (!range->Flags.OsCommited)
+	{
+		printf("Non OS Commited %02d: %p - %p (%p)\n", 8,
+			range->Start,
+			range->End,
+			range->End - range->Start);
+		auto page = GetFreePage(range);
+		if (page)
+		{
+			printf(" Found free UEFI page at %p\n", page);
+		}
+	}
+
+	range = &memory_ranges->ranges[10];
+	if (!range->Flags.OsCommited)
+	{
+		printf("Non OS Commited %02d: %p - %p (%p)\n", 10,
+			range->Start,
+			range->End,
+			range->End - range->Start);
+		auto page = GetFreePage(range);
+		if (page)
+		{
+			printf(" Found free UEFI page at %p\n", page);
+		}
+	}
+
+	range = &memory_ranges->ranges[12];
+	if (!range->Flags.OsCommited)
+	{
+		printf("Non OS Commited %02d: %p - %p (%p)\n", 12,
+			range->Start,
+			range->End,
+			range->End - range->Start);
+		auto page = GetFreePage(range);
+		if (page)
+		{
+			printf(" Found free UEFI page at %p\n", page);
+		}
+	}
+
+	range = &memory_ranges->ranges[16];
+	if (!range->Flags.OsCommited)
+	{
+		printf("Non OS Commited %02d: %p - %p (%p)\n", 16,
+			range->Start,
+			range->End,
+			range->End - range->Start);
+		auto page = GetFreePage(range);
+		if (page)
+		{
+			printf(" Found free UEFI page at %p\n", page);
+		}
+	}
+
+
+	for (int i = 0; i < memory_ranges->range_count; i++)
 	{
 		auto range = &memory_ranges->ranges[i];
 		if (!range->Flags.OsCommited)
@@ -893,11 +1012,6 @@ void ScanForFreeUefiPages(PMEMORY_RANGES memory_ranges)
 				range->Start,
 				range->End,
 				range->End - range->Start);
-			auto page = GetFreePage(range);
-			if (page)
-			{
-				printf(" Found free UEFI page at %p\n", page);
-			}
 		}
 	}
 	return;
@@ -915,60 +1029,6 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	GetPhysicalMemoryDump(memory_ranges);
 
 	ScanForFreeUefiPages(memory_ranges);
-
-	//auto max_buffer_size = 0x1000000;
-	//auto multi_page = (PVOID)ExAllocatePool(NonPagedPool, max_buffer_size);
-	//auto file_path = (wchar_t*)ExAllocatePool(NonPagedPool, 0x1000);
-	//
-	//for (int i = 0; i < 4; i++)
-	//{
-	//	if (!memory_ranges->ranges[i].Flags.OsCommited)
-	//	{
-	//		printf("Non OS Commited %02d: %p - %p (%p)\n", i,
-	//			memory_ranges->ranges[i].Start,
-	//			memory_ranges->ranges[i].End,
-	//			memory_ranges->ranges[i].End - memory_ranges->ranges[i].Start);
-	//
-	//		auto range = &memory_ranges->ranges[i];
-	//		auto range_size = range->End - range->Start;
-	//		auto start_address = range->Start;
-	//
-	//		while (range_size > 0)
-	//		{
-	//			// Determine the size of the current segment
-	//			auto current_segment_size = (range_size > max_buffer_size) ? max_buffer_size : range_size;
-	//			RtlFillMemory(multi_page, max_buffer_size, 0x00);
-	//
-	//			// Process the current segment
-	//			if (CopyReclaimedMemory(multi_page, start_address, current_segment_size))
-	//			{
-	//				
-	//				//RtlFillMemory(file_path, 0x1000, 0x00);
-	//				//swprintf(file_path, L"\\??\\C:\\Temp\\PhysicalMemoryRange_%p-%p.dmp",
-	//				//	start_address,
-	//				//	start_address + current_segment_size
-	//				//);
-	//				//WriteDataToDiskKernel(
-	//				//	file_path,     // File path
-	//				//	multi_page,    // Data buffer
-	//				//	current_segment_size  // Size of data
-	//				//);
-	//				printf("Completed segment: %p - %p\n", start_address - current_segment_size, start_address);
-	//			}
-	//			else
-	//				printf("Failed to copy reclaimed memory for segment: %p - %p\n", start_address, start_address + current_segment_size);
-	//			
-	//
-	//			// Update the start address and remaining range size
-	//			start_address += current_segment_size;
-	//			range_size -= current_segment_size;
-	//			
-	//			//Sleep(3000); // Sleep for 3 seconds between segments
-	//		}
-	//	}
-	//}
-	//ExFreePool(file_path);
-	//ExFreePool(multi_page);
 
 	CleanupMemoryManager();
 
