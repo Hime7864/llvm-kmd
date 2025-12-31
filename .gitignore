@@ -37,3 +37,4 @@ x64/Debug/llvm-kmd.sys
 /.vs
 /llvm-kmd/x64
 /llvm-kmd/x64
+llvm-kmd/x64/Debug/llvm-kmd.tlog/clang-cl.write.1.tlog

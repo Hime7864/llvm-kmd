@@ -209,7 +209,7 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 	ExFreePool(MmPmr);
 
 	QWORD total_commited = 0;
-	QWORD total_raw_size = 0;
+	QWORD total_physical_memory = 0;
 	QWORD total_os_commited = 0;
 
 	for (int i = 0; i < memory_ranges->range_count; i++)
@@ -226,7 +226,7 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 
 		auto start = memory_ranges->ranges[i].Start;
 		auto end = memory_ranges->ranges[i].End;
-		total_raw_size += end - start;
+		total_physical_memory += end - start;
 
 		QWORD total_valid = 0;
 		QWORD total_invalid = 0;
@@ -276,29 +276,39 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 	//printf("Total commited physical memory: %p bytes\n", total_commited);
 	//printf("Total raw physical memory     : %p bytes\n", total_raw_size);
 
-	auto delta = total_raw_size - total_os_commited;
+	auto delta = total_physical_memory - total_os_commited;
 
-	auto bytes_in_gb = 1024.0 * 1024.0 * 1024.0;
-	auto percent_used = (double)total_commited / (double)total_raw_size;
+	auto gb_size = 1024.0 * 1024.0 * 1024.0;
+	printf("**************** Physical Memory Useage *****************\n"); 
+	auto os_commited_percent = (double)total_os_commited / gb_size;
+	auto top_os_commited_percent = (int)(os_commited_percent);
+	auto bottom_os_commited_percent = (int)(os_commited_percent * 100.f);
+	printf("*    available to windows     -> %3i.%-3i GB             *\n", top_os_commited_percent, bottom_os_commited_percent % 100);
 
-	auto total_gb = (double)total_raw_size / bytes_in_gb;
+	auto physical_memory_percent = (double)total_physical_memory / gb_size;
+	auto top_physical_memory_percent = (int)(physical_memory_percent);
+	auto bottom_physical_memory_percent = (int)(physical_memory_percent * 100.f);
+	printf("*    installed on system      -> %3i.%-3i GB             *\n", top_physical_memory_percent, bottom_physical_memory_percent % 100);
 
-	int top_gb_used = (int)((double)total_commited / bytes_in_gb);
-	int bottom_gb_used = (int)((double)total_commited / bytes_in_gb * 10000.0) % 100;
+	auto delta_percent = (double)delta / gb_size;
+	auto top_delta_percent = (int)(delta_percent);
+	auto bottom_delta_percent = (int)(delta_percent * 100.f);
+	printf("*    reserved for firmware    -> %3i.%-3i GB             *\n", top_delta_percent, bottom_delta_percent % 100);
 
-	int top_gb_total = (int)((double)total_raw_size / bytes_in_gb);
-	int bottom_gb_total = (int)((double)total_raw_size / bytes_in_gb * 10000.0) % 100;
+	auto total_commited_percent = (double)total_commited / gb_size;
+	auto top_total_commited_percent = (int)(total_commited_percent);
+	auto bottom_total_commited_percent = (int)(total_commited_percent * 100.f);
+	printf("*    commited on windows      -> %3i.%-3i GB             *\n", top_total_commited_percent, bottom_total_commited_percent % 100);
 
-	int top_percent = (int)(percent_used * 100.0);
-	int bottom_percent = (int)(percent_used * 10000.0) % 100;
-
-	printf("Raw Physical memory used: %i.%i GB / %i.%i GB (%i.%i%%)\n",
-		top_gb_used,
-		bottom_gb_used,
-		top_gb_total,
-		bottom_gb_total,
-		top_percent,
-		bottom_percent);
+	auto percent_used = (total_commited_percent + delta_percent) / physical_memory_percent;
+	auto top_used = (int)(percent_used * 100.f);
+	auto bottom_used = (int)(percent_used * 10000.f);
+	
+	auto used_gb = (double)(total_commited_percent + delta_percent);
+	auto top_used_gb = (int)(used_gb);
+	auto bottom_used_gb = (int)(used_gb * 100.f);
+	printf("*    total usage              -> %3i.%-3i GB(%3i.%-3i%% )  *\n", top_used_gb, bottom_used_gb % 100, top_used, bottom_used % 100);
+	printf("*********************************************************\n");
 }
 
 bool CreateLinearAddress(PHYSICAL_ADDRESS dtb, LINNER_ADDRESS rva, MMPTE_HARDWARE pte)
@@ -428,7 +438,7 @@ bool SetupMemoryManager()
 	memoryDescriptor->sizeInBytes = new_alloc.sizeInBytes;
 
 	// host page map
-	if (!ReserveMemory(&new_alloc, 2 << 20))
+	if (!ReserveMemory(&new_alloc, 16 << 20))
 		return false;
 
 	auto hostPageMap = &memoryBlocks->hostPageMap;
@@ -793,11 +803,11 @@ NTSTATUS WriteDataToDiskKernel(
 	PVOID Data,          // Pointer to data buffer
 	SIZE_T DataLength    // Length of the data to write
 ) {
-	NTSTATUS Status;
-	HANDLE FileHandle = NULL;  // Initialize to NULL to avoid undefined behavior
-	OBJECT_ATTRIBUTES ObjectAttributes;
-	IO_STATUS_BLOCK IoStatusBlock;
-	UNICODE_STRING UnicodeFilePath;
+	NTSTATUS Status{ 0 };
+	HANDLE FileHandle{ 0 };  // Initialize to NULL to avoid undefined behavior
+	OBJECT_ATTRIBUTES ObjectAttributes{ 0 };
+	IO_STATUS_BLOCK IoStatusBlock{ 0 };
+	UNICODE_STRING UnicodeFilePath{ 0 };
 
 	// Initialize the file path
 	RtlInitUnicodeString(&UnicodeFilePath, FilePath);
@@ -855,6 +865,22 @@ NTSTATUS WriteDataToDiskKernel(
 	return Status;
 }
 
+void ScanForFreeUefiPages(PMEMORY_RANGES memory_ranges)
+{
+	if (!memory_ranges)
+		return;
+	for (int i = 1; i < memory_ranges->range_count; i++)
+	{
+		auto range = &memory_ranges->ranges[i];
+		if (!range->Flags.OsCommited)
+		{
+			printf("Non OS Commited %02d: %p - %p (%p)\n", i,
+				range->Start,
+				range->End,
+				range->End - range->Start);
+		}
+	}
+}
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
@@ -867,71 +893,59 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
 	GetPhysicalMemoryDump(memory_ranges);
 
-	for (int i = 1; i < memory_ranges->range_count; i++)
-	{
-		if (!memory_ranges->ranges[i].Flags.OsCommited)
-		{
-			printf("Non OS Commited %02d: %p - %p (%p)\n", i,
-				memory_ranges->ranges[i].Start,
-				memory_ranges->ranges[i].End,
-				memory_ranges->ranges[i].End - memory_ranges->ranges[i].Start);
-			//auto range = &memory_ranges->ranges[i];
-			//auto range_size = range->End - range->Start;
-			//auto multi_page = (PVOID)ExAllocatePool(NonPagedPool, range_size);
-			//RtlFillMemory(multi_page, range_size, 0x00);
-			//
-			//auto pa = range->Start;
-			//if (CopyReclaimedMemory(multi_page, pa, range_size))
-			//{
-			//	auto file_path = (wchar_t*)ExAllocatePool(NonPagedPool, 0x1000);
-			//	RtlFillMemory(file_path, 0x1000, 0x00);
-			//	//L"\\??\\C:\\Temp\\Log.txt"
-			//	swprintf(file_path, L"\\??\\C:\\Temp\\PhysicalMemoryRange_%p-%p.dmp",
-			//		range->Start,
-			//		range->End
-			//	);
-			//	WriteDataToDiskKernel(
-			//		file_path,  // File path
-			//		multi_page,                         // Data buffer
-			//		range_size                  // Size of data
-			//	);
-			//	ExFreePool(file_path);
-			//}
-			//ExFreePool(multi_page);
-		}
-	}
-
-	auto range = &memory_ranges->ranges[10];
-	auto range_size = range->End - range->Start;
-	auto multi_page = (PVOID)ExAllocatePool(NonPagedPool, range_size);
-	if (multi_page)
-	{
-		RtlFillMemory(multi_page, range_size, 0x00);
-
-		auto pa = range->Start;
-		if (CopyReclaimedMemory(multi_page, pa, range_size))
-		{
-			auto file_path = (wchar_t*)ExAllocatePool(NonPagedPool, 0x1000);
-			RtlFillMemory(file_path, 0x1000, 0x00);
-			//L"\\??\\C:\\Temp\\Log.txt"
-			swprintf(file_path, L"\\??\\C:\\Temp\\%p-%p.dmp",
-				range->Start,
-				range->End
-			);
-			WriteDataToDiskKernel(
-				file_path,  // File path
-				multi_page,                         // Data buffer
-				range_size                  // Size of data
-			);
-			ExFreePool(file_path);
-		}
-	}
-	else
-		printf("Failed to allocate multi_page buffer\n");
-	
-	ExFreePool(multi_page);
-
-	
+	//auto max_buffer_size = 0x1000000;
+	//auto multi_page = (PVOID)ExAllocatePool(NonPagedPool, max_buffer_size);
+	//auto file_path = (wchar_t*)ExAllocatePool(NonPagedPool, 0x1000);
+	//
+	//for (int i = 0; i < 4; i++)
+	//{
+	//	if (!memory_ranges->ranges[i].Flags.OsCommited)
+	//	{
+	//		printf("Non OS Commited %02d: %p - %p (%p)\n", i,
+	//			memory_ranges->ranges[i].Start,
+	//			memory_ranges->ranges[i].End,
+	//			memory_ranges->ranges[i].End - memory_ranges->ranges[i].Start);
+	//
+	//		auto range = &memory_ranges->ranges[i];
+	//		auto range_size = range->End - range->Start;
+	//		auto start_address = range->Start;
+	//
+	//		while (range_size > 0)
+	//		{
+	//			// Determine the size of the current segment
+	//			auto current_segment_size = (range_size > max_buffer_size) ? max_buffer_size : range_size;
+	//			RtlFillMemory(multi_page, max_buffer_size, 0x00);
+	//
+	//			// Process the current segment
+	//			if (CopyReclaimedMemory(multi_page, start_address, current_segment_size))
+	//			{
+	//				
+	//				//RtlFillMemory(file_path, 0x1000, 0x00);
+	//				//swprintf(file_path, L"\\??\\C:\\Temp\\PhysicalMemoryRange_%p-%p.dmp",
+	//				//	start_address,
+	//				//	start_address + current_segment_size
+	//				//);
+	//				//WriteDataToDiskKernel(
+	//				//	file_path,     // File path
+	//				//	multi_page,    // Data buffer
+	//				//	current_segment_size  // Size of data
+	//				//);
+	//				printf("Completed segment: %p - %p\n", start_address - current_segment_size, start_address);
+	//			}
+	//			else
+	//				printf("Failed to copy reclaimed memory for segment: %p - %p\n", start_address, start_address + current_segment_size);
+	//			
+	//
+	//			// Update the start address and remaining range size
+	//			start_address += current_segment_size;
+	//			range_size -= current_segment_size;
+	//			
+	//			//Sleep(3000); // Sleep for 3 seconds between segments
+	//		}
+	//	}
+	//}
+	//ExFreePool(file_path);
+	//ExFreePool(multi_page);
 
 	CleanupMemoryManager();
 
