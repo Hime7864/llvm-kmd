@@ -139,8 +139,54 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 	RtlFillMemory(memory_ranges, 0x1000, 0);
 
 	auto MmPmr = MmGetPhysicalMemoryRanges();
-	auto last_pa_base = 0x0;
+	QWORD MmPmr_counter = 0x0;
+	while (MmPmr->NumberOfBytes.QuadPart) {
+		memory_ranges->ranges[memory_ranges->range_count].Start = MmPmr->BaseAddress.QuadPart;
+		memory_ranges->ranges[memory_ranges->range_count].End = MmPmr->BaseAddress.QuadPart + MmPmr->NumberOfBytes.QuadPart;
+		memory_ranges->ranges[memory_ranges->range_count].Flags.OsCommited = true;
+		memory_ranges->range_count++;
+		printf("Physical Memory Range: Start: 0x%p, End: 0x%p\n",
+			memory_ranges->ranges[memory_ranges->range_count - 1].Start,
+			memory_ranges->ranges[memory_ranges->range_count - 1].End
+		);
+		MmPmr_counter += MmPmr->NumberOfBytes.QuadPart;
+		MmPmr++;
+		if (MmPmr->BaseAddress.QuadPart)
+		{
+			memory_ranges->ranges[memory_ranges->range_count].Start = memory_ranges->ranges[memory_ranges->range_count - 1].End;
+			memory_ranges->ranges[memory_ranges->range_count].End = MmPmr->BaseAddress.QuadPart;
+			memory_ranges->ranges[memory_ranges->range_count].Flags.OsCommited = false;
+			memory_ranges->range_count++;
+			printf("Physical Memory Range: Start: 0x%p, End: 0x%p\n",
+				memory_ranges->ranges[memory_ranges->range_count - 1].Start,
+				memory_ranges->ranges[memory_ranges->range_count - 1].End
+			);
+		}
+		else
+		{
+			QWORD total_system = 1;
+			while (total_system < MmPmr_counter) {
+				total_system <<= 1;
+			}
+			if(total_system > memory_ranges->ranges[memory_ranges->range_count - 1].End)
+			{
+				memory_ranges->ranges[memory_ranges->range_count].Start = memory_ranges->ranges[memory_ranges->range_count - 1].End;
+				memory_ranges->ranges[memory_ranges->range_count].End = total_system;
+				memory_ranges->ranges[memory_ranges->range_count].Flags.OsCommited = false;
+				memory_ranges->range_count++;
+				printf("Physical Memory Range: Start: 0x%p, End: 0x%p\n",
+					memory_ranges->ranges[memory_ranges->range_count - 1].Start,
+					memory_ranges->ranges[memory_ranges->range_count - 1].End
+				);
+			}
+		}
+	}
 
+	ExFreePool(MmPmr);
+	return;
+
+
+	QWORD last_pa_base = 0;
 	while (MmPmr->NumberOfBytes.QuadPart) {
 		if (last_pa_base != 0) {
 			auto padding = MmPmr->BaseAddress.QuadPart - last_pa_base;
@@ -1017,7 +1063,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
 	GetPhysicalMemoryDump(memory_ranges);
 
-	ScanForFreeUefiPages(memory_ranges);
+	//ScanForFreeUefiPages(memory_ranges);
 
 	CleanupMemoryManager();
 
