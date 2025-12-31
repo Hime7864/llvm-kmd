@@ -482,7 +482,7 @@ bool SetupMemoryManager()
 
 	// setup host stack
 	auto CoreCount = KeQueryActiveProcessorCount(NULL);
-	if (!ReserveMemory(&new_alloc, CoreCount * 0x4000))
+	if (!ReserveMemory(&new_alloc, CoreCount * 0x8000))
 		return false;
 
 	auto hostStack = &memoryBlocks->hostStack;
@@ -632,7 +632,7 @@ QWORD NOINLINE CallOnHost(FnPtr* func, ...)
 	auto hostStack = &memoryBlocks->hostStack;
 	auto core_id = CPUID::current_core_number();
 
-	auto stack_base = hostStack->linearAddress + (core_id * 0x4000) + 0x3000;
+	auto stack_base = hostStack->linearAddress + (core_id * 0x8000) + 0x6000;
 	auto host_dtb = MmKmd->hostDTB;
 	auto driver_dtb = MmKmd->driverDTB;
 	QWORD function_result = 0x0;
@@ -720,6 +720,7 @@ void imlp_CopySinglePage(PVOID dest, UINT64 source, UINT64 count)
 	__invlpg((PVOID)source);
 
 	memcpy(dest, (PVOID)source, count);
+	return;
 }
 
 bool CopyReclaimedMemory(PVOID buffer, PHYSICAL_ADDRESS physical, SIZE_T count)
@@ -757,13 +758,12 @@ bool CopyReclaimedMemory(PVOID buffer, PHYSICAL_ADDRESS physical, SIZE_T count)
 
 	auto last_irql = __readcr8();
 	__writecr8(DISPATCH_LEVEL);
-
+	
 	CallOnHost((FnPtr*)imlp_CopySinglePage, buffer, physical, count);
-
+	
 	__writecr8(last_irql);
 
 	return true;
-
 }
 
 UINT8 sanitize_char(UINT8 c)
@@ -795,8 +795,8 @@ void dbg_print_page(QWORD buffer, QWORD base)
 		i += 32;
 		addr += 32;
 	}
+	return;
 }
-
 
 NTSTATUS WriteDataToDiskKernel(
 	PCWSTR FilePath,     // File path to write to
@@ -865,6 +865,21 @@ NTSTATUS WriteDataToDiskKernel(
 	return Status;
 }
 
+QWORD GetFreePage(_BASIC_RANGE* range)
+{
+	auto current_page = range->Start;
+	auto range_size = range->End - range->Start;
+	auto allocate_buffer = (PVOID)ExAllocatePool(NonPagedPool, range_size);
+	if (allocate_buffer == 0)
+		return 0x0ULL;
+
+	RtlFillMemory(allocate_buffer, range_size, 0xFF);
+	CopyReclaimedMemory(allocate_buffer, current_page, range_size);
+
+	ExFreePool(allocate_buffer);
+	return 0x0ULL;
+}
+
 void ScanForFreeUefiPages(PMEMORY_RANGES memory_ranges)
 {
 	if (!memory_ranges)
@@ -878,8 +893,14 @@ void ScanForFreeUefiPages(PMEMORY_RANGES memory_ranges)
 				range->Start,
 				range->End,
 				range->End - range->Start);
+			auto page = GetFreePage(range);
+			if (page)
+			{
+				printf(" Found free UEFI page at %p\n", page);
+			}
 		}
 	}
+	return;
 }
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
@@ -892,6 +913,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	CreateHostPageMappings();
 
 	GetPhysicalMemoryDump(memory_ranges);
+
+	ScanForFreeUefiPages(memory_ranges);
 
 	//auto max_buffer_size = 0x1000000;
 	//auto multi_page = (PVOID)ExAllocatePool(NonPagedPool, max_buffer_size);
