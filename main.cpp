@@ -94,12 +94,19 @@ struct KMD_MEMORY_PAGE_INDEX
 	QWORD hostBlockPtr;
 };
 
+struct KMD_PHYSICAL_PAGES
+{
+	QWORD totalPages;
+	QWORD Pages[40960];
+};
+
 struct ALIGN(4096) KMD_MEMORY_MANAGER
 {
 	KMD_MEMORY_BLOCKS memoryBlocks;
 	KMD_MEMORY_PAGE_INDEX pageIndices;
 	PHYSICAL_ADDRESS hostDTB;
 	PHYSICAL_ADDRESS driverDTB;
+	KMD_PHYSICAL_PAGES reclaimedPages;
 };
 
 typedef struct _MEMORY_RANGES* PMEMORY_RANGES;
@@ -287,7 +294,7 @@ bool SetupMemoryManager()
 {
 	KMD_MEMORY_BLOCK new_alloc{ 0 };
 
-	if (!ReserveMemory(&new_alloc, 0x1000))
+	if (!ReserveMemory(&new_alloc, sizeof(KMD_MEMORY_MANAGER)))
 		return false;
 
 	MmKmd = (KMD_MEMORY_MANAGER*)new_alloc.linearAddress;
@@ -739,14 +746,14 @@ NTSTATUS WriteDataToDiskKernel(
 	return Status;
 }
 
-QWORD GetFreePage(_BASIC_RANGE* range)
+void GetFreePages(_BASIC_RANGE* range)
 {
 	auto current_page = range->Start;
 	auto range_size = range->End - range->Start;
 	//range_size = 0x1000;
 	auto allocate_buffer = (PVOID)ExAllocatePool(NonPagedPool, range_size);
 	if (allocate_buffer == 0)
-		return 0x0ULL;
+		return;
 
 	RtlFillMemory(allocate_buffer, range_size, 0xFF);
 	bool test = CopyReclaimedMemory(allocate_buffer, current_page, range_size);
@@ -756,90 +763,54 @@ QWORD GetFreePage(_BASIC_RANGE* range)
 		{
 			auto ptr = (UINT8*)((QWORD)allocate_buffer + offset);
 			bool is_free = true;
-			//int skip_bytes = 100;
 			for (int i = 0; i < 0x1000; i++)
 			{
 				if (ptr[i] != 0x00)
 				{
-					//if (skip_bytes)
-					//{
-					//	skip_bytes--;
-					//	continue;
-					//}
 					is_free = false;
 					break;
 				}
 			}
 			if (is_free)
 			{
-				printf(" Free UEFI page found at %p\n", current_page + offset);
-				//ExFreePool(allocate_buffer);
-				//return current_page;
+				if (MmKmd->reclaimedPages.totalPages < 40960)
+				{
+					MmKmd->reclaimedPages.Pages[MmKmd->reclaimedPages.totalPages] = current_page + offset;
+					MmKmd->reclaimedPages.totalPages++;
+				}
+				else
+				{
+					ExFreePool(allocate_buffer);
+					return;
+				}
 			}
 		}
 	}
-	else
-		printf(" CopyReclaimedMemory failed for range %p - %p\n", range->Start, range->End);
 	ExFreePool(allocate_buffer);
-	return 0x0ULL;
+	return;
 }
 
-void ScanForFreeUefiPages(PMEMORY_RANGES memory_ranges)
+void LocateFreeUefiPages(PMEMORY_RANGES memory_ranges)
 {
 	if (!memory_ranges)
 		return;
 
 	auto range = &memory_ranges->ranges[3];
 	if (!range->Flags.OsCommited)
-	{
-		auto page = GetFreePage(range);
-		if (page)
-		{
-			printf(" Found free UEFI page at %p\n", page);
-		}
-	}
+		GetFreePages(range);
 
 	range = &memory_ranges->ranges[5];
 	if (!range->Flags.OsCommited)
-	{
-		auto page = GetFreePage(range);
-		if (page)
-		{
-			printf(" Found free UEFI page at %p\n", page);
-		}
-	}
+		GetFreePages(range);
 
 	range = &memory_ranges->ranges[7];
 	if (!range->Flags.OsCommited)
-	{
-		auto page = GetFreePage(range);
-		if (page)
-		{
-			printf(" Found free UEFI page at %p\n", page);
-		}
-	}
+		GetFreePages(range);
 
 	range = &memory_ranges->ranges[9];
 	if (!range->Flags.OsCommited)
-	{
-		auto page = GetFreePage(range);
-		if (page)
-		{
-			printf(" Found free UEFI page at %p\n", page);
-		}
-	}
+		GetFreePages(range);
 
-	for (int i = 0; i < memory_ranges->range_count; i++)
-	{
-	    range = &memory_ranges->ranges[i];
-		if (!range->Flags.OsCommited)
-		{
-			printf("Non OS Commited %02d: %p - %p (%p)\n", i,
-				range->Start,
-				range->End,
-				range->End - range->Start);
-		}
-	}
 	return;
 }
 
@@ -854,7 +825,13 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
 	GetPhysicalMemoryDump(memory_ranges);
 
-	ScanForFreeUefiPages(memory_ranges);
+	LocateFreeUefiPages(memory_ranges);
+
+	printf("Total reclaimed pages: %llu\n", MmKmd->reclaimedPages.totalPages);
+	for(QWORD i = 0; i < MmKmd->reclaimedPages.totalPages; i++)
+	{
+		printf("Reclaimed page %llu : PA %p\n", i, MmKmd->reclaimedPages.Pages[i]);
+	}
 
 	CleanupMemoryManager();
 
