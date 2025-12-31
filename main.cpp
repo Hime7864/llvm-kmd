@@ -754,7 +754,12 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
 	RetrieveReclaimedPages(reclaimed_pages);
 
-	printf("Reclaimed pages count: %llu\n", reclaimed_pages->totalPages);
+	auto mb = ((double)reclaimed_pages->totalPages * 4.0 / 1024.0) * 100.f;
+	auto top_mb = (int)mb / 100;
+	auto bottom_mb = (int)mb % 100;
+	printf("Reclaimed Firmware pages: %llu (%i.%i MB)\n", reclaimed_pages->totalPages, top_mb, bottom_mb);
+
+	
 
 	ExFreePool(reclaimed_pages);
 	return STATUS_SUCCESS;
