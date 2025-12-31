@@ -756,24 +756,23 @@ QWORD GetFreePage(_BASIC_RANGE* range)
 		{
 			auto ptr = (UINT8*)((QWORD)allocate_buffer + offset);
 			bool is_free = true;
-			int skip_bytes = 100;
+			//int skip_bytes = 100;
 			for (int i = 0; i < 0x1000; i++)
 			{
 				if (ptr[i] != 0x00)
 				{
-					if (skip_bytes)
-					{
-						skip_bytes--;
-						continue;
-					}
+					//if (skip_bytes)
+					//{
+					//	skip_bytes--;
+					//	continue;
+					//}
 					is_free = false;
 					break;
 				}
 			}
 			if (is_free)
 			{
-				current_page += offset;
-				printf(" Free UEFI page found at %p\n", current_page);
+				printf(" Free UEFI page found at %p\n", current_page + offset);
 				//ExFreePool(allocate_buffer);
 				//return current_page;
 			}
