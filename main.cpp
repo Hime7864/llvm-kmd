@@ -588,15 +588,15 @@ QWORD NOINLINE CallOnHost(FnPtr* func, ...)
 	return function_result;
 }
 
-void imlp_CopySinglePage(PVOID dest, UINT64 source, UINT64 count)
+void imlp_CopyReclaimedMemory(PVOID buffer, UINT64 source, UINT64 count)
 {
 	for (QWORD current = 0; current < count; current += 0x1000)
 	{
-		__invlpg((PVOID)((QWORD)dest + current));
+		__invlpg((PVOID)((QWORD)buffer + current));
 		__invlpg((PVOID)((QWORD)source + current));
 
 		memcpy(
-			(PVOID)((QWORD)dest + current), 
+			(PVOID)((QWORD)buffer + current),
 			(PVOID)((QWORD)source + current), 
 			0x1000
 		);
@@ -640,114 +640,19 @@ bool CopyReclaimedMemory(PVOID buffer, PHYSICAL_ADDRESS physical, SIZE_T count)
 	auto last_irql = __readcr8();
 	__writecr8(DISPATCH_LEVEL);
 	
-	CallOnHost((FnPtr*)imlp_CopySinglePage, buffer, physical, count);
+	CallOnHost((FnPtr*)imlp_CopyReclaimedMemory, buffer, physical, count);
 	
 	__writecr8(last_irql);
 
 	return true;
 }
 
-UINT8 sanitize_char(UINT8 c)
-{
-	if (c < 32 || c > 126)
-		return '.';
-	return c;
-}
-
-void dbg_print_page(QWORD buffer, QWORD base)
-{
-	auto page = buffer & ~0xFFF;
-	auto addr = base;
-	for (int i = 0; i < 4096;)
-	{
-		auto ptr = (UINT8*)(page + i);
-		printf("%p : %02X%02X%02X%02X %02X%02X%02X%02X  %02X%02X%02X%02X %02X%02X%02X%02X  %02X%02X%02X%02X %02X%02X%02X%02X  %02X%02X%02X%02X %02X%02X%02X%02X : %c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c\n", 
-			addr,
-			ptr[0x00], ptr[0x01], ptr[0x02], ptr[0x03], ptr[0x04], ptr[0x05], ptr[0x06], ptr[0x07],
-			ptr[0x08], ptr[0x09], ptr[0x0A], ptr[0x0B], ptr[0x0C], ptr[0x0D], ptr[0x0E], ptr[0x0F],
-			ptr[0x10], ptr[0x11], ptr[0x12], ptr[0x13], ptr[0x14], ptr[0x15], ptr[0x16], ptr[0x17],
-			ptr[0x18], ptr[0x19], ptr[0x1A], ptr[0x1B], ptr[0x1C], ptr[0x1D], ptr[0x1E], ptr[0x1F],
-			sanitize_char(ptr[0x00]), sanitize_char(ptr[0x01]), sanitize_char(ptr[0x02]), sanitize_char(ptr[0x03]), sanitize_char(ptr[0x04]), sanitize_char(ptr[0x05]), sanitize_char(ptr[0x06]), sanitize_char(ptr[0x07]),
-			sanitize_char(ptr[0x08]), sanitize_char(ptr[0x09]), sanitize_char(ptr[0x0A]), sanitize_char(ptr[0x0B]), sanitize_char(ptr[0x0C]), sanitize_char(ptr[0x0D]), sanitize_char(ptr[0x0E]), sanitize_char(ptr[0x0F]),
-			sanitize_char(ptr[0x10]), sanitize_char(ptr[0x11]), sanitize_char(ptr[0x12]), sanitize_char(ptr[0x13]), sanitize_char(ptr[0x14]), sanitize_char(ptr[0x15]), sanitize_char(ptr[0x16]), sanitize_char(ptr[0x17]),
-			sanitize_char(ptr[0x18]), sanitize_char(ptr[0x19]), sanitize_char(ptr[0x1A]), sanitize_char(ptr[0x1B]), sanitize_char(ptr[0x1C]), sanitize_char(ptr[0x1D]), sanitize_char(ptr[0x1E]), sanitize_char(ptr[0x1F])
-
-		);
-		i += 32;
-		addr += 32;
-	}
-	return;
-}
-
-NTSTATUS WriteDataToDiskKernel(
-	PCWSTR FilePath,     // File path to write to
-	PVOID Data,          // Pointer to data buffer
-	SIZE_T DataLength    // Length of the data to write
-) {
-	NTSTATUS Status{ 0 };
-	HANDLE FileHandle{ 0 };  // Initialize to NULL to avoid undefined behavior
-	OBJECT_ATTRIBUTES ObjectAttributes{ 0 };
-	IO_STATUS_BLOCK IoStatusBlock{ 0 };
-	UNICODE_STRING UnicodeFilePath{ 0 };
-
-	// Initialize the file path
-	RtlInitUnicodeString(&UnicodeFilePath, FilePath);
-
-	InitializeObjectAttributes(
-		&ObjectAttributes,
-		&UnicodeFilePath,
-		OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE,
-		NULL,
-		NULL
-	);
-
-	// Create or open the file
-	Status = ZwCreateFile(
-		&FileHandle,
-		GENERIC_ALL,
-		&ObjectAttributes,
-		&IoStatusBlock,
-		NULL,
-		FILE_ATTRIBUTE_NORMAL,
-		0,
-		FILE_OVERWRITE_IF,
-		FILE_SYNCHRONOUS_IO_NONALERT,
-		NULL,
-		0
-	);
-
-	if (!NT_SUCCESS(Status)) {
-		printf("Failed to create/open file: 0x%X\n", Status);
-		return Status;
-	}
-
-	// Write data to the file
-	Status = ZwWriteFile(
-		FileHandle,
-		NULL,
-		NULL,
-		NULL,
-		&IoStatusBlock,
-		Data,
-		(ULONG)DataLength,
-		NULL,
-		NULL
-	);
-
-	if (!NT_SUCCESS(Status)) {
-		printf("Failed to write to file: 0x%X\n", Status);
-	}
-
-	// Close the file handle
-	if (FileHandle) {
-		ZwClose(FileHandle);
-	}
-
-	return Status;
-}
-
 void GetFreePages(_BASIC_RANGE* range)
 {
+	if (MmKmd->reclaimedPages.totalPages >= 40960)
+		return;
+	if (!range)
+		return;
 	auto current_page = range->Start;
 	auto range_size = range->End - range->Start;
 	//range_size = 0x1000;
@@ -780,12 +685,14 @@ void GetFreePages(_BASIC_RANGE* range)
 				}
 				else
 				{
+					RtlFillMemory(allocate_buffer, range_size, 0x0);
 					ExFreePool(allocate_buffer);
 					return;
 				}
 			}
 		}
 	}
+	RtlFillMemory(allocate_buffer, range_size, 0x0);
 	ExFreePool(allocate_buffer);
 	return;
 }
@@ -793,6 +700,8 @@ void GetFreePages(_BASIC_RANGE* range)
 void LocateFreeUefiPages(PMEMORY_RANGES memory_ranges)
 {
 	if (!memory_ranges)
+		return;
+	if (MmKmd->reclaimedPages.totalPages >= 40960)
 		return;
 
 	auto range = &memory_ranges->ranges[3];
@@ -814,9 +723,8 @@ void LocateFreeUefiPages(PMEMORY_RANGES memory_ranges)
 	return;
 }
 
-NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
+void RetrieveReclaimedPages(KMD_PHYSICAL_PAGES* outPages)
 {
-	
 	auto memory_ranges = (PMEMORY_RANGES)ExAllocatePool(NonPagedPool, 0x1000);
 
 	SetupMemoryManager();
@@ -827,15 +735,27 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
 	LocateFreeUefiPages(memory_ranges);
 
-	printf("Total reclaimed pages: %llu\n", MmKmd->reclaimedPages.totalPages);
-	for(QWORD i = 0; i < MmKmd->reclaimedPages.totalPages; i++)
-	{
-		printf("Reclaimed page %llu : PA %p\n", i, MmKmd->reclaimedPages.Pages[i]);
-	}
+	RtlCopyMemory(
+		(PVOID)outPages,
+		(PVOID)&MmKmd->reclaimedPages,
+		sizeof(KMD_PHYSICAL_PAGES)
+	);
 
 	CleanupMemoryManager();
 
+	RtlFillMemory(memory_ranges, 0x1000, 0x0);
 	ExFreePool(memory_ranges);
+	return;
+}
 
+NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
+{
+	auto reclaimed_pages = (KMD_PHYSICAL_PAGES*)ExAllocatePool(NonPagedPool, sizeof(KMD_PHYSICAL_PAGES));
+
+	RetrieveReclaimedPages(reclaimed_pages);
+
+	printf("Reclaimed pages count: %llu\n", reclaimed_pages->totalPages);
+
+	ExFreePool(reclaimed_pages);
 	return STATUS_SUCCESS;
 }
