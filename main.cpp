@@ -177,7 +177,7 @@ void GetPhysicalMemoryDump(PMEMORY_RANGES memory_ranges)
 			}
 		}
 	}
-
+	 
 	ExFreePool(MmPmr);
 	return;
 }
@@ -735,6 +735,12 @@ void RetrieveReclaimedPages(KMD_PHYSICAL_PAGES* outPages)
 
 	LocateFreeUefiPages(memory_ranges);
 
+	for (int i = 0; i < memory_ranges->range_count; i++)
+	{
+		auto page = &memory_ranges->ranges[i];
+		printf("Page{%i} %03i: %p-%p\n",page->Flags.OsCommited, i, page->Start, page->End);
+	}
+
 	RtlCopyMemory(
 		(PVOID)outPages,
 		(PVOID)&MmKmd->reclaimedPages,
@@ -750,17 +756,52 @@ void RetrieveReclaimedPages(KMD_PHYSICAL_PAGES* outPages)
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
+	printf("DriverEntry\n");
 	auto reclaimed_pages = (KMD_PHYSICAL_PAGES*)ExAllocatePool(NonPagedPool, sizeof(KMD_PHYSICAL_PAGES));
-
+	
 	RetrieveReclaimedPages(reclaimed_pages);
-
+	
 	auto mb = ((double)reclaimed_pages->totalPages * 4.0 / 1024.0) * 100.f;
 	auto top_mb = (int)mb / 100;
 	auto bottom_mb = (int)mb % 100;
 	printf("Reclaimed Firmware pages: %llu (%i.%i MB)\n", reclaimed_pages->totalPages, top_mb, bottom_mb);
-
 	
 
+	if (reclaimed_pages->totalPages)
+	{
+		auto current = reclaimed_pages->Pages[0];
+		auto expected = current + 0x1000;
+		int range_count = 1;
+		int total = 1;
+		for (int i = 1; i < reclaimed_pages->totalPages; i++)
+		{
+			auto page = reclaimed_pages->Pages[i];
+			if (page == expected)
+			{
+				range_count++;
+				expected += 0x1000;
+				continue;
+			}
+			else if(reclaimed_pages->totalPages - 1 == i)
+			{
+				printf("%i\n", range_count);
+				total += range_count;
+			}
+			else
+			{
+				printf("%i\n", range_count);
+				total += range_count;
+				current = page;
+				expected = current + 0x1000;
+				range_count = 1;
+			}
+		}
+		printf("Total Ranges: %i\n", total);
+	}
+
+	
+	
+	
 	ExFreePool(reclaimed_pages);
 	return STATUS_SUCCESS;
 }
