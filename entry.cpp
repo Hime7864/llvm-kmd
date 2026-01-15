@@ -184,6 +184,51 @@ NTSTATUS resolve_sigged_imports()
 	return STATUS_SUCCESS;
 }
 
+void NAKED NOINLINE FillMemory(QWORD buffer, QWORD size)
+{
+	__asm {
+		sub rsp, 8h
+		mov rax, fn_PsTerminateSystemThread
+		mov[rsp], rax
+		mov rax, fn_RtlFillMemory
+		jmp rax
+	}
+}
+
+void ZeroAndExit()
+{
+	QWORD host_driver_base = 0;
+	QWORD host_driver_size = 0;
+	if (!NT_SUCCESS(Utils::SelfModuleBase(&host_driver_base)))
+		return;
+
+	if (host_driver_base)
+	{
+		int pages_mapped = 0;
+		do {
+			pages_mapped++;
+		} while (Utils::IsAddressValid(host_driver_base + pages_mapped * 4096));
+		host_driver_size = (QWORD)(pages_mapped << 12);
+	}
+	host_driver_base += 0x1000;
+
+	printf("Zeroing driver at (%p:%p) size %p\n", host_driver_base, MmGetPhysicalAddress((PVOID)host_driver_base), host_driver_size);
+	
+	host_driver_base -= 0x1000;
+	FillMemory(host_driver_base, host_driver_size);
+	return;
+}
+
+void CleanUpDriver()
+{
+	HANDLE thread_handle = 0;
+	_OBJECT_ATTRIBUTES object_attribues{ };
+	InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
+	PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&ZeroAndExit, 0);
+	return;
+}
+
+
 NTSTATUS volatile start()
 {
 	NTSTATUS status = STATUS_UNSUCCESSFUL;
@@ -195,15 +240,11 @@ NTSTATUS volatile start()
 
 		if(NT_SUCCESS(resolve_sigged_imports()))
 		{
-			HANDLE thread_handle = 0;
-			_OBJECT_ATTRIBUTES object_attribues{ };
-			InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
-			PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&DriverEntry, 0);
-			//printf("fn_PsCreateSystemThread %p\n", fn_PsCreateSystemThread);
-			//status = DriverEntry(nullptr, nullptr);
+			status = DriverEntry(nullptr, nullptr);
 		}
 
 		__writecr3(driver_dtb);
 	}
+	CleanUpDriver();
 	return status;
 }
