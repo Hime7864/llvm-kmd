@@ -69,3 +69,8 @@ void MSR::write_hsave_pa(PHYSICAL_ADDRESS hsave_pa)
 {
 	__writemsr(_MSR_HSAVE_PA, hsave_pa);
 }
+
+UINT64 MSR::read_tsc_ratio()
+{
+	return __readmsr(_MSR_TSC_RATIO);
+}

@@ -75,10 +75,10 @@ void log_to_file(PVOID buffer, DWORD size)
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
-
-	auto va = MmGetVirtualForPhysical(0xFF7F8D000ULL);
-
-	WriteDataToDiskKernel(L"\\??\\C:\\Temp\\memdmp.bin", va, 0x1000);
-
+	auto tsc_ratio = MSR::read_tsc_ratio();
+	printf("TSC RATIO MSR: 0x%llX\n", tsc_ratio);
+	//auto efer = MSR::read_efer();
+	//printf("EFER MSR: 0x%llX\n", efer.AsUINT64);
+	//MSR::write_efer(efer); // Re-write the same value to demonstrate MSR write
 	return STATUS_SUCCESS;
 }

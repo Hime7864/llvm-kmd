@@ -70,6 +70,8 @@ private:
 	static constexpr DWORD _MSR_EFER = 0xC0000080UL;
 	static constexpr DWORD _MSR_PAT = 0x00000277UL;
 	static constexpr DWORD _MSR_HSAVE_PA = 0xC0010117UL;
+
+	static constexpr DWORD _MSR_TSC_RATIO = 0xC0000104UL;
 public:
 	static MSR_VM_CR read_vm_cr();
 	static void write_vm_cr(MSR_VM_CR vm_cr);
@@ -85,4 +87,5 @@ public:
 	static void write_gs_base(UINT64 gs_base);
 	static UINT64 read_hsave_pa();
 	static void write_hsave_pa(UINT64 hsave_pa);
+	static UINT64 read_tsc_ratio();
 };
