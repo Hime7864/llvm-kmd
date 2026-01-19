@@ -74,3 +74,38 @@ UINT64 MSR::read_tsc_ratio()
 {
 	return __readmsr(_MSR_TSC_RATIO);
 }
+
+MSR_APIC_BASE MSR::read_apic_base()
+{
+	return { .AsUINT64 = __readmsr(_MSR_APIC_BASE) };
+}
+
+void MSR::write_apic_base(MSR_APIC_BASE apic_base)
+{
+	__writemsr(_MSR_APIC_BASE, apic_base.AsUINT64);
+}
+
+MSR_ICR MSR::read_icr()
+{
+	return { .AsUINT64 = __readmsr(_MSR_ICR) };
+}
+
+void MSR::write_icr(MSR_ICR icr)
+{
+	__writemsr(_MSR_ICR, icr.AsUINT64);
+}
+
+UINT64 MSR::read_smbase()
+{
+	return __readmsr(_MSR_SMBASE);
+}
+
+MSR_SMM_BASE MSR::read_smm_addr()
+{
+	return { .AsUINT64 = __readmsr(_MSR_SMM_ADDR) };
+}
+
+MSR_SMM_MASK MSR::read_smm_mask()
+{
+	return { .AsUINT64 = __readmsr(_MSR_SMM_MASK) };
+}

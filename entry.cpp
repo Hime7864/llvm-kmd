@@ -245,6 +245,6 @@ NTSTATUS volatile start()
 
 		__writecr3(driver_dtb);
 	}
-	CleanUpDriver();
+	//CleanUpDriver();
 	return status;
 }

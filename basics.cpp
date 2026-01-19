@@ -240,7 +240,94 @@ extern "C" {
         }return;
     }
 
-    UINT64 __readmsr(_In_ UINT32 msr)
+    VOID NAKED NOINLINE __cpuid2(
+        _In_ UINT32 leaf,
+        _Out_ UINT32* _eax,
+        _Out_ UINT32* _ebx,
+        _Out_ UINT32* _ecx,
+        _Out_ UINT32* _edx
+    )
+    {
+        __asm {
+            push rax
+            push rbx
+            push rcx
+            push rdx
+            push r8
+            push r9
+            push r10
+
+            push[rsp + 60h]
+            push r9
+            push r8
+            push rdx
+
+            mov eax, ecx
+            cpuid
+
+            pop r10
+            mov[r10], eax
+            pop r10
+            mov[r10], ebx
+            pop r10
+            mov[r10], ecx
+            pop r10
+            mov[r10], edx
+
+            pop r10
+            pop r9
+            pop r8
+            pop rdx
+            pop rcx
+            pop rbx
+            pop rax
+            ret
+        }
+    }
+
+    VOID NAKED NOINLINE __rdtsc2(_Out_ UINT32* _eax, _Out_ UINT32* _edx)
+    {
+        __asm {
+            push rax
+            push rcx
+            push rdx
+
+            push rdx
+            rdtsc
+            mov[rcx], eax
+            pop rax
+            mov[rax], edx
+
+            pop rdx
+            pop rcx
+            pop rax
+            ret
+        }
+    }
+
+    VOID NAKED NOINLINE __readmsr2(_In_ UINT32 _ecx, _Out_ UINT32* _eax, _Out_ UINT32* _edx)
+    {
+        __asm {
+            push rax
+            push rcx
+            push rdx
+            push r8
+
+            push rdx
+            rdmsr
+            pop rcx
+            mov[rcx], eax
+            mov[r8], edx
+
+            pop r8
+            pop rdx
+            pop rcx
+            pop rax
+            ret
+        }
+    }
+
+    UINT64 NOINLINE __readmsr(_In_ UINT32 msr)
     {
         UINT32 low, high;
         __asm {
@@ -253,7 +340,27 @@ extern "C" {
         return result;
     }
 
-    VOID __writemsr(_In_ UINT32 msr, _In_ UINT64 value)
+    VOID NAKED NOINLINE __writemsr2(_In_ UINT32 _ecx, _In_ UINT32 _eax, _In_ UINT32 _edx)
+    {
+        __asm {
+            push rax
+            push rcx
+            push rdx
+            push r8
+
+            mov eax, edx
+            mov edx, r8d
+            wrmsr
+
+            pop r8
+            pop rdx
+            pop rcx
+            pop rax
+            ret
+        }
+    }
+
+    VOID NOINLINE __writemsr(_In_ UINT32 msr, _In_ UINT64 value)
     {
         UINT32 low = (UINT32)(value & 0xFFFFFFFF);
         UINT32 high = (UINT32)(value >> 32);
@@ -265,28 +372,31 @@ extern "C" {
         }return;
     }
 
-    VOID __sidt(_In_ SEGMENT_REGISTER* _idtr)
+    VOID NAKED __sidt(_In_ SEGMENT_REGISTER* _idtr)
     {
         __asm {
-            mov rax, _idtr
+            mov rax, rcx
             sidt[rax]
-        }return;
+            ret
+        }
     }
 
-    VOID __sgdt(_In_ SEGMENT_REGISTER* _gdtr)
+    VOID NAKED __sgdt(_In_ SEGMENT_REGISTER* _gdtr)
     {
         __asm {
-            mov rax, _gdtr
+            mov rax, rcx
             sgdt[rax]
-        }return;
+            ret
+        }
     }
 
-    VOID __vmrun(_Inout_ PHYSICAL_ADDRESS hsave)
+    PHYSICAL_ADDRESS __vmrun(_Inout_ PHYSICAL_ADDRESS vmcb)
     {
         __asm {
-            mov rax, hsave
+            mov rax, vmcb
             vmrun rax
-        }return;
+            ret
+        }
     }
 
     VOID __vmsave(_In_ PHYSICAL_ADDRESS vmcb)
@@ -297,10 +407,10 @@ extern "C" {
         }return;
     }
 
-    VOID __vmload(_Inout_ PHYSICAL_ADDRESS hsave)
+    VOID __vmload(_Inout_ PHYSICAL_ADDRESS vmcb)
     {
         __asm {
-            mov rax, hsave
+            mov rax, vmcb
             vmload rax
         }return;
     }

@@ -77,6 +77,7 @@ typedef long NTSTATUS;
 typedef unsigned long long PHYSICAL_ADDRESS;
 typedef long long HANDLE;
 typedef long long* PHANDLE;
+typedef ULONG_PTR  KAFFINITY;
 
 typedef DWORD ACCESS_MASK;
 typedef ACCESS_MASK* PACCESS_MASK;
@@ -117,7 +118,7 @@ DeclDataType(struct, SEGMENT_SELECTOR);
 DeclDataType(struct, PHYSICAL_MEMORY_RANGE);
 DeclDataType(enum, POOL_TYPE);
 DeclDataType(struct, MACHINE_FRAME);
-DeclDataType(enum, MEMORY_CACHING_TYPE); 
+DeclDataType(enum, MEMORY_CACHING_TYPE);
 DeclDataType(struct, MMPFN);
 
 typedef void(__stdcall* PIO_APC_ROUTINE)(PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, ULONG Reserved);
@@ -199,6 +200,7 @@ typedef _KSTART_ROUTINE* PKSTART_ROUTINE;
 #define PASSIVE_LEVEL 0
 #define APC_LEVEL 1
 #define DISPATCH_LEVEL 2
+#define HIGH_LEVEL 15
 
 #define 	OBJ_KERNEL_HANDLE   0x00000200L
 #define InitializeObjectAttributes(p, n, a, r, s) { \
@@ -246,7 +248,10 @@ struct PACKED SEGMENT_REGISTER
 		if (offset + 7 > sr->Limit)
 			return 0;
 		auto DescBytes = reinterpret_cast<UCHAR*>(sr->Base + offset);
-		return static_cast<USHORT>(DescBytes[5]) | (static_cast<USHORT>(DescBytes[6]) << 8);
+		const USHORT access = static_cast<USHORT>(DescBytes[5]);
+		const USHORT flags = static_cast<USHORT>((DescBytes[6] & 0xF0) >> 4);
+
+		return static_cast<USHORT>((flags << 8) | access);
 	}
 
 	inline UINT64 base(USHORT selector)
@@ -263,6 +268,18 @@ struct PACKED SEGMENT_REGISTER
 		UINT32 baseMid = DescBytes[4];
 		UINT32 baseHigh = DescBytes[7];
 		UINT64 segBase = (static_cast<UINT64>(baseHigh) << 24) | (static_cast<UINT64>(baseMid) << 16) | baseLow;
+
+		const UCHAR access = DescBytes[5];
+		const bool system_desc = ((access & 0x10) == 0); // S bit == 0
+		if (system_desc && (offset + 15 <= sr->Limit))
+		{
+			const UINT32 baseUpper =
+				(static_cast<UINT32>(DescBytes[8])) |
+				(static_cast<UINT32>(DescBytes[9]) << 8) |
+				(static_cast<UINT32>(DescBytes[10]) << 16) |
+				(static_cast<UINT32>(DescBytes[11]) << 24);
+			segBase |= (static_cast<UINT64>(baseUpper) << 32);
+		}
 		return segBase;
 	}
 };
@@ -294,13 +311,17 @@ extern "C"
 	VOID __writecr4(_In_ UINT64 value);
 	VOID __writecr8(_In_ UINT64 value);
 	VOID __invlpg(_In_ PVOID address);
+	VOID __cpuid2(_In_ UINT32 _ecx, _Out_ UINT32* _eax, _Out_ UINT32* _ebx, _Out_ UINT32* __ecx, _Out_ UINT32* _edx);
+	VOID __readmsr2(_In_ UINT32 _ecx, _Out_ UINT32* _eax, _Out_ UINT32* _edx);
 	UINT64 __readmsr(_In_ UINT32 msr);
+	VOID __writemsr2(_In_ UINT32 _ecx, _In_ UINT32 _eax, _In_ UINT32 _edx);
 	VOID __writemsr(_In_ UINT32 msr, _In_ UINT64 value);
+	VOID __rdtsc2(_Out_ UINT32* _eax, _Out_ UINT32* _edx);
 	VOID __sidt(_In_ SEGMENT_REGISTER* idtr);
 	VOID __sgdt(_In_ SEGMENT_REGISTER* gdtr);
-	VOID __vmrun(_Inout_ PHYSICAL_ADDRESS hsave);
+	PHYSICAL_ADDRESS __vmrun(_Inout_ PHYSICAL_ADDRESS vmcb);
 	VOID __vmsave(_In_ PHYSICAL_ADDRESS vmcb);
-	VOID __vmload(_Inout_ PHYSICAL_ADDRESS hsave);
+	VOID __vmload(_Inout_ PHYSICAL_ADDRESS vmcb);
 }
 
 class FnPtr {
@@ -310,4 +331,33 @@ public:
 	{
 		return ((Ret(__fastcall*)(Args...))this)(args...);
 	}
+};
+
+struct LINEAR_ADDRESS
+{
+	union
+	{
+		UINT64 AsUINT64;
+		struct {
+			UINT64 offset : 12;
+			UINT64 pte_index : 9;
+			UINT64 pdte_index : 9;
+			UINT64 pdpte_index : 9;
+			UINT64 pml4e_index : 9;
+			UINT64 sign_extend : 16;
+		};
+
+		struct
+		{
+			QWORD large_offset : 21;
+		};
+
+		struct
+		{
+			QWORD huge_offset : 30;
+		};
+	};
+	LINEAR_ADDRESS() : AsUINT64(0) {}
+	template<typename T>
+	LINEAR_ADDRESS(T data) : AsUINT64(reinterpret_cast<UINT64>((QWORD)data)) {}
 };

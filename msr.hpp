@@ -57,9 +57,76 @@ struct MSR_PAT
 	};
 };
 
+struct MSR_ICR
+{
+	union {
+		UINT64 AsUINT64;
+		struct
+		{
+			UINT64 vec : 8;
+			UINT64 mt : 3;
+			UINT64 dm : 1;
+			UINT64 Reserved0 : 2;
+			UINT64 l : 1;
+			UINT64 tmg : 1;
+			UINT64 Reserved1 : 2;
+			UINT64 dsh : 2;
+			UINT64 Reserved2 : 12;
+			UINT64 dest : 32;
+		};
+	};
+};
+
+struct MSR_APIC_BASE
+{
+	union {
+		UINT64 AsUINT64;
+		struct
+		{
+			UINT64 Reserved0 : 8;
+			UINT64 bsc : 1;//Boot Strap CPU Core
+			UINT64 Reserved1 : 1;
+			UINT64 extd : 1;// x2APIC Mode Enable
+			UINT64 ae : 1;//APIC Enable
+			UINT64 aba : 40;// APIC Base Address
+			UINT64 Reserved2 : 12;
+		};
+	};
+};
+
+struct MSR_SMM_MASK
+{
+	union {
+		UINT64 AsUINT64;
+		struct
+		{
+			UINT64  : 12;
+			UINT64 TMTypeDram : 3;
+			UINT64 : 1;
+			UINT64 TSegMask : 32;
+			UINT64 : 16;
+
+		};
+	};
+};
+
+struct MSR_SMM_BASE
+{
+	union {
+		UINT64 AsUINT64;
+		struct
+		{
+			UINT64 : 16;
+			UINT64 TSegBase : 32;
+			UINT64 : 16;
+		};
+	};
+};
+
+
 class MSR
 {
-private:
+public:
 	static constexpr DWORD _MSR_FS_BASE = 0xC0000100UL;
 	static constexpr DWORD _MSR_GS_BASE = 0xC0000101UL;
 	//VM_CR MSR (C001_0114h)
@@ -72,7 +139,14 @@ private:
 	static constexpr DWORD _MSR_HSAVE_PA = 0xC0010117UL;
 
 	static constexpr DWORD _MSR_TSC_RATIO = 0xC0000104UL;
-public:
+
+	static constexpr DWORD _MSR_APIC_BASE = 0x0000001BUL;
+	static constexpr DWORD _MSR_ICR = 0x00000830UL;
+
+	static constexpr DWORD _MSR_SMBASE = 0xC0010111UL;
+	static constexpr DWORD _MSR_SMM_ADDR = 0xC0010112UL;
+	static constexpr DWORD _MSR_SMM_MASK = 0xC0010113UL;
+
 	static MSR_VM_CR read_vm_cr();
 	static void write_vm_cr(MSR_VM_CR vm_cr);
 	static MSR_EFER read_efer();
@@ -88,4 +162,12 @@ public:
 	static UINT64 read_hsave_pa();
 	static void write_hsave_pa(UINT64 hsave_pa);
 	static UINT64 read_tsc_ratio();
+	static MSR_APIC_BASE read_apic_base();
+	static void write_apic_base(MSR_APIC_BASE apic_base);
+	static MSR_ICR read_icr();
+	static void write_icr(MSR_ICR icr);
+	static UINT64 read_smbase();
+	static MSR_SMM_BASE read_smm_addr();
+	static MSR_SMM_MASK read_smm_mask();
+
 };
