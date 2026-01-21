@@ -1,38 +1,41 @@
 #include "imports.hpp"
 
 
-class ALIGN(512) FW_MEMORY
+class PACKED FW_MEMORY
 {
 private:
 	PHYSICAL_MEMORY_RANGE fw_range[31];
-	UINT32 fw_range_count = 0;
-
+	UINT64 fw_range_count = 0;
+	UINT64 page_idx = 0;
 	bool NAKED is_zero_page(PVOID page)
 	{
-		__asm 
+		__asm
 		{
 			vpxord zmm0, zmm0, zmm0
 			mov eax, 4096 / 64
-		loop:
+			loop:
 			vporq zmm0, zmm0, [rdx]
-			add rdx, 64
-			vptestmq k1, zmm0, zmm0
-			kortestw k1, k1
-			jnz nonzero
-			dec eax 
-			jnz loop
-			mov al, 1
-			ret
-		nonzero:
+				add rdx, 64
+				vptestmq k1, zmm0, zmm0
+				kortestw k1, k1
+				jnz nonzero
+				dec eax
+				jnz loop
+				mov al, 1
+				ret
+				nonzero :
 			xor eax, eax
-			ret
+				ret
 		}
 	}
-	
+
 	void locate_ranges()
 	{
 		if (!this)
 			return;
+
+		page_idx = 0;
+		fw_range_count = 0;
 
 		PHYSICAL_MEMORY_RANGE* pmr = MmGetPhysicalMemoryRanges();
 		do
@@ -108,9 +111,87 @@ public:
 
 		return fw_range;
 	}
+
+	PHYSICAL_ADDRESS ReservePages(SIZE_T pages)
+	{
+		if (!fw_range_count)
+			locate_ranges();
+		UINT32 current_page_idx = 0;
+		for (int i = 0; i < fw_range_count; i++)
+		{
+			if (current_page_idx > page_idx)
+				current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
+			else
+			{
+				auto delta = page_idx - current_page_idx;
+				auto page_offset = delta << 12;
+				if (page_offset > fw_range[i].NumberOfBytes.QuadPart)
+					return 0;
+				page_idx += pages;
+				return fw_range[i].BaseAddress.QuadPart + page_offset;
+			}
+		}
+		return 0;
+	}
+
+	PHYSICAL_ADDRESS ReserveContiguousPages(SIZE_T pages)
+	{
+		if (!fw_range_count)
+			locate_ranges();
+		UINT32 current_page_idx = 0;
+		for (int i = 0; i < fw_range_count; i++)
+		{
+			if (current_page_idx > page_idx)
+				current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
+			else
+			{
+				auto delta = page_idx - current_page_idx;
+				auto page_offset = delta << 12;
+				if (page_offset > fw_range[i].NumberOfBytes.QuadPart)
+				{
+					current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
+				}
+				else
+				{
+					page_idx += pages;
+					return fw_range[i].BaseAddress.QuadPart + page_offset;
+				}
+			}
+		}
+		return 0;
+	}
+
+	void FreeAllCommitted()
+	{
+		UINT32 current_page_idx = 0;
+		for (int i = 0; i < fw_range_count; i++)
+		{
+			if (current_page_idx > page_idx)
+			{
+				auto va = MmMapIoSpace(fw_range[i].BaseAddress.QuadPart, fw_range[i].NumberOfBytes.QuadPart, MmNonCached);
+				if (va)
+				{
+					RtlFillMemory((PVOID)va, (SIZE_T)fw_range[i].NumberOfBytes.QuadPart, 0);
+					MmUnmapIoSpace((PVOID)va, fw_range[i].NumberOfBytes.QuadPart);
+				}
+				current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
+			}
+			else
+			{
+				auto delta = page_idx - current_page_idx;
+				auto page_offset = delta << 12;
+				auto va = MmMapIoSpace(fw_range[i].BaseAddress.QuadPart, page_offset, MmNonCached);
+				if (va)
+				{
+					RtlFillMemory((PVOID)va, (SIZE_T)page_offset, 0);
+					MmUnmapIoSpace((PVOID)va, page_offset);
+				}
+				return;
+			}
+		}
+		return;
+	}
 };
-
-
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
