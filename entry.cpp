@@ -224,12 +224,9 @@ void ZeroAndExit()
 	return;
 }
 
-void CleanUpDriver()
+void CleanupDriver()
 {
-	HANDLE thread_handle = 0;
-	_OBJECT_ATTRIBUTES object_attribues{ };
-	InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
-	PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&ZeroAndExit, 0);
+	ZeroAndExit();
 	return;
 }
 
@@ -239,17 +236,18 @@ NTSTATUS volatile start()
 	NTSTATUS status = STATUS_UNSUCCESSFUL;
 	if (NT_SUCCESS(resolve_imports()))
 	{
-		auto krnl_dtb = *(QWORD*)(((QWORD)PsInitialSystemProcess()) + 0x28);
-		auto driver_dtb = __readcr3();
-		__writecr3(krnl_dtb);
+		KAPC_STATE apc{ 0 };
+		KeStackAttachProcess(PsInitialSystemProcess(), &apc);
 
-		if(NT_SUCCESS(resolve_sigged_imports()))
+		if (NT_SUCCESS(resolve_sigged_imports()))
 		{
 			status = DriverEntry(nullptr, nullptr);
+			HANDLE thread_handle = 0;
+			_OBJECT_ATTRIBUTES object_attribues{ };
+			InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
+			PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&CleanupDriver, 0);
 		}
-
-		__writecr3(driver_dtb);
+		KeUnstackDetachProcess(&apc);
 	}
-	//CleanUpDriver();
 	return status;
 }
