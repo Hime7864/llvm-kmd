@@ -322,6 +322,7 @@ extern "C"
 	PHYSICAL_ADDRESS __vmrun(_Inout_ PHYSICAL_ADDRESS vmcb);
 	VOID __vmsave(_In_ PHYSICAL_ADDRESS vmcb);
 	VOID __vmload(_Inout_ PHYSICAL_ADDRESS vmcb);
+	UINT64 __rdpmc(_In_ UINT32 counter);
 }
 
 class FnPtr {

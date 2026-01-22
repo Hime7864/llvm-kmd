@@ -70,11 +70,6 @@ void MSR::write_hsave_pa(PHYSICAL_ADDRESS hsave_pa)
 	__writemsr(_MSR_HSAVE_PA, hsave_pa);
 }
 
-UINT64 MSR::read_tsc_ratio()
-{
-	return __readmsr(_MSR_TSC_RATIO);
-}
-
 MSR_APIC_BASE MSR::read_apic_base()
 {
 	return { .AsUINT64 = __readmsr(_MSR_APIC_BASE) };
@@ -108,4 +103,59 @@ MSR_SMM_BASE MSR::read_smm_addr()
 MSR_SMM_MASK MSR::read_smm_mask()
 {
 	return { .AsUINT64 = __readmsr(_MSR_SMM_MASK) };
+}
+
+MSR_TSC_RATIO MSR::read_tsc_ratio()
+{
+	return { .AsUINT64 = __readmsr(_MSR_TSC_RATIO) };
+}
+
+MSR_PSTATE_CURRENT_LIMIT MSR::read_pstate_current_limit()
+{
+	return { .AsUINT64 = __readmsr(_MSR_PSTATE_CURRENT_LIMIT) };
+}
+
+MSR_PSTATE_CONTROL MSR::read_pstate_control()
+{
+	return { .AsUINT64 = __readmsr(_MSR_PSTATE_CONTROL) };
+}
+
+MSR_PSTATE_STATUS MSR::read_pstate_status()
+{
+	return { .AsUINT64 = __readmsr(_MSR_PSTATE_STATUS) };
+}
+
+UINT64 MSR::read_aperf()
+{
+	return __readmsr(_MSR_APERF);
+}
+
+UINT64 MSR::read_mperf()
+{
+	return __readmsr(_MSR_MPERF);
+}
+
+UINT64 MSR::read_aperf_read_only()
+{
+	return __readmsr(_MSR_APERF_READ_ONLY);
+}
+
+UINT64 MSR::read_mperf_read_only()
+{
+	return __readmsr(_MSR_MPERF_READ_ONLY);
+}
+
+MSR_PSTATE MSR::read_pstate(int level)
+{
+	switch (level)
+	{
+	case 0:
+		return { .AsUINT64 = __readmsr(_MSR_P0STATE) };
+	case 1:
+		return { .AsUINT64 = __readmsr(_MSR_P1STATE) };
+	case 2:
+		return { .AsUINT64 = __readmsr(_MSR_P2STATE) };
+	default:
+		return { .AsUINT64 = 0 };
+	}
 }

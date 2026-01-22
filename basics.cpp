@@ -414,4 +414,17 @@ extern "C" {
             vmload rax
         }return;
     }
+
+    UINT64 __rdpmc(_In_ UINT32 counter)
+    {
+        UINT32 low, high;
+        __asm {
+            mov ecx, counter
+            rdpmc
+            mov low, eax
+            mov high, edx
+        }
+        UINT64 result = (UINT64)high << 32 | low;
+        return result;
+	}
 }

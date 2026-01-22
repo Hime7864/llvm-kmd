@@ -73,3 +73,16 @@ CPUID_SVM_FEATURE_IDENTIFICATION CPUID::svm_feature_identification()
     return { .AsUINT32 = results };
 }
 
+CPUID_APMI CPUID::apmi_features()
+{
+    DWORD leaf = 0x80000007UL;
+    static UINT32 results{ 0 };
+    __asm
+    {
+        mov eax, leaf
+        CPUID
+        lea r10, results
+        mov[r10], edx
+    }
+    return { .AsUINT32 = results };
+}

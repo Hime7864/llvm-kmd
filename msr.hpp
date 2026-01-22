@@ -123,6 +123,72 @@ struct MSR_SMM_BASE
 	};
 };
 
+struct MSR_TSC_RATIO
+{
+	union {
+		UINT64 AsUINT64;
+		struct {
+			UINT64 FRAC : 32;
+			UINT64 INT : 8;
+			UINT64 : 24;
+		};
+	};
+};
+
+
+struct MSR_PSTATE_CURRENT_LIMIT
+{
+	union {
+		UINT64 AsUINT64;
+		struct {
+			UINT64 CurPstateLimit : 4;
+			UINT64 PstateMaxVal : 4;
+			UINT64 : 56;
+		};
+	};
+};
+
+struct MSR_PSTATE_CONTROL
+{
+	union {
+		UINT64 AsUINT64;
+		struct {
+			UINT64 PstateCmd : 4;
+			UINT64 : 60;
+		};
+	};
+};
+
+struct MSR_PSTATE_STATUS
+{
+	union {
+		UINT64 AsUINT64;
+		struct {
+			UINT64 CurPstate : 4;
+			UINT64 : 60;
+		};
+	};
+};
+
+struct MSR_PSTATE
+{
+	union {
+		UINT64 AsUINT64;
+		struct {
+			UINT64 CpuFid : 8;
+			UINT64 CpuDfsId : 6;
+			UINT64 CpuVid : 8;
+			UINT64 IddValue : 8;
+			UINT64 IddDiv : 2;
+			UINT64 : 30;
+			UINT64 PstateEn : 2;
+		};
+	};
+	UINT32 get_frequency_mhz()
+	{
+		return ((CpuFid + 16) * 100) / (1 << CpuDfsId) * 2;
+	}
+};
 
 class MSR
 {
@@ -138,14 +204,27 @@ public:
 	static constexpr DWORD _MSR_PAT = 0x00000277UL;
 	static constexpr DWORD _MSR_HSAVE_PA = 0xC0010117UL;
 
-	static constexpr DWORD _MSR_TSC_RATIO = 0xC0000104UL;
-
 	static constexpr DWORD _MSR_APIC_BASE = 0x0000001BUL;
 	static constexpr DWORD _MSR_ICR = 0x00000830UL;
 
 	static constexpr DWORD _MSR_SMBASE = 0xC0010111UL;
 	static constexpr DWORD _MSR_SMM_ADDR = 0xC0010112UL;
 	static constexpr DWORD _MSR_SMM_MASK = 0xC0010113UL;
+
+	static constexpr DWORD _MSR_TSC_RATIO = 0xC0000104UL;
+
+	static constexpr DWORD _MSR_PSTATE_CURRENT_LIMIT = 0xC0010061UL;
+	static constexpr DWORD _MSR_PSTATE_CONTROL = 0xC0010062UL;
+	static constexpr DWORD _MSR_PSTATE_STATUS = 0xC0010063UL;
+	static constexpr DWORD _MSR_P0STATE = 0xC0010064UL;
+	static constexpr DWORD _MSR_P1STATE = 0xC0010065UL;
+	static constexpr DWORD _MSR_P2STATE = 0xC0010066UL;
+
+	static constexpr DWORD _MSR_APERF = 0x000000E8UL;
+	static constexpr DWORD _MSR_MPERF = 0x000000E7UL;
+
+	static constexpr DWORD _MSR_APERF_READ_ONLY = 0xC00000E8UL;
+	static constexpr DWORD _MSR_MPERF_READ_ONLY = 0xC00000E7UL;
 
 	static MSR_VM_CR read_vm_cr();
 	static void write_vm_cr(MSR_VM_CR vm_cr);
@@ -161,7 +240,6 @@ public:
 	static void write_gs_base(UINT64 gs_base);
 	static UINT64 read_hsave_pa();
 	static void write_hsave_pa(UINT64 hsave_pa);
-	static UINT64 read_tsc_ratio();
 	static MSR_APIC_BASE read_apic_base();
 	static void write_apic_base(MSR_APIC_BASE apic_base);
 	static MSR_ICR read_icr();
@@ -169,5 +247,13 @@ public:
 	static UINT64 read_smbase();
 	static MSR_SMM_BASE read_smm_addr();
 	static MSR_SMM_MASK read_smm_mask();
-
+	static MSR_TSC_RATIO read_tsc_ratio();
+	static MSR_PSTATE_CURRENT_LIMIT read_pstate_current_limit();
+	static MSR_PSTATE_CONTROL read_pstate_control();
+	static MSR_PSTATE_STATUS read_pstate_status();
+	static UINT64 read_aperf();
+	static UINT64 read_mperf();
+	static UINT64 read_aperf_read_only();
+	static UINT64 read_mperf_read_only();
+	static MSR_PSTATE read_pstate(int level);
 };
