@@ -50,6 +50,7 @@ public:
         QWORD address
     );
     static NTSTATUS SelfModuleBase(
-        QWORD* module_base
+        QWORD* module_base,
+        QWORD* module_size
     );
 };

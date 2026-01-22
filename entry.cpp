@@ -204,22 +204,9 @@ void ZeroAndExit()
 {
 	QWORD host_driver_base = 0;
 	QWORD host_driver_size = 0;
-	if (!NT_SUCCESS(Utils::SelfModuleBase(&host_driver_base)))
+	if (!NT_SUCCESS(Utils::SelfModuleBase(&host_driver_base, &host_driver_size)))
 		return;
-
-	if (host_driver_base)
-	{
-		int pages_mapped = 0;
-		do {
-			pages_mapped++;
-		} while (Utils::IsAddressValid(host_driver_base + pages_mapped * 4096));
-		host_driver_size = (QWORD)(pages_mapped << 12);
-	}
-	host_driver_base += 0x1000;
-
-	printf("Zeroing driver at (%p:%p) size %p\n", host_driver_base, MmGetPhysicalAddress((PVOID)host_driver_base), host_driver_size);
-	
-	host_driver_base -= 0x1000;
+	__writecr8(0);
 	FillMemory(host_driver_base, host_driver_size);
 	return;
 }

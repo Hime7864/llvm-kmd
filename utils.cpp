@@ -236,10 +236,11 @@ MMPTE_HARDWARE Utils::GetPTE(QWORD va)
     return PTE;
 }
 
-NTSTATUS Utils::SelfModuleBase(QWORD* module_base)
+NTSTATUS Utils::SelfModuleBase(QWORD* module_base, QWORD* module_size)
 {
     if (!module_base)
         return STATUS_INVALID_PARAMETER;
+    *module_base = 0;
 
     auto page_map = GetPPTE((QWORD)&Utils::SelfModuleBase);
     if (!page_map)
@@ -260,6 +261,14 @@ NTSTATUS Utils::SelfModuleBase(QWORD* module_base)
     if (last_pte.Valid)
     {
         *module_base = (QWORD)MmGetVirtualForPhysical(last_pte.PageFrameNumber << 12);
+        if (*module_base && module_size)
+        {
+            int pages_mapped = 0;
+            do {
+                pages_mapped++;
+            } while (Utils::IsAddressValid(*module_base + pages_mapped * 4096));
+            *module_size = (QWORD)(pages_mapped << 12);
+        }
         return STATUS_SUCCESS;
     }
 
