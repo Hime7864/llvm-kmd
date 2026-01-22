@@ -8,6 +8,9 @@
 #include "nt_structs.hpp"
 #include "nt_methods.hpp"
 
+#include "fwAlloc.hpp"
+#include "entry.hpp"
+
 #ifdef _DEBUG
 #define printf(Format, ...) DbgPrintEx(0, 0, Format, __VA_ARGS__)
 #else
@@ -21,5 +24,4 @@ inline void Sleep(_In_ UINT32 milliseconds)
 	KeDelayExecutionThread(KernelMode, FALSE, &interval);
 }
 
-#include "entry.hpp"
 #include "main.hpp"

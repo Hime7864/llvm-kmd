@@ -31,6 +31,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="fwAlloc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="basics.hpp">
@@ -61,5 +64,8 @@
       <Filter>Resource Files</Filter>
     </ClInclude>
     <ClInclude Include="imports.hpp" />
+    <ClInclude Include="fwAlloc.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -150,6 +150,7 @@
     <ClCompile Include="basics.cpp" />
     <ClCompile Include="cpuid.cpp" />
     <ClCompile Include="entry.cpp" />
+    <ClCompile Include="fwAlloc.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="msr.cpp" />
     <ClCompile Include="utils.cpp" />
@@ -158,6 +159,7 @@
     <ClInclude Include="basics.hpp" />
     <ClInclude Include="cpuid.hpp" />
     <ClInclude Include="entry.hpp" />
+    <ClInclude Include="fwAlloc.hpp" />
     <ClInclude Include="imports.hpp" />
     <ClInclude Include="main.hpp" />
     <ClInclude Include="nt_exports.hpp" />
