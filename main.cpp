@@ -1,11 +1,38 @@
 #include "imports.hpp"
 
-class PACKED FW_MEMORY
+
+//class FW_MEMORY
+//{
+//private:
+//	PHYSICAL_MEMORY_RANGE fw_range[31];
+//	UINT64 fw_range_count;
+//	UINT64 page_idx;
+//
+//	bool NAKED is_zero_page(PVOID page);
+//public:
+//	void Initialize();
+//
+//	void Cleanup();
+//
+//	UINT32 GetRangeCount();
+//
+//	PHYSICAL_MEMORY_RANGE* GetRanges();
+//
+//	PHYSICAL_ADDRESS ReservePages(SIZE_T pages);
+//
+//	PHYSICAL_ADDRESS ReserveContiguousPages(SIZE_T pages);
+//
+//
+//};
+
+
+class FW_MEMORY
 {
 private:
 	PHYSICAL_MEMORY_RANGE fw_range[31];
 	UINT64 fw_range_count = 0;
 	UINT64 page_idx = 0;
+
 	bool NAKED is_zero_page(PVOID page)
 	{
 		__asm
@@ -28,11 +55,9 @@ private:
 		}
 	}
 
-	void locate_ranges()
+public:
+	void Initialize()
 	{
-		if (!this)
-			return;
-
 		page_idx = 0;
 		fw_range_count = 0;
 
@@ -93,74 +118,7 @@ private:
 		return;
 	}
 
-public:
-
-	UINT32 GetRangeCount()
-	{
-		if (!fw_range_count)
-			locate_ranges();
-
-		return fw_range_count;
-	}
-
-	PHYSICAL_MEMORY_RANGE* GetRanges()
-	{
-		if (!fw_range_count)
-			locate_ranges();
-
-		return fw_range;
-	}
-
-	PHYSICAL_ADDRESS ReservePages(SIZE_T pages)
-	{
-		if (!fw_range_count)
-			locate_ranges();
-		UINT32 current_page_idx = 0;
-		for (int i = 0; i < fw_range_count; i++)
-		{
-			if (current_page_idx > page_idx)
-				current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
-			else
-			{
-				auto delta = page_idx - current_page_idx;
-				auto page_offset = delta << 12;
-				if (page_offset > fw_range[i].NumberOfBytes.QuadPart)
-					return 0;
-				page_idx += pages;
-				return fw_range[i].BaseAddress.QuadPart + page_offset;
-			}
-		}
-		return 0;
-	}
-
-	PHYSICAL_ADDRESS ReserveContiguousPages(SIZE_T pages)
-	{
-		if (!fw_range_count)
-			locate_ranges();
-		UINT32 current_page_idx = 0;
-		for (int i = 0; i < fw_range_count; i++)
-		{
-			if (current_page_idx > page_idx)
-				current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
-			else
-			{
-				auto delta = page_idx - current_page_idx;
-				auto page_offset = delta << 12;
-				if (page_offset > fw_range[i].NumberOfBytes.QuadPart)
-				{
-					current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
-				}
-				else
-				{
-					page_idx += pages;
-					return fw_range[i].BaseAddress.QuadPart + page_offset;
-				}
-			}
-		}
-		return 0;
-	}
-
-	void FreeAllCommitted()
+	void Cleanup()
 	{
 		UINT32 current_page_idx = 0;
 		for (int i = 0; i < fw_range_count; i++)
@@ -190,10 +148,85 @@ public:
 		}
 		return;
 	}
+
+	UINT32 GetRangeCount()
+	{
+		if (!fw_range_count)
+			return 0;
+
+		return fw_range_count;
+	}
+
+	PHYSICAL_MEMORY_RANGE* GetRanges()
+	{
+		if (!fw_range_count)
+			return 0;
+
+		return fw_range;
+	}
+
+	PHYSICAL_ADDRESS ReservePages(SIZE_T pages)
+	{
+		if (!fw_range_count)
+			return 0;
+		UINT32 current_page_idx = 0;
+		for (int i = 0; i < fw_range_count; i++)
+		{
+			if (current_page_idx > page_idx)
+				current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
+			else
+			{
+				auto delta = page_idx - current_page_idx;
+				auto page_offset = delta << 12;
+				if (page_offset > fw_range[i].NumberOfBytes.QuadPart)
+					return 0;
+				page_idx += pages;
+				return fw_range[i].BaseAddress.QuadPart + page_offset;
+			}
+		}
+		return 0;
+	}
+
+	PHYSICAL_ADDRESS ReserveContiguousPages(SIZE_T pages)
+	{
+		if (!fw_range_count)
+			return 0;
+		UINT32 current_page_idx = 0;
+		for (int i = 0; i < fw_range_count; i++)
+		{
+			if (current_page_idx > page_idx)
+				current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
+			else
+			{
+				auto delta = page_idx - current_page_idx;
+				auto page_offset = delta << 12;
+				if (page_offset > fw_range[i].NumberOfBytes.QuadPart)
+				{
+					current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
+				}
+				else
+				{
+					page_idx += pages;
+					return fw_range[i].BaseAddress.QuadPart + page_offset;
+				}
+			}
+		}
+		return 0;
+	}
 };
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
-	
+	LINEAR_ADDRESS rva = 0xFFFFD681AA6FC000;
+
+	UINT64 idx[]{
+		rva.pml4e_index,
+		rva.pdpte_index,
+		rva.pdte_index,
+		rva.pte_index
+	};
+	printf("Indices: %lu %lu %lu %lu\n", idx[0], idx[1], idx[2], idx[3]);
+
+
 	return STATUS_SUCCESS;
 }
