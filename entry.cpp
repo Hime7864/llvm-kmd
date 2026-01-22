@@ -166,6 +166,11 @@ NTSTATUS resolve_imports()
 		"ZwClose"
 	);
 
+	fn_KeGetCurrentThread = (_KeGetCurrentThread)Utils::GetProcAddress(
+		kernel_base,
+		"KeGetCurrentThread"
+	);
+
 	return STATUS_SUCCESS;
 }
 

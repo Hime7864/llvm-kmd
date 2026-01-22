@@ -176,3 +176,5 @@ typedef NTSTATUS(__stdcall* _ZwWriteFile)(
 typedef NTSTATUS(__stdcall* _ZwClose)(
 	_In_ HANDLE Handle
 	);
+
+typedef PETHREAD(__stdcall* _KeGetCurrentThread)();

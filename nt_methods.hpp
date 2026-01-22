@@ -396,3 +396,9 @@ VOID FORCEINLINE RtlInitUnicodeString(
 		SourceString
 	);
 }
+
+inline _KeGetCurrentThread fn_KeGetCurrentThread = nullptr;
+PETHREAD FORCEINLINE KeGetCurrentThread()
+{
+	return fn_KeGetCurrentThread();
+}
