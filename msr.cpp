@@ -159,3 +159,21 @@ MSR_PSTATE MSR::read_pstate(int level)
 		return { .AsUINT64 = 0 };
 	}
 }
+
+UINT64 MSR_PSTATE::get_frequency_mhz()
+{
+	return ((CpuFid + 16ll) * 100ll) / (1ll << CpuDfsId) * 2000000ll;
+}
+
+UINT64 MSR_PSTATE::get_performance_mhz()
+{
+	auto mperf_init = MSR::read_mperf();
+	auto aperf_init = MSR::read_aperf();
+	for (int i = 0; i < 100000; i++)
+		__asm { pause };
+	auto perf = (UINT64)(
+		(double)(MSR::read_aperf() - aperf_init) /
+		((double)(MSR::read_mperf() - mperf_init)
+			) * (double)get_frequency_mhz());
+	return perf;
+}

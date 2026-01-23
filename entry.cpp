@@ -189,7 +189,7 @@ NTSTATUS resolve_sigged_imports()
 	return STATUS_SUCCESS;
 }
 
-void NAKED NOINLINE FillMemory(QWORD buffer, QWORD size)
+void NAKED NOINLINE FillMemory(QWORD buffer, QWORD size, BYTE fill)
 {
 	__asm {
 		sub rsp, 8h
@@ -206,17 +206,18 @@ void ZeroAndExit()
 	QWORD host_driver_size = 0;
 	if (!NT_SUCCESS(Utils::SelfModuleBase(&host_driver_base, &host_driver_size)))
 		return;
-	__writecr8(0);
-	FillMemory(host_driver_base, host_driver_size);
+	FillMemory(host_driver_base, host_driver_size, 0x00);
 	return;
 }
 
 void CleanupDriver()
 {
+	__writecr8(0);
+	for (int i = 0; i < 150000; i++)
+		__asm { pause };
 	ZeroAndExit();
 	return;
 }
-
 
 NTSTATUS volatile start()
 {
@@ -226,13 +227,13 @@ NTSTATUS volatile start()
 		KAPC_STATE apc{ 0 };
 		KeStackAttachProcess(PsInitialSystemProcess(), &apc);
 
-		if (NT_SUCCESS(resolve_sigged_imports()))
+		if(NT_SUCCESS(resolve_sigged_imports()))
 		{
 			status = DriverEntry(nullptr, nullptr);
-			//HANDLE thread_handle = 0;
-			//_OBJECT_ATTRIBUTES object_attribues{ };
-			//InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
-			//PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&CleanupDriver, 0);
+			HANDLE thread_handle = 0;
+			_OBJECT_ATTRIBUTES object_attribues{ };
+			InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
+			PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&CleanupDriver, 0);
 		}
 		KeUnstackDetachProcess(&apc);
 	}

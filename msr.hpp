@@ -184,10 +184,9 @@ struct MSR_PSTATE
 			UINT64 PstateEn : 2;
 		};
 	};
-	UINT32 get_frequency_mhz()
-	{
-		return ((CpuFid + 16) * 100) / (1 << CpuDfsId) * 2;
-	}
+	UINT64 get_frequency_mhz();
+
+	UINT64 get_performance_mhz();
 };
 
 class MSR

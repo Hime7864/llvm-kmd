@@ -34,6 +34,36 @@ QWORD Utils::sig_scan(QWORD scan_start, QWORD max_scan, const char* ida_sig)
     return 0;
 }
 
+QWORD Utils::sig_scan_safe(QWORD scan_start, QWORD max_scan, const char* ida_sig)
+{
+    BYTE* start = (BYTE*)scan_start;
+    BYTE* end = start + max_scan;
+    if (start > end) return 0;
+
+    for (BYTE* current = start; current < end; ++current)
+    {
+        const BYTE* data = current;
+        const char* pattern = ida_sig;
+        int matched = 1;
+        while (*pattern)
+        {
+            if (*pattern == ' ') { ++pattern; continue; }
+            if (*pattern == '?') { ++data; ++pattern; if (*pattern == '?') ++pattern; continue; }
+            BYTE byte = (TO_BYTE(*pattern) << 4) | TO_BYTE(*(pattern + 1));
+
+            BYTE _data = 0;
+			SIZE_T bytesRead;
+			auto status = MmCopyMemory(&_data, (QWORD)data, sizeof(BYTE), MM_COPY_MEMORY_VIRTUAL, &bytesRead);
+
+            if (!NT_SUCCESS(status) || _data != byte) { matched = 0; break; }
+            data++; pattern += 2;
+        }
+        if (matched) return (QWORD)current;
+    }
+
+    return 0;
+}
+
 QWORD Utils::sig_scan_reverse(QWORD scan_start, QWORD max_scan, const char* ida_sig)
 {
     BYTE* start = (BYTE*)scan_start;
@@ -242,37 +272,19 @@ NTSTATUS Utils::SelfModuleBase(QWORD* module_base, QWORD* module_size)
         return STATUS_INVALID_PARAMETER;
     *module_base = 0;
 
-    auto page_map = GetPPTE((QWORD)&Utils::SelfModuleBase);
-    if (!page_map)
-        return STATUS_UNSUCCESSFUL;
 
+	auto first_page = ((UINT64)memcpy) & ~0xFFFULL;
+    auto last_page = sig_scan_safe(first_page, 0x200000, "52 65 74 70 6F 6C 69 6E 65 56 31");
+	if(!last_page)
+		return STATUS_UNSUCCESSFUL;
 
-    auto index = (page_map & 0xFFF) / 8;
-    MMPTE_HARDWARE last_pte = PhysRead<MMPTE_HARDWARE>(page_map);
-    for (int i = 0; i < index; i++)
-    {
-        page_map -= 8;
-        auto pte = PhysRead<MMPTE_HARDWARE>(page_map);
-        if (!pte.Valid)
-            break;
-        else
-            last_pte = pte;
-    }
-    if (last_pte.Valid)
-    {
-        *module_base = (QWORD)MmGetVirtualForPhysical(last_pte.PageFrameNumber << 12);
-        if (*module_base && module_size)
-        {
-            int pages_mapped = 0;
-            do {
-                pages_mapped++;
-            } while (Utils::IsAddressValid(*module_base + pages_mapped * 4096));
-            *module_size = (QWORD)(pages_mapped << 12);
-        }
-        return STATUS_SUCCESS;
-    }
+    if(last_page & 0xFFF)
+        last_page = (last_page & ~0xFFFULL) + 0x1000;
 
-    return STATUS_UNSUCCESSFUL;
+	*module_base = first_page;
+    if(module_size)
+		*module_size = last_page - first_page;
+    return STATUS_SUCCESS;
 }
 
 bool Utils::IsAddressValid(QWORD address)

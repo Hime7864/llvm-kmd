@@ -12,6 +12,11 @@ public:
         QWORD max_scan,
         PCSTR ida_sig
     );
+    static QWORD sig_scan_safe(
+        QWORD scan_start,
+        QWORD max_scan,
+        PCSTR ida_sig
+    );
     static QWORD sig_scan_reverse(
         QWORD scan_start,
         QWORD max_scan,
