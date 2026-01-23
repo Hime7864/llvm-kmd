@@ -229,10 +229,10 @@ NTSTATUS volatile start()
 		if (NT_SUCCESS(resolve_sigged_imports()))
 		{
 			status = DriverEntry(nullptr, nullptr);
-			HANDLE thread_handle = 0;
-			_OBJECT_ATTRIBUTES object_attribues{ };
-			InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
-			PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&CleanupDriver, 0);
+			//HANDLE thread_handle = 0;
+			//_OBJECT_ATTRIBUTES object_attribues{ };
+			//InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
+			//PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&CleanupDriver, 0);
 		}
 		KeUnstackDetachProcess(&apc);
 	}
