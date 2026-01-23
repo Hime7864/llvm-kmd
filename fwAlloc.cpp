@@ -1,8 +1,8 @@
 #include "imports.hpp"
 
 PHYSICAL_MEMORY_RANGE FWA::fw_range[31];
-UINT64 FWA::fw_range_count;
-UINT64 FWA::page_idx;
+UINT64 FWA::fw_range_count = 0;
+UINT64 FWA::page_idx = 0;
 
 bool NAKED FWA::is_zero_page(PVOID page)
 {
@@ -28,8 +28,8 @@ bool NAKED FWA::is_zero_page(PVOID page)
 
 void FWA::Initialize()
 {
-	page_idx = 0;
-	fw_range_count = 0;
+	if (page_idx || fw_range_count)
+		return;
 
 	PHYSICAL_MEMORY_RANGE* pmr = MmGetPhysicalMemoryRanges();
 	do
@@ -45,7 +45,7 @@ void FWA::Initialize()
 
 		if (size > 0x40000000)
 			size = 0x40000000;
-		
+
 		auto rva = (UINT64)MmMapIoSpace(low, size, MmNonCached);
 		if (rva)
 		{
@@ -74,7 +74,7 @@ void FWA::Initialize()
 					{
 						auto sizeofimage = *(UINT32*)(current + hdr_offset + 0x50);
 						current += (sizeofimage & ~0xFFF) + (sizeofimage & 0xFFF ? 0x1000 : 0) - 4096;
-					
+
 						should_exit = true;
 					}
 				}
@@ -90,32 +90,44 @@ void FWA::Initialize()
 
 void FWA::Cleanup()
 {
-	UINT32 current_page_idx = 0;
+	if (!fw_range_count)
+		return;
+	UINT64 idx = 0;
 	for (int i = 0; i < fw_range_count; i++)
 	{
-		if (current_page_idx > page_idx)
+		auto range_base = fw_range[i].BaseAddress.QuadPart;
+		auto range_size = fw_range[i].NumberOfBytes.QuadPart;
+
+		if (idx + (range_size >> 12) > page_idx)
 		{
-			auto va = MmMapIoSpace(fw_range[i].BaseAddress.QuadPart, fw_range[i].NumberOfBytes.QuadPart, MmNonCached);
+			auto block_offset = page_idx - idx;
+			auto pages_left_in_block = (range_size >> 12) - block_offset;
+
+			auto va = MmMapIoSpace(range_base, block_offset << 12, MmNonCached);
 			if (va)
 			{
-				RtlFillMemory((PVOID)va, (SIZE_T)fw_range[i].NumberOfBytes.QuadPart, 0);
-				MmUnmapIoSpace((PVOID)va, fw_range[i].NumberOfBytes.QuadPart);
-			}
-			current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
-		}
-		else
-		{
-			auto delta = page_idx - current_page_idx;
-			auto page_offset = delta << 12;
-			auto va = MmMapIoSpace(fw_range[i].BaseAddress.QuadPart, page_offset, MmNonCached);
-			if (va)
-			{
-				RtlFillMemory((PVOID)va, (SIZE_T)page_offset, 0);
-				MmUnmapIoSpace((PVOID)va, page_offset);
+				RtlFillMemory((PVOID)va, block_offset << 12, 0);
+				MmUnmapIoSpace((PVOID)va, block_offset << 12);
+
+				page_idx = 0;
+				fw_range_count = 0;
+				return;
 			}
 			return;
 		}
+		else
+		{
+			auto va = MmMapIoSpace(range_base, range_size, MmNonCached);
+			if (va)
+			{
+				RtlFillMemory((PVOID)va, (SIZE_T)range_size, 0);
+				MmUnmapIoSpace((PVOID)va, range_size);
+			}
+			idx += (range_size >> 12);
+		}
 	}
+	page_idx = 0;
+	fw_range_count = 0;
 	return;
 }
 
@@ -128,7 +140,19 @@ UINT32 FWA::pages_free()
 	{
 		total_pages += (UINT32)(fw_range[i].NumberOfBytes.QuadPart >> 12);
 	}
-	return total_pages - page_idx;
+	return total_pages - (UINT32)page_idx;
+}
+
+UINT32 FWA::pages_total()
+{
+	if (!fw_range_count)
+		return 0;
+	UINT32 total_pages = 0;
+	for (int i = 0; i < fw_range_count; i++)
+	{
+		total_pages += (UINT32)(fw_range[i].NumberOfBytes.QuadPart >> 12);
+	}
+	return total_pages;
 }
 
 
@@ -136,47 +160,26 @@ PHYSICAL_ADDRESS FWA::ReservePages(SIZE_T pages)
 {
 	if (!fw_range_count)
 		return 0;
-	UINT32 current_page_idx = 0;
+	UINT64 idx = 0;
 	for (int i = 0; i < fw_range_count; i++)
 	{
-		if (current_page_idx > page_idx)
-			current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
-		else
-		{
-			auto delta = page_idx - current_page_idx;
-			auto page_offset = delta << 12;
-			if (page_offset > fw_range[i].NumberOfBytes.QuadPart)
-				return 0;
-			page_idx += pages;
-			return fw_range[i].BaseAddress.QuadPart + page_offset;
-		}
-	}
-	return 0;
-}
+		auto range_base = fw_range[i].BaseAddress.QuadPart;
+		auto range_size = fw_range[i].NumberOfBytes.QuadPart;
 
-PHYSICAL_ADDRESS FWA::ReserveContiguousPages(SIZE_T pages)
-{
-	if (!fw_range_count)
-		return 0;
-	UINT32 current_page_idx = 0;
-	for (int i = 0; i < fw_range_count; i++)
-	{
-		if (current_page_idx > page_idx)
-			current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
-		else
+		if (idx + (range_size >> 12) > page_idx)// in this block
 		{
-			auto delta = page_idx - current_page_idx;
-			auto page_offset = delta << 12;
-			if (page_offset > fw_range[i].NumberOfBytes.QuadPart)
-			{
-				current_page_idx += fw_range[i].NumberOfBytes.QuadPart >> 12;
-			}
-			else
+			auto block_offset = page_idx - idx;
+			auto pages_left_in_block = (range_size >> 12) - block_offset;
+			if (pages_left_in_block > pages)
 			{
 				page_idx += pages;
-				return fw_range[i].BaseAddress.QuadPart + page_offset;
+				return range_base + (block_offset << 12);
 			}
+			page_idx += pages_left_in_block;
+			idx += (range_size >> 12);
 		}
+		else
+			idx += (range_size >> 12);
 	}
 	return 0;
 }

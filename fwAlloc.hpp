@@ -15,8 +15,8 @@ public:
 
 	static UINT32 pages_free();
 
-	static PHYSICAL_ADDRESS ReservePages(SIZE_T pages);
+	static UINT32 pages_total();
 
-	static PHYSICAL_ADDRESS ReserveContiguousPages(SIZE_T pages);
+	static PHYSICAL_ADDRESS ReservePages(SIZE_T pages);
 };
 
