@@ -132,7 +132,7 @@ QWORD Utils::GetProcAddress(QWORD module, const char* export_name)
     return 0;
 }
 
-NTSTATUS Utils::GetSectionInfo(QWORD module_base, const char* section_name, QWORD* section_address, DWORD* section_size)
+NTSTATUS Utils::GetSectionInfo(QWORD module_base, const char* section_name, QWORD* section_address, QWORD* section_size)
 {
     if (!module_base || !section_name || !section_address || !section_size)
         return -1;
@@ -151,7 +151,7 @@ NTSTATUS Utils::GetSectionInfo(QWORD module_base, const char* section_name, QWOR
             DWORD virtual_address = *(DWORD*)(current_section + 0xC);
             DWORD virtual_size = *(DWORD*)(current_section + 0x8);
             *section_address = module_base + virtual_address;
-            *section_size = virtual_size;
+            *section_size = virtual_size & 0xFFFFFFFF;
             return STATUS_SUCCESS;
         }
     }

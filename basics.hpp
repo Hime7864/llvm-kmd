@@ -120,6 +120,7 @@ DeclDataType(enum, POOL_TYPE);
 DeclDataType(struct, MACHINE_FRAME);
 DeclDataType(enum, MEMORY_CACHING_TYPE);
 DeclDataType(struct, MMPFN);
+DeclDataType(struct, KPRCB);
 
 typedef void(__stdcall* PIO_APC_ROUTINE)(PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, ULONG Reserved);
 

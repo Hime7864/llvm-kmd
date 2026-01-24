@@ -31,7 +31,7 @@ public:
         QWORD module_base,
         PCSTR section_name,
         QWORD* section_address,
-        DWORD* section_size
+        QWORD* section_size
     );
     static MMPTE_HARDWARE GetPTE(
         QWORD virtual_address

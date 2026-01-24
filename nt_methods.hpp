@@ -402,3 +402,12 @@ PETHREAD FORCEINLINE KeGetCurrentThread()
 {
 	return fn_KeGetCurrentThread();
 }
+
+
+PKPRCB FORCEINLINE NAKED KeGetCurrentPrcb()
+{
+	__asm {
+		mov rax, gs:[0x20]
+		ret
+	}
+}

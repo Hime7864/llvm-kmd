@@ -181,7 +181,7 @@ NTSTATUS resolve_sigged_imports()
 		return STATUS_UNSUCCESSFUL;
 
 	QWORD kernel_text_base, kernel_text_size;
-	if (!NT_SUCCESS(Utils::GetSectionInfo(kernel_base, ".text", &kernel_text_base, (DWORD*)&kernel_text_size)))
+	if (!NT_SUCCESS(Utils::GetSectionInfo(kernel_base, ".text", &kernel_text_base, &kernel_text_size)))
 		return STATUS_UNSUCCESSFUL;
 
 	fn_MmPfnDatabase = (_MmPfnDatabase)Utils::deref(3, Utils::sig_scan(kernel_text_base, kernel_text_size, "48 8B 3D ? ? ? ? 48 C1 EF 09"));
@@ -196,18 +196,18 @@ void FreeAndExit(PVOID last_thread)
 	if (!NT_SUCCESS(Utils::SelfModuleBase(&host_driver_base, &host_driver_size)))
 		return;
 	__writecr8(0);
-	Sleep(100);
+	Sleep(250);
 	QWORD func1 = (QWORD)fn_ExFreePool;
 	QWORD func2 = (QWORD)fn_PsTerminateSystemThread;
 	auto func3 = fn_RtlFillMemory;
 	auto func_base = (PVOID)FreeAndExit;
-	auto range1 = ((QWORD)func_base - host_driver_base) - 1;
-	auto range2 = (host_driver_size - (range1 + 0x120));
+	auto range1 = ((QWORD)func_base - host_driver_base) - 8;
+	auto range2 = (host_driver_size - (range1 + 0x200));
 
 	//func3(last_thread, (SIZE_T)0x250, 0x00);
 	func3((PVOID)host_driver_base, (SIZE_T)range1, 0x00);
-	func3((PVOID)(host_driver_base + (range1 + 0x120)), (SIZE_T)range2, 0x00);
-	func3(func_base, (SIZE_T)0xB0, 0x00);
+	func3((PVOID)(host_driver_base + (range1 + 0x200)), (SIZE_T)range2, 0x00);
+	func3(func_base, (SIZE_T)0xA0, 0x00);
 	__asm {
 		mov rcx, [host_driver_base]
 		mov rdx, [func1]
@@ -243,7 +243,7 @@ NTSTATUS volatile start()
 		{
 			status = DriverEntry(nullptr, nullptr);
 		}
-		CleanupDriver();
+		//CleanupDriver();
 		KeUnstackDetachProcess(&apc);
 	}
 	return status;
