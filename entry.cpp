@@ -189,9 +189,31 @@ NTSTATUS resolve_sigged_imports()
 	return STATUS_SUCCESS;
 }
 
-void NAKED NOINLINE FreeMemory(QWORD buffer, QWORD func1, QWORD func2)
+void FreeAndExit(PVOID last_thread)
 {
+	QWORD host_driver_base = 0;
+	QWORD host_driver_size = 0;
+	if (!NT_SUCCESS(Utils::SelfModuleBase(&host_driver_base, &host_driver_size)))
+		return;
+	__writecr8(0);
+	Sleep(1500);
+	QWORD func1 = (QWORD)fn_ExFreePool;
+	QWORD func2 = (QWORD)fn_PsTerminateSystemThread;
+	auto func3 = fn_RtlFillMemory;
+	auto func_base = (PVOID)FreeAndExit;
+	auto range1 = ((QWORD)func_base - host_driver_base) - 1;
+	auto range2 = (host_driver_size - (range1 + 0x120));
+
+	func3(last_thread, (SIZE_T)0x400, 0x00);
+	func3((PVOID)host_driver_base, (SIZE_T)range1, 0x00);
+	func3((PVOID)(host_driver_base + (range1 + 0x120)), (SIZE_T)range2, 0x00);
+	func3(func_base, (SIZE_T)0xB0, 0x00);
 	__asm {
+		mov rcx, [host_driver_base]
+		mov rdx, [func1]
+		mov r8, [func2]
+		call self
+	self:
 		sub rsp, 8h
 		mov rax, r8
 		mov[rsp], rax
@@ -200,35 +222,12 @@ void NAKED NOINLINE FreeMemory(QWORD buffer, QWORD func1, QWORD func2)
 	}
 }
 
-void FreeAndExit()
-{
-	QWORD host_driver_base = 0;
-	QWORD host_driver_size = 0;
-	if (!NT_SUCCESS(Utils::SelfModuleBase(&host_driver_base, &host_driver_size)))
-		return;
-	__writecr8(0);
-	for (int i = 0; i < 1500000; i++)
-		__asm { pause };
-	QWORD func1 = (QWORD)fn_ExFreePool;
-	QWORD func2 = (QWORD)fn_PsTerminateSystemThread;
-	auto func3 = fn_RtlFillMemory;
-	auto range1 = ((QWORD)FreeMemory - host_driver_base) - 5;	
-	auto range2 = (host_driver_size - (range1 + 0x200));
-
-	func3((PVOID)host_driver_base, (SIZE_T)range1, 0x00);
-	func3((PVOID)FreeAndExit, (SIZE_T)0x80, 0x00);
-	func3((PVOID)(host_driver_base + (range1 + 0x200)), (SIZE_T)range2, 0x00);
-
-	FreeMemory(host_driver_base, func1, func2);
-	return;
-}
-
 void CleanupDriver()
 {
 	HANDLE thread_handle = 0;
 	_OBJECT_ATTRIBUTES object_attribues{ };
 	InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
-	PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&FreeAndExit, 0);
+	PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&FreeAndExit, KeGetCurrentThread());
 	return;
 }
 
