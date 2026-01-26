@@ -13,5 +13,9 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 		printf("  page[%02d] %010X\n", i, Utils::LinearTranslate(base + (i * 0x1000)));
 	}
 
+	FWA::Initialize();
+	printf("FW Allocator initialized. Total pages: %d, Free pages: %d\n", FWA::pages_total(), FWA::pages_free());
+	FWA::Cleanup();
+
 	return STATUS_SUCCESS;
 }
