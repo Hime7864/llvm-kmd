@@ -193,7 +193,7 @@ void FreeAndExit(PVOID last_thread)
 {
 	QWORD host_driver_base = 0;
 	QWORD host_driver_size = 0;
-	if (!NT_SUCCESS(Utils::SelfModuleBase(&host_driver_base, &host_driver_size)))
+	if (!NT_SUCCESS(Utils::LocateSelf(&host_driver_base, &host_driver_size)))
 		return;
 	__writecr8(0);
 	Sleep(250);
@@ -202,12 +202,12 @@ void FreeAndExit(PVOID last_thread)
 	auto func3 = fn_RtlFillMemory;
 	auto func_base = (PVOID)FreeAndExit;
 	auto range1 = ((QWORD)func_base - host_driver_base) - 8;
-	auto range2 = (host_driver_size - (range1 + 0x200));
+	auto range2 = (host_driver_size - (range1 + 0x110));
 
-	//func3(last_thread, (SIZE_T)0x250, 0x00);
+	func3(last_thread, (SIZE_T)0x800, 0x00);
 	func3((PVOID)host_driver_base, (SIZE_T)range1, 0x00);
-	func3((PVOID)(host_driver_base + (range1 + 0x200)), (SIZE_T)range2, 0x00);
-	func3(func_base, (SIZE_T)0xA0, 0x00);
+	func3((PVOID)(host_driver_base + (range1 + 0x110)), (SIZE_T)range2, 0x00);
+	func3(func_base, (SIZE_T)0x90, 0x00);
 	__asm {
 		mov rcx, [host_driver_base]
 		mov rdx, [func1]
@@ -238,12 +238,10 @@ NTSTATUS volatile start()
 	{
 		KAPC_STATE apc{ 0 };
 		KeStackAttachProcess(PsInitialSystemProcess(), &apc);
-
-		if(NT_SUCCESS(resolve_sigged_imports()))
-		{
+		status = resolve_sigged_imports();
+		if (NT_SUCCESS(status))
 			status = DriverEntry(nullptr, nullptr);
-		}
-		//CleanupDriver();
+		CleanupDriver();
 		KeUnstackDetachProcess(&apc);
 	}
 	return status;

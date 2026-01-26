@@ -149,7 +149,7 @@ NTSTATUS Utils::GetSectionInfo(QWORD module_base, const char* section_name, QWOR
         if (memcmp((void*)current_section, (void*)section_name, strlen(section_name)) == 0)
         {
             DWORD virtual_address = *(DWORD*)(current_section + 0xC);
-            DWORD virtual_size = *(DWORD*)(current_section + 0x8);
+			QWORD virtual_size = *(DWORD*)(current_section + 0x8);
             *section_address = module_base + virtual_address;
             *section_size = virtual_size & 0xFFFFFFFF;
             return STATUS_SUCCESS;
@@ -158,181 +158,258 @@ NTSTATUS Utils::GetSectionInfo(QWORD module_base, const char* section_name, QWOR
     return STATUS_UNSUCCESSFUL;
 }
 
-NTSTATUS ReadPhysicalAddress(QWORD TargetAddress, PVOID lpBuffer, QWORD Size, QWORD* BytesRead = nullptr)
+NTSTATUS Utils::ReadPhysical(PHYSICAL_ADDRESS address, PVOID buffer, SIZE_T size)
 {
-    if (BytesRead)
-        return MmCopyMemory(lpBuffer, TargetAddress, Size, MM_COPY_MEMORY_PHYSICAL, BytesRead);
-    QWORD _BytesRead = 0;
-    return !MmCopyMemory(lpBuffer, TargetAddress, Size, MM_COPY_MEMORY_PHYSICAL, &_BytesRead);
+	SIZE_T bytesRead = 0;
+	auto status = MmCopyMemory(
+		buffer,
+		address,
+		size,
+		MM_COPY_MEMORY_PHYSICAL,
+		&bytesRead
+	);
+	return status;
 }
 
-template <typename T>
-T PhysRead(QWORD pa)
+template <typename type>
+type Utils::ReadPhysical(PHYSICAL_ADDRESS address)
 {
-    T buffer;
-    ReadPhysicalAddress(pa, &buffer, sizeof(T));
-    return buffer;
+	type buffer = { 0 };
+	Utils::ReadPhysical(address, &buffer, sizeof(type));
+	return buffer;
 }
 
-QWORD Utils::GetPPTE(QWORD virtual_address)
+PHYSICAL_ADDRESS Utils::LinearTranslatePPte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
 {
-    QWORD cr3 = __readcr3();
-    if (cr3 & 0xFFF)
-        cr3 &= ~0xFFF; // Ensure CR3 is page-aligned
+	UINT64 idx[4]{
+		8ull * rva.pml4e_index,
+		8ull * rva.pdpte_index,
+		8ull * rva.pdte_index,
+		8ull * rva.pte_index
+	};
 
-    auto va = virtual_address;
-
-    // Validate canonical address (48-bit virtual address space)
-    if (((va >> 47) & 0x1FFFF) != 0 && ((va >> 47) & 0x1FFFF) != 0x1FFFF)
-        return  { 0 };
-
-    MMPTE_HARDWARE PTE;
-    PTE = PhysRead<MMPTE_HARDWARE>(cr3 + (((va >> 39) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return { 0 };
-
-    // PDPT
-    QWORD next_addr = (QWORD)PTE.PageFrameNumber << 12;
-    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 30) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return  { 0 };
-
-    // Check for 1GB page
-    if (PTE.LargePage)
-        return next_addr + (((va >> 30) & 0x1ff) * 8);
-
-    // PDT
-    next_addr = (QWORD)PTE.PageFrameNumber << 12;
-    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 21) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return  { 0 };
-
-    // Check for 2MB page
-    if (PTE.LargePage)
-        return next_addr + (((va >> 21) & 0x1ff) * 8);
-
-    // PT
-    next_addr = (QWORD)PTE.PageFrameNumber << 12;
-    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 12) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return  { 0 };
-
-    // 4KB page
-    return next_addr + (((va >> 12) & 0x1ff) * 8);
+	PHYSICAL_ADDRESS page_map = dtb & ~0xFFF;
+	for (int i = 0; i < 4; i++)
+	{
+		auto pte = ReadPhysical<MMPTE_HARDWARE>(page_map + idx[i]);
+		if (!pte.Valid || !pte.PageFrameNumber)
+			return page_map + idx[i];
+		switch (i)
+		{
+		case 1://1gb page
+		{
+			if (pte.LargePage)
+			{
+				return page_map + idx[i];
+			}
+		}break;
+		case 2://2mb page
+		{
+			if (pte.LargePage)
+			{
+				return page_map + idx[i];
+			}
+		}break;
+		case 3://4kb page
+		{
+			return page_map + idx[i];
+		}break;
+		}
+		page_map = pte.PageFrameNumber << 12;
+	}
+	return { 0 };
 }
 
-MMPTE_HARDWARE Utils::GetPTE(QWORD va)
+PHYSICAL_ADDRESS Utils::LinearTranslatePPte(LINEAR_ADDRESS rva)
 {
-    QWORD cr3 = __readcr3();
-    if (cr3 & 0xFFF)
-        cr3 &= ~0xFFF; // Ensure CR3 is page-aligned
-
-    // Validate canonical address (48-bit virtual address space)
-    if (((va >> 47) & 0x1FFFF) != 0 && ((va >> 47) & 0x1FFFF) != 0x1FFFF)
-        return  { 0 };
-
-    MMPTE_HARDWARE PTE;
-    PTE = PhysRead<MMPTE_HARDWARE>(cr3 + (((va >> 39) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return { 0 };
-
-    // PDPT
-    QWORD next_addr = (QWORD)PTE.PageFrameNumber << 12;
-    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 30) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return  { 0 };
-
-    // Check for 1GB page
-    if (PTE.LargePage)
-        return PTE;
-
-    // PDT
-    next_addr = (QWORD)PTE.PageFrameNumber << 12;
-    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 21) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return  { 0 };
-
-    // Check for 2MB page
-    if (PTE.LargePage)
-        return PTE;
-
-    // PT
-    next_addr = (QWORD)PTE.PageFrameNumber << 12;
-    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 12) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return  { 0 };
-
-    // 4KB page
-    return PTE;
+	return LinearTranslatePPte(__readcr3(), rva);
 }
 
-NTSTATUS Utils::SelfModuleBase(QWORD* module_base, QWORD* module_size)
+MMPTE_HARDWARE Utils::LinearTranslatePte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
 {
-    if (!module_base)
-        return STATUS_INVALID_PARAMETER;
-    *module_base = 0;
+	UINT64 idx[4]{
+		8ull * rva.pml4e_index,
+		8ull * rva.pdpte_index,
+		8ull * rva.pdte_index,
+		8ull * rva.pte_index
+	};
+
+	PHYSICAL_ADDRESS page_map = dtb & ~0xFFF;
+	for (int i = 0; i < 4; i++)
+	{
+		auto pte = ReadPhysical<MMPTE_HARDWARE>(page_map + idx[i]);
+		if (!pte.Valid)
+			return pte;
+		switch (i)
+		{
+		case 1://1gb page
+		{
+			if (pte.LargePage)
+			{
+				return pte;
+			}
+		}break;
+		case 2://2mb page
+		{
+			if (pte.LargePage)
+			{
+				return pte;
+			}
+		}break;
+		case 3://4kb page
+		{
+			return pte;
+		}break;
+		}
+		page_map = pte.PageFrameNumber << 12;
+	}
+	return { 0 };
+}
+
+MMPTE_HARDWARE Utils::LinearTranslatePte(LINEAR_ADDRESS rva)
+{
+	return LinearTranslatePte(__readcr3(), rva);
+}
+
+PHYSICAL_ADDRESS Utils::LinearTranslate(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
+{
+	UINT64 idx[4]{
+		8ull * rva.pml4e_index,
+		8ull * rva.pdpte_index,
+		8ull * rva.pdte_index,
+		8ull * rva.pte_index
+	};
+
+	PHYSICAL_ADDRESS page_map = dtb & ~0xFFF;
+	for (int i = 0; i < 4; i++)
+	{
+		auto pte = ReadPhysical<MMPTE_HARDWARE>(page_map + idx[i]);
+		if (!pte.Valid || !pte.PageFrameNumber)
+			return 0;
+		switch (i)
+		{
+		case 1://1gb page
+		{
+			if (pte.LargePage)
+			{
+				return (pte.PageFrameNumber << 12) + rva.huge_offset;
+			}
+		}break;
+		case 2://2mb page
+		{
+			if (pte.LargePage)
+			{
+				return (pte.PageFrameNumber << 12) + rva.large_offset;
+			}
+		}break;
+		case 3://4kb page
+		{
+			return (pte.PageFrameNumber << 12) + rva.offset;
+		}break;
+		}
+		page_map = pte.PageFrameNumber << 12;
+	}
+	return 0;
+}
+
+PHYSICAL_ADDRESS Utils::LinearTranslate(LINEAR_ADDRESS rva)
+{
+	return LinearTranslate(__readcr3(), rva);
+}
+
+NTSTATUS Utils::ReadLinear(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva, PVOID buffer, SIZE_T size)
+{
+	UINT64 idx[4]{
+		8ull * rva.pml4e_index,
+		8ull * rva.pdpte_index,
+		8ull * rva.pdte_index,
+		8ull * rva.pte_index
+	};
+
+	PHYSICAL_ADDRESS page_map = dtb & ~0xFFF;
+	for (int i = 0; i < 4; i++)
+	{
+		auto pte = ReadPhysical<MMPTE_HARDWARE>(page_map + idx[i]);
+		if (!pte.Valid)
+			return STATUS_PTE_NOT_VALID;
+		if (!pte.PageFrameNumber)
+			return STATUS_PFN_NOT_PRESENT;
+		switch (i)
+		{
+		case 1://1gb page
+		{
+			if (pte.LargePage)
+			{
+				PHYSICAL_ADDRESS target_address = (pte.PageFrameNumber << 12) + rva.huge_offset;
+				return ReadPhysical(target_address, buffer, size);
+			}
+		}break;
+		case 2://2mb page
+		{
+			if (pte.LargePage)
+			{
+				PHYSICAL_ADDRESS target_address = (pte.PageFrameNumber << 12) + rva.large_offset;
+				return ReadPhysical(target_address, buffer, size);
+			}
+		}break;
+		case 3://4kb page
+		{
+			PHYSICAL_ADDRESS target_address = (pte.PageFrameNumber << 12) + rva.offset;
+			return ReadPhysical(target_address, buffer, size);
+		}break;
+		}
+		page_map = pte.PageFrameNumber << 12;
+	}
+	return STATUS_UNSUCCESSFUL;
+}
+
+template <typename type>
+type Utils::ReadLinear(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
+{
+	type buffer = { 0 };
+	ReadLinear(dtb, rva, &buffer, sizeof(type));
+	return buffer;
+}
+
+NTSTATUS Utils::ReadLinear(LINEAR_ADDRESS rva, PVOID buffer, SIZE_T size)
+{
+	return ReadLinear(__readcr3(), rva, buffer, size);
+}
+
+template <typename type>
+type Utils::ReadLinear(LINEAR_ADDRESS rva)
+{
+	return ReadLinear<type>(__readcr3(), rva);
+}
+
+BOOLEAN Utils::RvaValid(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
+{
+	return LinearTranslate(dtb, rva) != 0;
+}
+
+BOOLEAN Utils::RvaValid(LINEAR_ADDRESS rva)
+{
+	return RvaValid(__readcr3(), rva);
+}
+
+NTSTATUS Utils::LocateSelf(QWORD* module_base, QWORD* module_size)
+{
+	if (!module_base)
+		return STATUS_INVALID_PARAMETER;
+	*module_base = 0;
 
 
 	auto first_page = ((UINT64)memcpy) & ~0xFFFULL;
-    auto last_page = sig_scan_safe(first_page, 0x200000, "52 65 74 70 6F 6C 69 6E 65 56 31");
-	if(!last_page)
+	auto last_page = sig_scan_safe(first_page, 0x200000, "52 65 74 70 6F 6C 69 6E 65 56 31");
+	if (!last_page)
 		return STATUS_UNSUCCESSFUL;
 
-    if(last_page & 0xFFF)
-        last_page = (last_page & ~0xFFFULL) + 0x1000;
+	if (last_page & 0xFFF)
+		last_page = (last_page & ~0xFFFULL) + 0x1000;
 
 	*module_base = first_page;
-    if(module_size)
+	if (module_size)
 		*module_size = last_page - first_page;
-    return STATUS_SUCCESS;
-}
 
-bool Utils::IsAddressValid(QWORD address)
-{
-    MMPTE_HARDWARE pte = GetPTE(address);
-    return pte.Valid;
+	return STATUS_SUCCESS;
 }
-
-MMPTE_HARDWARE Utils::GetPTE(QWORD ctx, QWORD va)
-{
-    QWORD cr3 = ctx;
-    if (cr3 & 0xFFF)
-        cr3 &= ~0xFFF; // Ensure CR3 is page-aligned
-    // Validate canonical address (48-bit virtual address space)
-    if (((va >> 47) & 0x1FFFF) != 0 && ((va >> 47) & 0x1FFFF) != 0x1FFFF)
-        return  { 0 };
-    MMPTE_HARDWARE PTE;
-    PTE = PhysRead<MMPTE_HARDWARE>(cr3 + (((va >> 39) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return { 0 };
-    // PDPT
-    QWORD next_addr = (QWORD)PTE.PageFrameNumber << 12;
-    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 30) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return  { 0 };
-    // Check for 1GB page
-    if (PTE.LargePage)
-        return PTE;
-    // PDT
-    next_addr = (QWORD)PTE.PageFrameNumber << 12;
-    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 21) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return  { 0 };
-    // Check for 2MB page
-    if (PTE.LargePage)
-        return PTE;
-    // PT
-    next_addr = (QWORD)PTE.PageFrameNumber << 12;
-    PTE = PhysRead<MMPTE_HARDWARE>(next_addr + (((va >> 12) & 0x1ff) * 8));
-    if (!PTE.Valid)
-        return  { 0 };
-    // 4KB page
-    return PTE;
-}
-
-bool Utils::IsAddressValid(QWORD ctx, QWORD address)
-{
-    MMPTE_HARDWARE pte = GetPTE(ctx, address);
-    return pte.Valid;
-}
-
