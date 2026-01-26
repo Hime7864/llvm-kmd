@@ -8,21 +8,26 @@ bool NAKED FWA::is_zero_page(PVOID page)
 {
 	__asm
 	{
-		vpxord zmm0, zmm0, zmm0
-		mov eax, 4096 / 64
-		loop:
-		vporq zmm0, zmm0, [rcx]
-			add rcx, 64
-			vptestmq k1, zmm0, zmm0
-			kortestw k1, k1
-			jnz nonzero
-			dec eax
-			jnz loop
-			mov al, 1
-			ret
-			nonzero :
-		xor eax, eax
-			ret
+		vpxor ymm0, ymm0, ymm0
+		mov eax, 4096 / 32            
+	loop:
+		vmovdqu ymm1, [rcx]           
+		vpxor ymm0, ymm0, ymm1   
+		add rcx, 32
+		vptest ymm0, ymm0         
+		jnz nonzero               
+	
+		dec eax
+		jnz loop
+	
+		mov al, 1
+		vzeroupper                
+		ret
+	
+	nonzero:
+		xor eax, eax                  
+		vzeroupper                
+		ret
 	}
 }
 
