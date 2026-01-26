@@ -204,7 +204,7 @@ void FreeAndExit(PVOID last_thread)
 	auto range1 = ((QWORD)func_base - host_driver_base) - 8;
 	auto range2 = (host_driver_size - (range1 + 0x110));
 
-	func3(last_thread, (SIZE_T)0x800, 0x00);
+	//func3(last_thread, (SIZE_T)0x800, 0x00);
 	func3((PVOID)host_driver_base, (SIZE_T)range1, 0x00);
 	func3((PVOID)(host_driver_base + (range1 + 0x110)), (SIZE_T)range2, 0x00);
 	func3(func_base, (SIZE_T)0x90, 0x00);
