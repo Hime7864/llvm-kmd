@@ -5,22 +5,22 @@ bool NAKED is_zero_page2(PVOID page)
 {
 	__asm
 	{
-		vpxord ymm0, ymm0, ymm0
+		vpxor ymm0, ymm0, ymm0
 		mov eax, 4096 / 32            
 	loop:
 		vmovdqu ymm1, [rcx]           
-		vpxord ymm0, ymm0, ymm1   
+		vpxor ymm0, ymm0, ymm1   
 		add rcx, 32
 		vptest ymm0, ymm0         
 		jnz nonzero               
-
+	
 		dec eax
 		jnz loop
-
+	
 		mov al, 1
 		vzeroupper                
 		ret
-
+	
 	nonzero:
 		xor eax, eax                  
 		vzeroupper                
@@ -32,7 +32,6 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
 
 	PHYSICAL_MEMORY_RANGE* pmr = MmGetPhysicalMemoryRanges();
-	pmr += 3;
 	do
 	{
 		if (&pmr[0] && !pmr[0].NumberOfBytes.QuadPart)
