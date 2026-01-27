@@ -1,174 +1,52 @@
 #include "imports.hpp"
 
+FUNCTION_TABLE_ENTRY function_table[]
+{
+	{ str_hash("ExAllocatePool"), &NtImports::fn_ExAllocatePool},
+	{ str_hash("ExFreePool"), &NtImports::fn_ExFreePool},
+	{ str_hash("DbgPrintEx"), &NtImports::fn_DbgPrintEx},
+	{ str_hash("sprintf"), &NtImports::fn_sprintf},
+	{ str_hash("swprintf"), &NtImports::fn_swprintf},
+	{ str_hash("IoAllocateMdl"), &NtImports::fn_IoAllocateMdl},
+	{ str_hash("IoFreeMdl"), &NtImports::fn_IoFreeMdl},
+	{ str_hash("KeQueryActiveProcessorCount"), &NtImports::fn_KeQueryActiveProcessorCount},
+	{ str_hash("MmGetPhysicalAddress"), &NtImports::fn_MmGetPhysicalAddress},
+	{ str_hash("MmGetVirtualForPhysical"), &NtImports::fn_MmGetVirtualForPhysical},
+	{ str_hash("MmCopyMemory"), &NtImports::fn_MmCopyMemory},
+	{ str_hash("MmMapIoSpace"), &NtImports::fn_MmMapIoSpace},
+	{ str_hash("MmUnmapIoSpace"), &NtImports::fn_MmUnmapIoSpace},
+	{ str_hash("RtlCaptureContext"), &NtImports::fn_RtlCaptureContext},
+	{ str_hash("KeStackAttachProcess"), &NtImports::fn_KeStackAttachProcess},
+	{ str_hash("KeUnstackDetachProcess"), &NtImports::fn_KeUnstackDetachProcess},
+	{ str_hash("KeDelayExecutionThread"), &NtImports::fn_KeDelayExecutionThread},
+	{ str_hash("PsCreateSystemThread"), &NtImports::fn_PsCreateSystemThread},
+	{ str_hash("PsTerminateSystemThread"), &NtImports::fn_PsTerminateSystemThread},
+	{ str_hash("KeIpiGenericCall"), &NtImports::fn_KeIpiGenericCall},
+	{ str_hash("MmGetPhysicalMemoryRanges"), &NtImports::fn_MmGetPhysicalMemoryRanges},
+	{ str_hash("RtlCopyMemory"), &NtImports::fn_RtlCopyMemory},
+	{ str_hash("RtlFillMemory"), &NtImports::fn_RtlFillMemory},
+	{ str_hash("MmAllocateContiguousMemorySpecifyCacheNode"), &NtImports::fn_MmAllocateContiguousMemorySpecifyCacheNode},
+	{ str_hash("MmFreeContiguousMemorySpecifyCache"), &NtImports::fn_MmFreeContiguousMemorySpecifyCache},
+	{ str_hash("PsInitialSystemProcess"), &NtImports::fn_PsInitialSystemProcess},
+	{ str_hash("RtlInitUnicodeString"), &NtImports::fn_RtlInitUnicodeString},
+	{ str_hash("ZwCreateFile"), &NtImports::fn_ZwCreateFile},
+	{ str_hash("ZwWriteFile"), &NtImports::fn_ZwWriteFile},
+	{ str_hash("ZwReadFile"), &NtImports::fn_ZwReadFile},
+	{ str_hash("ZwClose"), &NtImports::fn_ZwClose},
+	{ str_hash("KeGetCurrentThread"), &NtImports::fn_KeGetCurrentThread},
+	{ str_hash("PsGetProcessId"), &NtImports::fn_GetUniqueProcessId},
+};
+
 NTSTATUS resolve_imports()
 {
     auto kernel_base = Utils::GetKernelBase();
     if (!kernel_base)
         return STATUS_UNSUCCESSFUL;
 
-    NtImports::fn_ExAllocatePool = (decltype(NtImports::fn_ExAllocatePool))Utils::GetProcAddress(
+    Utils::GetProcAddressBuffer(
         kernel_base,
-        "ExAllocatePool"
-    );
-
-    NtImports::fn_ExFreePool = (decltype(NtImports::fn_ExFreePool))Utils::GetProcAddress(
-        kernel_base,
-        "ExFreePool"
-    );
-
-    NtImports::fn_DbgPrintEx = (decltype(NtImports::fn_DbgPrintEx))Utils::GetProcAddress(
-        kernel_base,
-        "DbgPrintEx"
-    );
-
-    NtImports::fn_sprintf = (decltype(NtImports::fn_sprintf))Utils::GetProcAddress(
-        kernel_base,
-        "sprintf"
-    );
-
-    NtImports::fn_swprintf = (decltype(NtImports::fn_swprintf))Utils::GetProcAddress(
-        kernel_base,
-        "swprintf"
-    );
-
-    NtImports::fn_IoAllocateMdl = (decltype(NtImports::fn_IoAllocateMdl))Utils::GetProcAddress(
-        kernel_base,
-        "IoAllocateMdl"
-    );
-
-    NtImports::fn_IoFreeMdl = (decltype(NtImports::fn_IoFreeMdl))Utils::GetProcAddress(
-        kernel_base,
-        "IoFreeMdl"
-    );
-
-    NtImports::fn_KeQueryActiveProcessorCount = (decltype(NtImports::fn_KeQueryActiveProcessorCount))Utils::GetProcAddress(
-        kernel_base,
-        "KeQueryActiveProcessorCount"
-    );
-
-    NtImports::fn_MmGetPhysicalAddress = (decltype(NtImports::fn_MmGetPhysicalAddress))Utils::GetProcAddress(
-        kernel_base,
-        "MmGetPhysicalAddress"
-    );
-
-    NtImports::fn_MmGetVirtualForPhysical = (decltype(NtImports::fn_MmGetVirtualForPhysical))Utils::GetProcAddress(
-        kernel_base,
-        "MmGetVirtualForPhysical"
-    );
-
-    NtImports::fn_MmCopyMemory = (decltype(NtImports::fn_MmCopyMemory))Utils::GetProcAddress(
-        kernel_base,
-        "MmCopyMemory"
-    );
-
-    NtImports::fn_MmMapIoSpace = (decltype(NtImports::fn_MmMapIoSpace))Utils::GetProcAddress(
-        kernel_base,
-        "MmMapIoSpace"
-    );
-
-    NtImports::fn_MmUnmapIoSpace = (decltype(NtImports::fn_MmUnmapIoSpace))Utils::GetProcAddress(
-        kernel_base,
-        "MmUnmapIoSpace"
-    );
-
-    NtImports::fn_RtlCaptureContext = (decltype(NtImports::fn_RtlCaptureContext))Utils::GetProcAddress(
-        kernel_base,
-        "RtlCaptureContext"
-    );
-
-    NtImports::fn_KeStackAttachProcess = (decltype(NtImports::fn_KeStackAttachProcess))Utils::GetProcAddress(
-        kernel_base,
-        "KeStackAttachProcess"
-    );
-
-    NtImports::fn_KeUnstackDetachProcess = (decltype(NtImports::fn_KeUnstackDetachProcess))Utils::GetProcAddress(
-        kernel_base,
-        "KeUnstackDetachProcess"
-    );
-
-    NtImports::fn_KeDelayExecutionThread = (decltype(NtImports::fn_KeDelayExecutionThread))Utils::GetProcAddress(
-        kernel_base,
-        "KeDelayExecutionThread"
-    );
-
-    NtImports::fn_PsCreateSystemThread = (decltype(NtImports::fn_PsCreateSystemThread))Utils::GetProcAddress(
-        kernel_base,
-        "PsCreateSystemThread"
-    );
-
-    NtImports::fn_PsTerminateSystemThread = (decltype(NtImports::fn_PsTerminateSystemThread))Utils::GetProcAddress(
-        kernel_base,
-        "PsTerminateSystemThread"
-    );
-
-    NtImports::fn_KeIpiGenericCall = (decltype(NtImports::fn_KeIpiGenericCall))Utils::GetProcAddress(
-        kernel_base,
-        "KeIpiGenericCall"
-    );
-
-    NtImports::fn_MmGetPhysicalMemoryRanges = (decltype(NtImports::fn_MmGetPhysicalMemoryRanges))Utils::GetProcAddress(
-        kernel_base,
-        "MmGetPhysicalMemoryRanges"
-    );
-
-    NtImports::fn_RtlCopyMemory = (decltype(NtImports::fn_RtlCopyMemory))Utils::GetProcAddress(
-        kernel_base,
-        "RtlCopyMemory"
-    );
-
-    NtImports::fn_RtlFillMemory = (decltype(NtImports::fn_RtlFillMemory))Utils::GetProcAddress(
-        kernel_base,
-        "RtlFillMemory"
-    );
-
-    NtImports::fn_MmAllocateContiguousMemorySpecifyCacheNode = (decltype(NtImports::fn_MmAllocateContiguousMemorySpecifyCacheNode))Utils::GetProcAddress(
-        kernel_base,
-        "MmAllocateContiguousMemorySpecifyCacheNode"
-    );
-
-    NtImports::fn_MmFreeContiguousMemorySpecifyCache = (decltype(NtImports::fn_MmFreeContiguousMemorySpecifyCache))Utils::GetProcAddress(
-        kernel_base,
-        "MmFreeContiguousMemorySpecifyCache"
-    );
-
-    NtImports::fn_PsInitialSystemProcess = (decltype(NtImports::fn_PsInitialSystemProcess))Utils::GetProcAddress(
-        kernel_base,
-        "PsInitialSystemProcess"
-    );
-
-    NtImports::fn_RtlInitUnicodeString = (decltype(NtImports::fn_RtlInitUnicodeString))Utils::GetProcAddress(
-        kernel_base,
-        "RtlInitUnicodeString"
-    );
-
-    NtImports::fn_ZwCreateFile = (decltype(NtImports::fn_ZwCreateFile))Utils::GetProcAddress(
-        kernel_base,
-        "ZwCreateFile"
-    );
-
-    NtImports::fn_ZwWriteFile = (decltype(NtImports::fn_ZwWriteFile))Utils::GetProcAddress(
-        kernel_base,
-        "ZwWriteFile"
-    );
-
-    NtImports::fn_ZwReadFile = (decltype(NtImports::fn_ZwReadFile))Utils::GetProcAddress(
-        kernel_base,
-        "ZwReadFile"
-    );
-
-    NtImports::fn_ZwClose = (decltype(NtImports::fn_ZwClose))Utils::GetProcAddress(
-        kernel_base,
-        "ZwClose"
-    );
-
-    NtImports::fn_KeGetCurrentThread = (decltype(NtImports::fn_KeGetCurrentThread))Utils::GetProcAddress(
-        kernel_base,
-        "KeGetCurrentThread"
-    );
-
-    NtImports::fn_GetUniqueProcessId = (decltype(NtImports::fn_GetUniqueProcessId))Utils::GetProcAddress(
-        kernel_base,
-        "PsGetProcessId"
+        function_table,
+        sizeof(function_table) / sizeof(FUNCTION_TABLE_ENTRY)
     );
 
     return STATUS_SUCCESS;
@@ -184,7 +62,7 @@ NTSTATUS resolve_sigged_imports()
 	if (!NT_SUCCESS(Utils::GetSectionInfo(kernel_base, ".text", &kernel_text_base, &kernel_text_size)))
 		return STATUS_UNSUCCESSFUL;
 
-	NtImports::fn_MmPfnDatabase = (decltype(NtImports::fn_MmPfnDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, "48 8B 3D ? ? ? ? 48 C1 EF 09"));
+	NtImports::fn_MmPfnDatabase = (decltype(NtImports::fn_MmPfnDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8B 3D ? ? ? ? 48 C1 EF 09")));
 	
 	return STATUS_SUCCESS;
 }

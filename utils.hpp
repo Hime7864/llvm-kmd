@@ -8,19 +8,27 @@ public:
         QWORD address
     );
 
+    template<size_t N, size_t Size>
+    static QWORD SigScan(
+        QWORD scan_start,
+        QWORD max_scan,
+        Pattern<N, Size> pat
+    );
+
     static QWORD SigScan(
         QWORD scan_start,
         QWORD max_scan,
         PCSTR ida_sig
     );
 
+    template<size_t N, size_t Size>
     static QWORD SigScan_s(
         QWORD scan_start,
         QWORD max_scan,
-        PCSTR ida_sig
+        Pattern<N, Size> pat
     );
 
-    static QWORD SigScanBack(
+    static QWORD SigScan_s(
         QWORD scan_start,
         QWORD max_scan,
         PCSTR ida_sig
@@ -31,6 +39,12 @@ public:
     static QWORD GetProcAddress(
         QWORD module,
         PCSTR export_name
+    );
+
+    static VOID GetProcAddressBuffer(
+        QWORD module,
+        FUNCTION_TABLE_ENTRY* table,
+        DWORD count
     );
 
     static NTSTATUS GetSectionInfo(
@@ -116,3 +130,35 @@ public:
         QWORD* module_size
     );
 };
+
+// ... existing code ...
+
+// Define the template in the header so it can be instantiated by any .cpp that uses it.
+template<size_t N, size_t Size>
+__forceinline QWORD Utils::SigScan(QWORD scan_start, QWORD max_scan, Pattern<N, Size> pat)
+{
+    UCHAR* start = (UCHAR*)scan_start;
+    UCHAR* end = start + max_scan;
+    if (start > end) return 0;
+
+    for (UCHAR* current = start; current < end; ++current)
+    {
+        bool matched = true;
+        for (size_t i = 0; i < pat.size; i++)
+        {
+            if (pat.mask[i] == 0x00)
+                continue;
+
+            if (current[i] != pat.bytes[i])
+            {
+                matched = false;
+                break;
+            }
+        }
+
+        if (matched)
+            return (QWORD)current;
+    }
+
+    return 0;
+}

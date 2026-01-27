@@ -57,9 +57,6 @@
     <ClInclude Include="utils.hpp">
       <Filter>KMD\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="nt_exports.hpp">
-      <Filter>KMD\Resource Files</Filter>
-    </ClInclude>
     <ClInclude Include="nt_structs.hpp">
       <Filter>KMD\Resource Files</Filter>
     </ClInclude>
@@ -68,6 +65,9 @@
     </ClInclude>
     <ClInclude Include="imports.hpp" />
     <ClInclude Include="fwAlloc.hpp">
+      <Filter>KMD\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="nt_imports.hpp">
       <Filter>KMD\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
