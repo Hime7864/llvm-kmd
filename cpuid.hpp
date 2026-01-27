@@ -80,13 +80,6 @@ struct CPUID_APMI
 class CPUID
 {
 public:
-	//CPUID Fn8000_000A_EAX SVM Revision & Feature Identification
-	static constexpr DWORD _CPUID_SVM_REVISION_IDENTIFICATION = 0x8000000AUL;
-
-	static constexpr DWORD _CPUID_PROCESSOR_VENDOR = 0x0000000UL;
-
-	static constexpr DWORD _CPUID_EXTENDED_TOPOLOGY = 0x0000000BU;
-
 	static UINT32 current_core_number();
 
 	static CPUID_SVM_REVISION svm_revision();

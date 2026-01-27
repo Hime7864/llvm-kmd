@@ -194,65 +194,81 @@ class MSR
 public:
 	static constexpr DWORD _MSR_FS_BASE = 0xC0000100UL;
 	static constexpr DWORD _MSR_GS_BASE = 0xC0000101UL;
-	//VM_CR MSR (C001_0114h)
 	static constexpr DWORD _MSR_VM_CR = 0xC0010114UL;
-	//LSTAR MSR (C000_0082h)
 	static constexpr DWORD _MSR_LSTAR = 0xC0000082UL;
-	//3.1.7 Extended Feature Enable Register (EFER)
 	static constexpr DWORD _MSR_EFER = 0xC0000080UL;
 	static constexpr DWORD _MSR_PAT = 0x00000277UL;
 	static constexpr DWORD _MSR_HSAVE_PA = 0xC0010117UL;
-
 	static constexpr DWORD _MSR_APIC_BASE = 0x0000001BUL;
 	static constexpr DWORD _MSR_ICR = 0x00000830UL;
-
 	static constexpr DWORD _MSR_SMBASE = 0xC0010111UL;
 	static constexpr DWORD _MSR_SMM_ADDR = 0xC0010112UL;
 	static constexpr DWORD _MSR_SMM_MASK = 0xC0010113UL;
-
 	static constexpr DWORD _MSR_TSC_RATIO = 0xC0000104UL;
-
 	static constexpr DWORD _MSR_PSTATE_CURRENT_LIMIT = 0xC0010061UL;
 	static constexpr DWORD _MSR_PSTATE_CONTROL = 0xC0010062UL;
 	static constexpr DWORD _MSR_PSTATE_STATUS = 0xC0010063UL;
 	static constexpr DWORD _MSR_P0STATE = 0xC0010064UL;
 	static constexpr DWORD _MSR_P1STATE = 0xC0010065UL;
 	static constexpr DWORD _MSR_P2STATE = 0xC0010066UL;
-
 	static constexpr DWORD _MSR_APERF = 0x000000E8UL;
 	static constexpr DWORD _MSR_MPERF = 0x000000E7UL;
-
 	static constexpr DWORD _MSR_APERF_READ_ONLY = 0xC00000E8UL;
 	static constexpr DWORD _MSR_MPERF_READ_ONLY = 0xC00000E7UL;
+	static constexpr DWORD _MSR_TSC = 0x00000010UL;
 
-	static MSR_VM_CR read_vm_cr();
-	static void write_vm_cr(MSR_VM_CR vm_cr);
-	static MSR_EFER read_efer();
-	static void write_efer(MSR_EFER efer);
-	static MSR_PAT read_pat();
-	static void write_pat(MSR_PAT pat);
-	static UINT64 read_lstar();
-	static void write_lstar(UINT64 lstar);
-	static UINT64 read_fs_base();
-	static void write_fs_base(UINT64 fs_base);
-	static UINT64 read_gs_base();
-	static void write_gs_base(UINT64 gs_base);
-	static UINT64 read_hsave_pa();
-	static void write_hsave_pa(UINT64 hsave_pa);
-	static MSR_APIC_BASE read_apic_base();
-	static void write_apic_base(MSR_APIC_BASE apic_base);
-	static MSR_ICR read_icr();
-	static void write_icr(MSR_ICR icr);
-	static UINT64 read_smbase();
-	static MSR_SMM_BASE read_smm_addr();
-	static MSR_SMM_MASK read_smm_mask();
-	static MSR_TSC_RATIO read_tsc_ratio();
-	static MSR_PSTATE_CURRENT_LIMIT read_pstate_current_limit();
-	static MSR_PSTATE_CONTROL read_pstate_control();
-	static MSR_PSTATE_STATUS read_pstate_status();
-	static UINT64 read_aperf();
-	static UINT64 read_mperf();
-	static UINT64 read_aperf_read_only();
-	static UINT64 read_mperf_read_only();
-	static MSR_PSTATE read_pstate(int level);
+
+	static MSR_VM_CR VM_CR();
+	static VOID VM_CR(MSR_VM_CR vm_cr);
+
+	static MSR_EFER EFER();
+	static VOID EFER(MSR_EFER efer);
+
+	static MSR_PAT PAT();
+	static VOID PAT(MSR_PAT pat);
+
+	static UINT64 LSTAR();
+	static VOID LSTAR(UINT64 lstar);
+
+	static UINT64 FS_BASE();
+	static VOID FS_BASE(UINT64 fs_base);
+
+	static UINT64 GS_BASE();
+	static VOID GS_BASE(UINT64 gs_base);
+
+	static UINT64 HSAVE_PA();
+	static VOID HSAVE_PA(UINT64 hsave_pa);
+
+	static MSR_APIC_BASE APIC_BASE();
+	static VOID APIC_BASE(MSR_APIC_BASE apic_base);
+
+	static MSR_ICR ICR();
+	static VOID ICR(MSR_ICR icr);
+
+	static UINT64 SMBASE();
+
+	static MSR_SMM_BASE SMM_ADDR();
+
+	static MSR_SMM_MASK SMM_MASK();
+
+	static MSR_TSC_RATIO TSC_RATIO();
+
+	static MSR_PSTATE_CURRENT_LIMIT PSTATE_CURRENT_LIMIT();
+
+	static MSR_PSTATE_CONTROL PSTATE_CONTROL();
+
+	static MSR_PSTATE_STATUS PSTATE_STATUS();
+
+	static UINT64 APERF();
+
+	static UINT64 MPERF();
+
+	static UINT64 APERF_READ_ONLY();
+
+	static UINT64 MPERF_READ_ONLY();
+
+	static MSR_PSTATE PSTATE(int level);
+
+	static UINT64 TSC();
+	static VOID TSC(UINT64 tsc);
 };

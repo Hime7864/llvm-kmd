@@ -2,176 +2,176 @@
 
 NTSTATUS resolve_imports()
 {
-	auto kernel_base = Utils::GetKernelBase();
-	if (!kernel_base)
-		return STATUS_UNSUCCESSFUL;
+    auto kernel_base = Utils::GetKernelBase();
+    if (!kernel_base)
+        return STATUS_UNSUCCESSFUL;
 
-	fn_DbgPrintEx = (_DbgPrintEx)Utils::GetProcAddress(
-		kernel_base,
-		"DbgPrintEx"
-	);
+    NtImports::fn_ExAllocatePool = (decltype(NtImports::fn_ExAllocatePool))Utils::GetProcAddress(
+        kernel_base,
+        "ExAllocatePool"
+    );
 
-	fn_sprintf = (_sprintf)Utils::GetProcAddress(
-		kernel_base,
-		"sprintf"
-	);
+    NtImports::fn_ExFreePool = (decltype(NtImports::fn_ExFreePool))Utils::GetProcAddress(
+        kernel_base,
+        "ExFreePool"
+    );
 
-	fn_swprintf = (_swprintf)Utils::GetProcAddress(
-		kernel_base,
-		"swprintf"
-	);
+    NtImports::fn_DbgPrintEx = (decltype(NtImports::fn_DbgPrintEx))Utils::GetProcAddress(
+        kernel_base,
+        "DbgPrintEx"
+    );
 
-	fn_MmGetPhysicalAddress = (_MmGetPhysicalAddress)Utils::GetProcAddress(
-		kernel_base,
-		"MmGetPhysicalAddress"
-	);
+    NtImports::fn_sprintf = (decltype(NtImports::fn_sprintf))Utils::GetProcAddress(
+        kernel_base,
+        "sprintf"
+    );
 
-	fn_ExAllocatePool = (_ExAllocatePool)Utils::GetProcAddress(
-		kernel_base,
-		"ExAllocatePool"
-	);
+    NtImports::fn_swprintf = (decltype(NtImports::fn_swprintf))Utils::GetProcAddress(
+        kernel_base,
+        "swprintf"
+    );
 
-	fn_ExFreePool = (_ExFreePool)Utils::GetProcAddress(
-		kernel_base,
-		"ExFreePool"
-	);
+    NtImports::fn_IoAllocateMdl = (decltype(NtImports::fn_IoAllocateMdl))Utils::GetProcAddress(
+        kernel_base,
+        "IoAllocateMdl"
+    );
 
-	fn_DbgPrintEx = (_DbgPrintEx)Utils::GetProcAddress(
-		kernel_base,
-		"DbgPrintEx"
-	);
+    NtImports::fn_IoFreeMdl = (decltype(NtImports::fn_IoFreeMdl))Utils::GetProcAddress(
+        kernel_base,
+        "IoFreeMdl"
+    );
 
-	fn_IoAllocateMdl = (_IoAllocateMdl)Utils::GetProcAddress(
-		kernel_base,
-		"IoAllocateMdl"
-	);
+    NtImports::fn_KeQueryActiveProcessorCount = (decltype(NtImports::fn_KeQueryActiveProcessorCount))Utils::GetProcAddress(
+        kernel_base,
+        "KeQueryActiveProcessorCount"
+    );
 
-	fn_IoFreeMdl = (_IoFreeMdl)Utils::GetProcAddress(
-		kernel_base,
-		"IoFreeMdl"
-	);
+    NtImports::fn_MmGetPhysicalAddress = (decltype(NtImports::fn_MmGetPhysicalAddress))Utils::GetProcAddress(
+        kernel_base,
+        "MmGetPhysicalAddress"
+    );
 
-	fn_KeQueryActiveProcessorCount = (_KeQueryActiveProcessorCount)Utils::GetProcAddress(
-		kernel_base,
-		"KeQueryActiveProcessorCount"
-	);
+    NtImports::fn_MmGetVirtualForPhysical = (decltype(NtImports::fn_MmGetVirtualForPhysical))Utils::GetProcAddress(
+        kernel_base,
+        "MmGetVirtualForPhysical"
+    );
 
-	fn_MmGetPhysicalAddress = (_MmGetPhysicalAddress)Utils::GetProcAddress(
-		kernel_base,
-		"MmGetPhysicalAddress"
-	);
+    NtImports::fn_MmCopyMemory = (decltype(NtImports::fn_MmCopyMemory))Utils::GetProcAddress(
+        kernel_base,
+        "MmCopyMemory"
+    );
 
-	fn_MmGetVirtualForPhysical = (_MmGetVirtualForPhysical)Utils::GetProcAddress(
-		kernel_base,
-		"MmGetVirtualForPhysical"
-	);
+    NtImports::fn_MmMapIoSpace = (decltype(NtImports::fn_MmMapIoSpace))Utils::GetProcAddress(
+        kernel_base,
+        "MmMapIoSpace"
+    );
 
-	fn_MmCopyMemory = (_MmCopyMemory)Utils::GetProcAddress(
-		kernel_base,
-		"MmCopyMemory"
-	);
+    NtImports::fn_MmUnmapIoSpace = (decltype(NtImports::fn_MmUnmapIoSpace))Utils::GetProcAddress(
+        kernel_base,
+        "MmUnmapIoSpace"
+    );
 
-	fn_MmMapIoSpace = (_MmMapIoSpace)Utils::GetProcAddress(
-		kernel_base,
-		"MmMapIoSpace"
-	);
+    NtImports::fn_RtlCaptureContext = (decltype(NtImports::fn_RtlCaptureContext))Utils::GetProcAddress(
+        kernel_base,
+        "RtlCaptureContext"
+    );
 
-	fn_MmUnmapIoSpace = (_MmUnmapIoSpace)Utils::GetProcAddress(
-		kernel_base,
-		"MmUnmapIoSpace"
-	);
+    NtImports::fn_KeStackAttachProcess = (decltype(NtImports::fn_KeStackAttachProcess))Utils::GetProcAddress(
+        kernel_base,
+        "KeStackAttachProcess"
+    );
 
-	fn_RtlCaptureContext = (_RtlCaptureContext)Utils::GetProcAddress(
-		kernel_base,
-		"RtlCaptureContext"
-	);
+    NtImports::fn_KeUnstackDetachProcess = (decltype(NtImports::fn_KeUnstackDetachProcess))Utils::GetProcAddress(
+        kernel_base,
+        "KeUnstackDetachProcess"
+    );
 
-	fn_KeStackAttachProcess = (_KeStackAttachProcess)Utils::GetProcAddress(
-		kernel_base,
-		"KeStackAttachProcess"
-	);
+    NtImports::fn_KeDelayExecutionThread = (decltype(NtImports::fn_KeDelayExecutionThread))Utils::GetProcAddress(
+        kernel_base,
+        "KeDelayExecutionThread"
+    );
 
-	fn_KeUnstackDetachProcess = (_KeUnstackDetachProcess)Utils::GetProcAddress(
-		kernel_base,
-		"KeUnstackDetachProcess"
-	);
+    NtImports::fn_PsCreateSystemThread = (decltype(NtImports::fn_PsCreateSystemThread))Utils::GetProcAddress(
+        kernel_base,
+        "PsCreateSystemThread"
+    );
 
-	fn_KeDelayExecutionThread = (_KeDelayExecutionThread)Utils::GetProcAddress(
-		kernel_base,
-		"KeDelayExecutionThread"
-	);
+    NtImports::fn_PsTerminateSystemThread = (decltype(NtImports::fn_PsTerminateSystemThread))Utils::GetProcAddress(
+        kernel_base,
+        "PsTerminateSystemThread"
+    );
 
-	fn_PsCreateSystemThread = (_PsCreateSystemThread)Utils::GetProcAddress(
-		kernel_base,
-		"PsCreateSystemThread"
-	);
+    NtImports::fn_KeIpiGenericCall = (decltype(NtImports::fn_KeIpiGenericCall))Utils::GetProcAddress(
+        kernel_base,
+        "KeIpiGenericCall"
+    );
 
-	fn_PsTerminateSystemThread = (_PsTerminateSystemThread)Utils::GetProcAddress(
-		kernel_base,
-		"PsTerminateSystemThread"
-	);
+    NtImports::fn_MmGetPhysicalMemoryRanges = (decltype(NtImports::fn_MmGetPhysicalMemoryRanges))Utils::GetProcAddress(
+        kernel_base,
+        "MmGetPhysicalMemoryRanges"
+    );
 
-	fn_KeIpiGenericCall = (_KeIpiGenericCall)Utils::GetProcAddress(
-		kernel_base,
-		"KeIpiGenericCall"
-	);
+    NtImports::fn_RtlCopyMemory = (decltype(NtImports::fn_RtlCopyMemory))Utils::GetProcAddress(
+        kernel_base,
+        "RtlCopyMemory"
+    );
 
-	fn_MmGetPhysicalMemoryRanges = (_MmGetPhysicalMemoryRanges)Utils::GetProcAddress(
-		kernel_base,
-		"MmGetPhysicalMemoryRanges"
-	);
+    NtImports::fn_RtlFillMemory = (decltype(NtImports::fn_RtlFillMemory))Utils::GetProcAddress(
+        kernel_base,
+        "RtlFillMemory"
+    );
 
-	fn_RtlCopyMemory = (_RtlCopyMemory)Utils::GetProcAddress(
-		kernel_base,
-		"RtlCopyMemory"
-	);
+    NtImports::fn_MmAllocateContiguousMemorySpecifyCacheNode = (decltype(NtImports::fn_MmAllocateContiguousMemorySpecifyCacheNode))Utils::GetProcAddress(
+        kernel_base,
+        "MmAllocateContiguousMemorySpecifyCacheNode"
+    );
 
-	fn_RtlFillMemory = (_RtlFillMemory)Utils::GetProcAddress(
-		kernel_base,
-		"RtlFillMemory"
-	);
+    NtImports::fn_MmFreeContiguousMemorySpecifyCache = (decltype(NtImports::fn_MmFreeContiguousMemorySpecifyCache))Utils::GetProcAddress(
+        kernel_base,
+        "MmFreeContiguousMemorySpecifyCache"
+    );
 
-	fn_MmAllocateContiguousMemorySpecifyCacheNode = (_MmAllocateContiguousMemorySpecifyCacheNode)Utils::GetProcAddress(
-		kernel_base,
-		"MmAllocateContiguousMemorySpecifyCacheNode"
-	);
+    NtImports::fn_PsInitialSystemProcess = (decltype(NtImports::fn_PsInitialSystemProcess))Utils::GetProcAddress(
+        kernel_base,
+        "PsInitialSystemProcess"
+    );
 
-	fn_MmFreeContiguousMemorySpecifyCache = (_MmFreeContiguousMemorySpecifyCache)Utils::GetProcAddress(
-		kernel_base,
-		"MmFreeContiguousMemorySpecifyCache"
-	);
+    NtImports::fn_RtlInitUnicodeString = (decltype(NtImports::fn_RtlInitUnicodeString))Utils::GetProcAddress(
+        kernel_base,
+        "RtlInitUnicodeString"
+    );
 
-	fn_PsInitialSystemProcess = (_PsInitialSystemProcess)Utils::GetProcAddress(
-		kernel_base,
-		"PsInitialSystemProcess"
-	);
+    NtImports::fn_ZwCreateFile = (decltype(NtImports::fn_ZwCreateFile))Utils::GetProcAddress(
+        kernel_base,
+        "ZwCreateFile"
+    );
 
-	fn_RtlInitUnicodeString = (_RtlInitUnicodeString)Utils::GetProcAddress(
-		kernel_base,
-		"RtlInitUnicodeString"
-	);
+    NtImports::fn_ZwWriteFile = (decltype(NtImports::fn_ZwWriteFile))Utils::GetProcAddress(
+        kernel_base,
+        "ZwWriteFile"
+    );
 
-	fn_ZwCreateFile = (_ZwCreateFile)Utils::GetProcAddress(
-		kernel_base,
-		"ZwCreateFile"
-	);
+    NtImports::fn_ZwReadFile = (decltype(NtImports::fn_ZwReadFile))Utils::GetProcAddress(
+        kernel_base,
+        "ZwReadFile"
+    );
 
-	fn_ZwWriteFile = (_ZwWriteFile)Utils::GetProcAddress(
-		kernel_base,
-		"ZwWriteFile"
-	);
+    NtImports::fn_ZwClose = (decltype(NtImports::fn_ZwClose))Utils::GetProcAddress(
+        kernel_base,
+        "ZwClose"
+    );
 
-	fn_ZwClose = (_ZwClose)Utils::GetProcAddress(
-		kernel_base,
-		"ZwClose"
-	);
+    NtImports::fn_KeGetCurrentThread = (decltype(NtImports::fn_KeGetCurrentThread))Utils::GetProcAddress(
+        kernel_base,
+        "KeGetCurrentThread"
+    );
 
-	fn_KeGetCurrentThread = (_KeGetCurrentThread)Utils::GetProcAddress(
-		kernel_base,
-		"KeGetCurrentThread"
-	);
+    NtImports::fn_GetUniqueProcessId = (decltype(NtImports::fn_GetUniqueProcessId))Utils::GetProcAddress(
+        kernel_base,
+        "PsGetProcessId"
+    );
 
-	return STATUS_SUCCESS;
+    return STATUS_SUCCESS;
 }
 
 NTSTATUS resolve_sigged_imports()
@@ -184,8 +184,8 @@ NTSTATUS resolve_sigged_imports()
 	if (!NT_SUCCESS(Utils::GetSectionInfo(kernel_base, ".text", &kernel_text_base, &kernel_text_size)))
 		return STATUS_UNSUCCESSFUL;
 
-	fn_MmPfnDatabase = (_MmPfnDatabase)Utils::deref(3, Utils::sig_scan(kernel_text_base, kernel_text_size, "48 8B 3D ? ? ? ? 48 C1 EF 09"));
-
+	NtImports::fn_MmPfnDatabase = (decltype(NtImports::fn_MmPfnDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, "48 8B 3D ? ? ? ? 48 C1 EF 09"));
+	
 	return STATUS_SUCCESS;
 }
 
@@ -197,9 +197,9 @@ void FreeAndExit(PVOID last_thread)
 		return;
 	__writecr8(0);
 	Sleep(250);
-	QWORD func1 = (QWORD)fn_ExFreePool;
-	QWORD func2 = (QWORD)fn_PsTerminateSystemThread;
-	auto func3 = fn_RtlFillMemory;
+	QWORD func1 = (QWORD)NtImports::fn_ExFreePool;
+	QWORD func2 = (QWORD)NtImports::fn_PsTerminateSystemThread;
+	auto func3 = NtImports::fn_RtlFillMemory;
 	auto func_base = (PVOID)FreeAndExit;
 	auto range1 = ((QWORD)func_base - host_driver_base) - 8;
 	auto range2 = (host_driver_size - (range1 + 0x110));

@@ -1,6 +1,6 @@
 #include "imports.hpp"
 
-QWORD Utils::deref(BYTE count, QWORD address)
+QWORD Utils::ResolveRel32(BYTE count, QWORD address)
 {
     if (address)
         return address + *(int*)(address + count) + count + 4;
@@ -9,7 +9,7 @@ QWORD Utils::deref(BYTE count, QWORD address)
 
 #define TO_BYTE(c) ((c) >= '0' && (c) <= '9' ? (c) - '0' : ((c) >= 'A' && (c) <= 'F' ? (c) - 'A' + 10 : ((c) >= 'a' && (c) <= 'f' ? (c) - 'a' + 10 : 0)))
 
-QWORD Utils::sig_scan(QWORD scan_start, QWORD max_scan, const char* ida_sig)
+QWORD Utils::SigScan(QWORD scan_start, QWORD max_scan, const char* ida_sig)
 {
     BYTE* start = (BYTE*)scan_start;
     BYTE* end = start + max_scan;
@@ -34,7 +34,7 @@ QWORD Utils::sig_scan(QWORD scan_start, QWORD max_scan, const char* ida_sig)
     return 0;
 }
 
-QWORD Utils::sig_scan_safe(QWORD scan_start, QWORD max_scan, const char* ida_sig)
+QWORD Utils::SigScan_s(QWORD scan_start, QWORD max_scan, const char* ida_sig)
 {
     BYTE* start = (BYTE*)scan_start;
     BYTE* end = start + max_scan;
@@ -64,7 +64,7 @@ QWORD Utils::sig_scan_safe(QWORD scan_start, QWORD max_scan, const char* ida_sig
     return 0;
 }
 
-QWORD Utils::sig_scan_reverse(QWORD scan_start, QWORD max_scan, const char* ida_sig)
+QWORD Utils::SigScanBack(QWORD scan_start, QWORD max_scan, const char* ida_sig)
 {
     BYTE* start = (BYTE*)scan_start;
     BYTE* end = (BYTE*)(scan_start - max_scan);
@@ -92,9 +92,9 @@ QWORD Utils::sig_scan_reverse(QWORD scan_start, QWORD max_scan, const char* ida_
 
 QWORD Utils::GetKernelBase()
 {
-    auto sig = sig_scan(MSR::read_lstar() & ~0xFFFFFULL, 0xA00000ULL, "66 89 05 ? ? ? ? 48 8D 05 ? ? ? ? 48 89");
+    auto sig = SigScan(MSR::LSTAR() & ~0xFFFFFULL, 0xA00000ULL, "66 89 05 ? ? ? ? 48 8D 05 ? ? ? ? 48 89");
     if (!sig) return 0;
-    return *(QWORD*)(*(QWORD*)deref(3, sig + 0x07) + 0x30);
+    return *(QWORD*)(*(QWORD*)ResolveRel32(3, sig + 0x07) + 0x30);
 }
 
 QWORD Utils::GetProcAddress(QWORD module, const char* export_name)
@@ -122,7 +122,7 @@ QWORD Utils::GetProcAddress(QWORD module, const char* export_name)
     {
         DWORD name_rva = *(DWORD*)(module + address_of_names + i * 4);
         const char* function_name = (const char*)(module + name_rva);
-        if (strcmp(function_name, export_name, strlen(export_name)) == 0)
+        if (strncmp(function_name, export_name, strlen(export_name)) == 0)
         {
             WORD ordinal = *(WORD*)(module + address_of_name_ordinals + i * 2);
             DWORD function_rva = *(DWORD*)(module + address_of_functions + ordinal * 4);
@@ -161,6 +161,9 @@ NTSTATUS Utils::GetSectionInfo(QWORD module_base, const char* section_name, QWOR
 NTSTATUS Utils::ReadPhysical(PHYSICAL_ADDRESS address, PVOID buffer, SIZE_T size)
 {
 	SIZE_T bytesRead = 0;
+	auto irql = __readcr8();
+	__writecr8(1);
+	
 	auto status = MmCopyMemory(
 		buffer,
 		address,
@@ -168,6 +171,27 @@ NTSTATUS Utils::ReadPhysical(PHYSICAL_ADDRESS address, PVOID buffer, SIZE_T size
 		MM_COPY_MEMORY_PHYSICAL,
 		&bytesRead
 	);
+
+	if (status == STATUS_INVALID_ADDRESS)
+	{
+		auto va = MmMapIoSpace(
+			address, 
+			size, 
+			MmNonCached
+		);
+		if (va)
+		{
+			RtlCopyMemory(
+				buffer,
+				va,
+				size
+			);
+			status = STATUS_SUCCESS;
+			MmUnmapIoSpace(va, size);
+		}
+	}
+
+	__writecr8(irql);
 	return status;
 }
 
@@ -184,7 +208,7 @@ PHYSICAL_ADDRESS Utils::LinearTranslatePPte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS
 	UINT64 idx[4]{
 		8ull * rva.pml4e_index,
 		8ull * rva.pdpte_index,
-		8ull * rva.pdte_index,
+		8ull * rva.pde_index,
 		8ull * rva.pte_index
 	};
 
@@ -230,7 +254,7 @@ MMPTE_HARDWARE Utils::LinearTranslatePte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rv
 	UINT64 idx[4]{
 		8ull * rva.pml4e_index,
 		8ull * rva.pdpte_index,
-		8ull * rva.pdte_index,
+		8ull * rva.pde_index,
 		8ull * rva.pte_index
 	};
 
@@ -276,7 +300,7 @@ PHYSICAL_ADDRESS Utils::LinearTranslate(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva
 	UINT64 idx[4]{
 		8ull * rva.pml4e_index,
 		8ull * rva.pdpte_index,
-		8ull * rva.pdte_index,
+		8ull * rva.pde_index,
 		8ull * rva.pte_index
 	};
 
@@ -322,7 +346,7 @@ NTSTATUS Utils::ReadLinear(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva, PVOID buffe
 	UINT64 idx[4]{
 		8ull * rva.pml4e_index,
 		8ull * rva.pdpte_index,
-		8ull * rva.pdte_index,
+		8ull * rva.pde_index,
 		8ull * rva.pte_index
 	};
 
@@ -400,7 +424,7 @@ NTSTATUS Utils::LocateSelf(QWORD* module_base, QWORD* module_size)
 
 
 	auto first_page = ((UINT64)memcpy) & ~0xFFFULL;
-	auto last_page = sig_scan_safe(first_page, 0x200000, "52 65 74 70 6F 6C 69 6E 65 56 31");
+	auto last_page = Utils::SigScan_s(first_page, 0x200000, "52 65 74 70 6F 6C 69 6E 65 56 31");
 	if (!last_page)
 		return STATUS_UNSUCCESSFUL;
 

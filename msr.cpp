@@ -1,151 +1,151 @@
 #include "imports.hpp"
 
-MSR_VM_CR MSR::read_vm_cr()
+MSR_VM_CR MSR::VM_CR()
 {
 	return { .AsUINT64 = __readmsr(_MSR_VM_CR) };
 }
 
-void MSR::write_vm_cr(MSR_VM_CR vm_cr)
+VOID MSR::VM_CR(MSR_VM_CR vm_cr)
 {
-	return __writemsr(_MSR_VM_CR, vm_cr.AsUINT64);
+	__writemsr(_MSR_VM_CR, vm_cr.AsUINT64);
 }
 
-MSR_EFER MSR::read_efer()
+MSR_EFER MSR::EFER()
 {
 	return { .AsUINT64 = __readmsr(_MSR_EFER) };
 }
 
-void MSR::write_efer(MSR_EFER efer)
+VOID MSR::EFER(MSR_EFER efer)
 {
-	return __writemsr(_MSR_EFER, efer.AsUINT64);
+	__writemsr(_MSR_EFER, efer.AsUINT64);
 }
 
-MSR_PAT MSR::read_pat()
+MSR_PAT MSR::PAT()
 {
 	return { .AsUINT64 = __readmsr(_MSR_PAT) };
 }
 
-void MSR::write_pat(MSR_PAT pat)
+VOID MSR::PAT(MSR_PAT pat)
 {
-	return __writemsr(_MSR_PAT, pat.AsUINT64);
+	__writemsr(_MSR_PAT, pat.AsUINT64);
 }
 
-UINT64 MSR::read_lstar()
+UINT64 MSR::LSTAR()
 {
 	return __readmsr(_MSR_LSTAR);
 }
 
-void MSR::write_lstar(UINT64 lstar)
+VOID MSR::LSTAR(UINT64 lstar)
 {
 	__writemsr(_MSR_LSTAR, lstar);
 }
 
-UINT64 MSR::read_fs_base()
+UINT64 MSR::FS_BASE()
 {
 	return __readmsr(_MSR_FS_BASE);
 }
 
-void MSR::write_fs_base(UINT64 fs_base)
+VOID MSR::FS_BASE(UINT64 fs_base)
 {
 	__writemsr(_MSR_FS_BASE, fs_base);
 }
 
-UINT64 MSR::read_gs_base()
+UINT64 MSR::GS_BASE()
 {
 	return __readmsr(_MSR_GS_BASE);
 }
 
-void MSR::write_gs_base(UINT64 gs_base)
+VOID MSR::GS_BASE(UINT64 gs_base)
 {
 	__writemsr(_MSR_GS_BASE, gs_base);
 }
 
-PHYSICAL_ADDRESS MSR::read_hsave_pa()
+UINT64 MSR::HSAVE_PA()
 {
 	return __readmsr(_MSR_HSAVE_PA);
 }
 
-void MSR::write_hsave_pa(PHYSICAL_ADDRESS hsave_pa)
+VOID MSR::HSAVE_PA(UINT64 hsave_pa)
 {
 	__writemsr(_MSR_HSAVE_PA, hsave_pa);
 }
 
-MSR_APIC_BASE MSR::read_apic_base()
+MSR_APIC_BASE MSR::APIC_BASE()
 {
 	return { .AsUINT64 = __readmsr(_MSR_APIC_BASE) };
 }
 
-void MSR::write_apic_base(MSR_APIC_BASE apic_base)
+VOID MSR::APIC_BASE(MSR_APIC_BASE apic_base)
 {
 	__writemsr(_MSR_APIC_BASE, apic_base.AsUINT64);
 }
 
-MSR_ICR MSR::read_icr()
+MSR_ICR MSR::ICR()
 {
 	return { .AsUINT64 = __readmsr(_MSR_ICR) };
 }
 
-void MSR::write_icr(MSR_ICR icr)
+VOID MSR::ICR(MSR_ICR icr)
 {
 	__writemsr(_MSR_ICR, icr.AsUINT64);
 }
 
-UINT64 MSR::read_smbase()
+UINT64 MSR::SMBASE()
 {
 	return __readmsr(_MSR_SMBASE);
 }
 
-MSR_SMM_BASE MSR::read_smm_addr()
+MSR_SMM_BASE MSR::SMM_ADDR()
 {
 	return { .AsUINT64 = __readmsr(_MSR_SMM_ADDR) };
 }
 
-MSR_SMM_MASK MSR::read_smm_mask()
+MSR_SMM_MASK MSR::SMM_MASK()
 {
 	return { .AsUINT64 = __readmsr(_MSR_SMM_MASK) };
 }
 
-MSR_TSC_RATIO MSR::read_tsc_ratio()
+MSR_TSC_RATIO MSR::TSC_RATIO()
 {
 	return { .AsUINT64 = __readmsr(_MSR_TSC_RATIO) };
 }
 
-MSR_PSTATE_CURRENT_LIMIT MSR::read_pstate_current_limit()
+MSR_PSTATE_CURRENT_LIMIT MSR::PSTATE_CURRENT_LIMIT()
 {
 	return { .AsUINT64 = __readmsr(_MSR_PSTATE_CURRENT_LIMIT) };
 }
 
-MSR_PSTATE_CONTROL MSR::read_pstate_control()
+MSR_PSTATE_CONTROL MSR::PSTATE_CONTROL()
 {
 	return { .AsUINT64 = __readmsr(_MSR_PSTATE_CONTROL) };
 }
 
-MSR_PSTATE_STATUS MSR::read_pstate_status()
+MSR_PSTATE_STATUS MSR::PSTATE_STATUS()
 {
 	return { .AsUINT64 = __readmsr(_MSR_PSTATE_STATUS) };
 }
 
-UINT64 MSR::read_aperf()
+UINT64 MSR::APERF()
 {
 	return __readmsr(_MSR_APERF);
 }
 
-UINT64 MSR::read_mperf()
+UINT64 MSR::MPERF()
 {
 	return __readmsr(_MSR_MPERF);
 }
 
-UINT64 MSR::read_aperf_read_only()
+UINT64 MSR::APERF_READ_ONLY()
 {
 	return __readmsr(_MSR_APERF_READ_ONLY);
 }
 
-UINT64 MSR::read_mperf_read_only()
+UINT64 MSR::MPERF_READ_ONLY()
 {
 	return __readmsr(_MSR_MPERF_READ_ONLY);
 }
 
-MSR_PSTATE MSR::read_pstate(int level)
+MSR_PSTATE MSR::PSTATE(int level)
 {
 	switch (level)
 	{
@@ -160,20 +160,12 @@ MSR_PSTATE MSR::read_pstate(int level)
 	}
 }
 
-UINT64 MSR_PSTATE::get_frequency_mhz()
+UINT64 MSR::TSC()
 {
-	return ((CpuFid + 16ll) * 100ll) / (1ll << CpuDfsId) * 2000000ll;
+	return __readmsr(_MSR_TSC);
 }
 
-UINT64 MSR_PSTATE::get_performance_mhz()
+VOID MSR::TSC(UINT64 tsc)
 {
-	auto mperf_init = MSR::read_mperf();
-	auto aperf_init = MSR::read_aperf();
-	for (int i = 0; i < 100000; i++)
-		__asm { pause };
-	auto perf = (UINT64)(
-		(double)(MSR::read_aperf() - aperf_init) /
-		((double)(MSR::read_mperf() - mperf_init)
-			) * (double)get_frequency_mhz());
-	return perf;
+	__writemsr(_MSR_TSC, tsc);
 }

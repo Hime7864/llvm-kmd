@@ -4,7 +4,7 @@
 #include "msr.hpp"
 #include "utils.hpp"
 
-#include "nt_exports.hpp"
+#include "nt_imports.hpp"
 #include "nt_structs.hpp"
 #include "nt_methods.hpp"
 
@@ -23,5 +23,10 @@ inline void Sleep(_In_ UINT32 milliseconds)
 	interval.QuadPart = -(10 * 1000 * (__int64)milliseconds); // Negative value for relative time
 	KeDelayExecutionThread(KernelMode, FALSE, &interval);
 }
+
+#include "vmcb.hpp"
+#include "msprm.hpp"
+#include "vcore.hpp"
+#include "svm.hpp"
 
 #include "main.hpp"

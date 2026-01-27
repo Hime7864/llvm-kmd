@@ -1,11 +1,18 @@
 #include "basics.hpp"
 
-extern "C" {
-    int __cdecl memcmp(void* dst, void* src, size_t size)
+extern "C"
+{
+    int __cdecl memcmp(const void* buf1, const void* buf2, size_t size)
     {
+        if (!buf1 || !buf2)
+            return 0;
+
+        const BYTE* ptr1 = static_cast<const BYTE*>(buf1);
+        const BYTE* ptr2 = static_cast<const BYTE*>(buf2);
+
         for (size_t i = 0; i < size; ++i) {
-            if (((BYTE*)dst)[i] != ((BYTE*)src)[i]) {
-                return ((BYTE*)dst)[i] - ((BYTE*)src)[i];
+            if (ptr1[i] != ptr2[i]) {
+                return ptr1[i] - ptr2[i];
             }
         }
         return 0;
@@ -13,13 +20,13 @@ extern "C" {
 
     void* __cdecl memcpy(void* Destination, const void* Source, size_t Length)
     {
-        // Ensure non-null pointers for robustness
-        if (!Destination || !Source) return nullptr;
+        if (!Destination || !Source || Length == 0)
+            return Destination;
 
         auto* dest = static_cast<UINT8*>(Destination);
         auto* src = static_cast<const UINT8*>(Source);
 
-        // Copy in chunks of 16 bytes
+        // Copy in chunks of 16 bytes (128-bit)
         while (Length >= 16) {
             *reinterpret_cast<UINT128*>(dest) = *reinterpret_cast<const UINT128*>(src);
             dest += 16;
@@ -27,7 +34,7 @@ extern "C" {
             Length -= 16;
         }
 
-        // Copy remaining chunks of 8 bytes
+        // Copy remaining chunks of 8 bytes (64-bit)
         if (Length >= 8) {
             *reinterpret_cast<UINT64*>(dest) = *reinterpret_cast<const UINT64*>(src);
             dest += 8;
@@ -35,7 +42,7 @@ extern "C" {
             Length -= 8;
         }
 
-        // Copy remaining chunks of 4 bytes
+        // Copy remaining chunks of 4 bytes (32-bit)
         if (Length >= 4) {
             *reinterpret_cast<UINT32*>(dest) = *reinterpret_cast<const UINT32*>(src);
             dest += 4;
@@ -43,7 +50,7 @@ extern "C" {
             Length -= 4;
         }
 
-        // Copy remaining chunks of 2 bytes
+        // Copy remaining chunks of 2 bytes (16-bit)
         if (Length >= 2) {
             *reinterpret_cast<UINT16*>(dest) = *reinterpret_cast<const UINT16*>(src);
             dest += 2;
@@ -51,9 +58,45 @@ extern "C" {
             Length -= 2;
         }
 
-        // Copy the last byte (if Length == 1)
-        if (Length >= 1) {
-            *reinterpret_cast<UINT8*>(dest) = *reinterpret_cast<const UINT8*>(src);
+        // Copy the last byte (8-bit)
+        if (Length == 1) {
+            *dest = *src;
+        }
+
+        return Destination;
+    }
+
+    void* __cdecl memmove(void* Destination, const void* Source, size_t Length)
+    {
+        if (!Destination || !Source || Length == 0)
+            return Destination;
+
+        auto* dest = static_cast<UINT8*>(Destination);
+        auto* src = static_cast<const UINT8*>(Source);
+
+        // Check for overlap and copy in appropriate direction
+        if (dest < src || dest >= (src + Length)) {
+            // No overlap or destination is before source - copy forward
+            return memcpy(Destination, Source, Length);
+        }
+        else {
+            // Overlap detected - copy backward
+            dest += Length;
+            src += Length;
+
+            while (Length >= 8) {
+                dest -= 8;
+                src -= 8;
+                *reinterpret_cast<UINT64*>(dest) = *reinterpret_cast<const UINT64*>(src);
+                Length -= 8;
+            }
+
+            while (Length > 0) {
+                dest--;
+                src--;
+                *dest = *src;
+                Length--;
+            }
         }
 
         return Destination;
@@ -61,175 +104,465 @@ extern "C" {
 
     void* __cdecl memset(void* Destination, int Value, size_t Length)
     {
+        if (!Destination || Length == 0)
+            return Destination;
+
         char* q = (char*)Destination;
         char* end = q + Length;
+        char val = (char)Value;
+
         for (;;) {
-            if (q >= end) break; *q++ = (char)Value;
-            if (q >= end) break; *q++ = (char)Value;
-            if (q >= end) break; *q++ = (char)Value;
-            if (q >= end) break; *q++ = (char)Value;
+            if (q >= end) break; *q++ = val;
+            if (q >= end) break; *q++ = val;
+            if (q >= end) break; *q++ = val;
+            if (q >= end) break; *q++ = val;
+            if (q >= end) break; *q++ = val;
+            if (q >= end) break; *q++ = val;
+            if (q >= end) break; *q++ = val;
+            if (q >= end) break; *q++ = val;
         }
         return Destination;
     }
 
+    void* __cdecl memzero(void* Destination, size_t Length)
+    {
+        return memset(Destination, 0, Length);
+    }
+
     size_t __cdecl strlen(const char* str)
     {
-        size_t len = 0;
-        while (str[len] != '\0') {
-            len++;
-        }
-        return len;
+        if (!str)
+            return 0;
+
+        const char* s = str;
+        while (*s)
+            ++s;
+        return s - str;
     }
 
     size_t __cdecl wcslen(const wchar_t* str)
     {
-        size_t len = 0;
-        while (str[len] != L'\0') {
-            len++;
+        if (!str)
+            return 0;
+
+        const wchar_t* s = str;
+        while (*s)
+            ++s;
+        return s - str;
+    }
+
+    size_t __cdecl strnlen(const char* str, size_t max_count)
+    {
+        if (!str)
+            return 0;
+
+        const char* s = str;
+        size_t count = 0;
+        while (*s && count < max_count) {
+            ++s;
+            ++count;
         }
-        return len;
+        return count;
+    }
+
+    size_t __cdecl wcsnlen(const wchar_t* str, size_t max_count)
+    {
+        if (!str)
+            return 0;
+
+        const wchar_t* s = str;
+        size_t count = 0;
+        while (*s && count < max_count) {
+            ++s;
+            ++count;
+        }
+        return count;
+    }
+
+    char* __cdecl strcpy(char* dest, const char* src)
+    {
+        if (!dest || !src)
+            return dest;
+
+        char* original_dest = dest;
+        while ((*dest++ = *src++) != '\0');
+        return original_dest;
+    }
+
+    wchar_t* __cdecl wcscpy(wchar_t* dest, const wchar_t* src)
+    {
+        if (!dest || !src)
+            return dest;
+
+        wchar_t* original_dest = dest;
+        while ((*dest++ = *src++) != L'\0');
+        return original_dest;
+    }
+
+    char* __cdecl strncpy(char* dest, const char* src, size_t count)
+    {
+        if (!dest || !src)
+            return dest;
+
+        char* original_dest = dest;
+        while (count && (*dest++ = *src++) != '\0')
+            --count;
+
+        while (count--)
+            *dest++ = '\0';
+
+        return original_dest;
+    }
+
+    wchar_t* __cdecl wcsncpy(wchar_t* dest, const wchar_t* src, size_t count)
+    {
+        if (!dest || !src)
+            return dest;
+
+        wchar_t* original_dest = dest;
+        while (count && (*dest++ = *src++) != L'\0')
+            --count;
+
+        while (count--)
+            *dest++ = L'\0';
+
+        return original_dest;
+    }
+
+    char* __cdecl strcat(char* dest, const char* src)
+    {
+        if (!dest || !src)
+            return dest;
+
+        char* original_dest = dest;
+        while (*dest)
+            ++dest;
+        while ((*dest++ = *src++) != '\0');
+        return original_dest;
+    }
+
+    wchar_t* __cdecl wcscat(wchar_t* dest, const wchar_t* src)
+    {
+        if (!dest || !src)
+            return dest;
+
+        wchar_t* original_dest = dest;
+        while (*dest)
+            ++dest;
+        while ((*dest++ = *src++) != L'\0');
+        return original_dest;
     }
 
     char __cdecl tolower(char ch)
     {
         if (ch >= 'A' && ch <= 'Z')
-            return ch + 32;
+            return ch + ('a' - 'A');
         return ch;
     }
 
     wchar_t __cdecl towlower(wchar_t ch)
     {
         if (ch >= L'A' && ch <= L'Z')
-            return ch + 32;
+            return ch + (L'a' - L'A');
         return ch;
     }
 
     char __cdecl toupper(char ch)
     {
         if (ch >= 'a' && ch <= 'z')
-            return ch - 32;
+            return ch - ('a' - 'A');
         return ch;
     }
 
     wchar_t __cdecl towupper(wchar_t ch)
     {
         if (ch >= L'a' && ch <= L'z')
-            return ch - 32;
+            return ch - (L'a' - L'A');
         return ch;
     }
 
-    int __cdecl strcmp(const char* str1, const char* str2, size_t max = 255)
+    int __cdecl strcmp(const char* str1, const char* str2)
     {
-        while (*str1 && *str2 && tolower(*str1) == tolower(*str2))
-        {
-            str1++;
-            str2++;
-            if (--max == 0)
-                return 0;
+        if (!str1 || !str2)
+            return 0;
+
+        while (*str1 && (*str1 == *str2)) {
+            ++str1;
+            ++str2;
+        }
+        return (unsigned char)(*str1) - (unsigned char)(*str2);
+    }
+
+    int __cdecl strncmp(const char* str1, const char* str2, size_t count)
+    {
+        if (!str1 || !str2 || count == 0)
+            return 0;
+
+        while (count && *str1 && (*str1 == *str2)) {
+            ++str1;
+            ++str2;
+            --count;
+        }
+
+        if (count == 0)
+            return 0;
+
+        return (unsigned char)(*str1) - (unsigned char)(*str2);
+    }
+
+    int __cdecl wcscmp(const wchar_t* str1, const wchar_t* str2)
+    {
+        if (!str1 || !str2)
+            return 0;
+
+        while (*str1 && (*str1 == *str2)) {
+            ++str1;
+            ++str2;
+        }
+        return *str1 - *str2;
+    }
+
+    int __cdecl wcsncmp(const wchar_t* str1, const wchar_t* str2, size_t count)
+    {
+        if (!str1 || !str2 || count == 0)
+            return 0;
+
+        while (count && *str1 && (*str1 == *str2)) {
+            ++str1;
+            ++str2;
+            --count;
+        }
+
+        if (count == 0)
+            return 0;
+
+        return *str1 - *str2;
+    }
+
+    int __cdecl _stricmp(const char* str1, const char* str2)
+    {
+        if (!str1 || !str2)
+            return 0;
+
+        while (*str1 && (tolower(*str1) == tolower(*str2))) {
+            ++str1;
+            ++str2;
         }
         return tolower(*str1) - tolower(*str2);
     }
 
-    int __cdecl wcscmp(const wchar_t* str1, const wchar_t* str2, size_t max = 255)
+    int __cdecl _strnicmp(const char* str1, const char* str2, size_t count)
     {
-        while (*str1 && *str2 && towlower(*str1) == towlower(*str2))
-        {
-            str1++;
-            str2++;
-            if (--max == 0)
-                return 0;
+        if (!str1 || !str2 || count == 0)
+            return 0;
+
+        while (count && *str1 && (tolower(*str1) == tolower(*str2))) {
+            ++str1;
+            ++str2;
+            --count;
+        }
+
+        if (count == 0)
+            return 0;
+
+        return tolower(*str1) - tolower(*str2);
+    }
+
+    int __cdecl _wcsicmp(const wchar_t* str1, const wchar_t* str2)
+    {
+        if (!str1 || !str2)
+            return 0;
+
+        while (*str1 && (towlower(*str1) == towlower(*str2))) {
+            ++str1;
+            ++str2;
         }
         return towlower(*str1) - towlower(*str2);
     }
 
-    UINT64 __readcr0()
+    int __cdecl _wcsnicmp(const wchar_t* str1, const wchar_t* str2, size_t count)
     {
-        UINT64 result = 0;
+        if (!str1 || !str2 || count == 0)
+            return 0;
+
+        while (count && *str1 && (towlower(*str1) == towlower(*str2))) {
+            ++str1;
+            ++str2;
+            --count;
+        }
+
+        if (count == 0)
+            return 0;
+
+        return towlower(*str1) - towlower(*str2);
+    }
+
+    char* __cdecl strchr(const char* str, int ch)
+    {
+        if (!str)
+            return NULL;
+
+        while (*str) {
+            if (*str == (char)ch)
+                return (char*)str;
+            ++str;
+        }
+        return NULL;
+    }
+
+    wchar_t* __cdecl wcschr(const wchar_t* str, wchar_t ch)
+    {
+        if (!str)
+            return NULL;
+
+        while (*str) {
+            if (*str == ch)
+                return (wchar_t*)str;
+            ++str;
+        }
+        return NULL;
+    }
+
+    char* __cdecl strrchr(const char* str, int ch)
+    {
+        if (!str)
+            return NULL;
+
+        const char* last = NULL;
+        while (*str) {
+            if (*str == (char)ch)
+                last = str;
+            ++str;
+        }
+        return (char*)last;
+    }
+
+    char* __cdecl strstr(const char* str, const char* substr)
+    {
+        if (!str || !substr)
+            return NULL;
+
+        if (*substr == '\0')
+            return (char*)str;
+
+        for (const char* s = str; *s; ++s) {
+            const char* s1 = s;
+            const char* s2 = substr;
+
+            while (*s1 && *s2 && (*s1 == *s2)) {
+                ++s1;
+                ++s2;
+            }
+
+            if (*s2 == '\0')
+                return (char*)s;
+        }
+
+        return NULL;
+    }
+
+    wchar_t* __cdecl wcsstr(const wchar_t* str, const wchar_t* substr)
+    {
+        if (!str || !substr)
+            return NULL;
+
+        if (*substr == L'\0')
+            return (wchar_t*)str;
+
+        for (const wchar_t* s = str; *s; ++s) {
+            const wchar_t* s1 = s;
+            const wchar_t* s2 = substr;
+
+            while (*s1 && *s2 && (*s1 == *s2)) {
+                ++s1;
+                ++s2;
+            }
+
+            if (*s2 == L'\0')
+                return (wchar_t*)s;
+        }
+
+        return NULL;
+    }
+
+    UINT64 NAKED __readcr0()
+    {
         __asm {
             mov rax, cr0
-            mov[result], rax
+            ret
         }
-        return result;
     }
 
-    UINT64 __readcr2()
+    UINT64 NAKED __readcr2()
     {
-        UINT64 result = 0;
         __asm {
             mov rax, cr2
-            mov[result], rax
+            ret
         }
-        return result;
     }
 
-    UINT64 __readcr3()
+    UINT64 NAKED __readcr3()
     {
-        UINT64 result = 0;
         __asm {
             mov rax, cr3
-            mov[result], rax
+            ret
         }
-        return result;
     }
 
-    UINT64 __readcr4()
+    UINT64 NAKED __readcr4()
     {
-        UINT64 result = 0;
         __asm {
             mov rax, cr4
-            mov[result], rax
+            ret
         }
-        return result;
     }
 
-    UINT64 __readcr8()
+    UINT64 NAKED __readcr8()
     {
-        UINT64 result = 0;
         __asm {
             mov rax, cr8
-            mov[result], rax
+            ret
         }
-        return result;
     }
 
-    VOID __writecr0(_In_ UINT64 value)
+    VOID NAKED __writecr0(_In_ UINT64 value)
     {
         __asm {
-            mov rax, value
-            mov cr0, rax
-        }return;
+            mov cr0, rcx
+            ret
+        }
     }
 
-    VOID __writecr2(_In_ UINT64 value)
+    VOID NAKED __writecr2(_In_ UINT64 value)
     {
         __asm {
-            mov rax, value
-            mov cr2, rax
-        }return;
+            mov cr2, rcx
+            ret
+        }
     }
 
-    VOID __writecr3(_In_ UINT64 value)
+    VOID NAKED __writecr3(_In_ UINT64 value)
     {
         __asm {
-            mov rax, value
-            mov cr3, rax
-        }return;
+            mov cr3, rcx
+            ret
+        }
     }
 
-    VOID __writecr4(_In_ UINT64 value)
+    VOID NAKED __writecr4(_In_ UINT64 value)
     {
         __asm {
-            mov rax, value
-            mov cr4, rax
-        }return;
+            mov cr4, rcx
+            ret
+        }
     }
 
-    VOID __writecr8(_In_ UINT64 value)
+    VOID NAKED __writecr8(_In_ UINT64 value)
     {
         __asm {
-            mov rax, value
-            mov cr8, rax
-        }return;
+            mov cr8, rcx
+            ret
+        }
     }
 
     VOID __invlpg(_In_ PVOID address)
@@ -237,97 +570,33 @@ extern "C" {
         __asm {
             mov rax, address
             invlpg[rax]
-        }return;
+        }
     }
 
-    VOID NAKED NOINLINE __cpuid2(
+    VOID _cpuid(
         _In_ UINT32 leaf,
-        _Out_ UINT32* _eax,
-        _Out_ UINT32* _ebx,
-        _Out_ UINT32* _ecx,
-        _Out_ UINT32* _edx
+        _Out_ UINT32* eax,
+        _Out_ UINT32* ebx,
+        _Out_ UINT32* ecx,
+        _Out_ UINT32* edx
     )
     {
+        UINT32 _eax, _ebx, _ecx, _edx;
         __asm {
-            push rax
-            push rbx
-            push rcx
-            push rdx
-            push r8
-            push r9
-            push r10
-
-            push[rsp + 60h]
-            push r9
-            push r8
-            push rdx
-
-            mov eax, ecx
+            mov eax, leaf
             cpuid
-
-            pop r10
-            mov[r10], eax
-            pop r10
-            mov[r10], ebx
-            pop r10
-            mov[r10], ecx
-            pop r10
-            mov[r10], edx
-
-            pop r10
-            pop r9
-            pop r8
-            pop rdx
-            pop rcx
-            pop rbx
-            pop rax
-            ret
+            mov _eax, eax
+            mov _ebx, ebx
+            mov _ecx, ecx
+            mov _edx, edx
         }
+        if (eax) *eax = _eax;
+        if (ebx) *ebx = _ebx;
+        if (ecx) *ecx = _ecx;
+        if (edx) *edx = _edx;
     }
 
-    VOID NAKED NOINLINE __rdtsc2(_Out_ UINT32* _eax, _Out_ UINT32* _edx)
-    {
-        __asm {
-            push rax
-            push rcx
-            push rdx
-
-            push rdx
-            rdtsc
-            mov[rcx], eax
-            pop rax
-            mov[rax], edx
-
-            pop rdx
-            pop rcx
-            pop rax
-            ret
-        }
-    }
-
-    VOID NAKED NOINLINE __readmsr2(_In_ UINT32 _ecx, _Out_ UINT32* _eax, _Out_ UINT32* _edx)
-    {
-        __asm {
-            push rax
-            push rcx
-            push rdx
-            push r8
-
-            push rdx
-            rdmsr
-            pop rcx
-            mov[rcx], eax
-            mov[r8], edx
-
-            pop r8
-            pop rdx
-            pop rcx
-            pop rax
-            ret
-        }
-    }
-
-    UINT64 NOINLINE __readmsr(_In_ UINT32 msr)
+    UINT64 __readmsr(_In_ UINT32 msr)
     {
         UINT32 low, high;
         __asm {
@@ -336,31 +605,10 @@ extern "C" {
             mov low, eax
             mov high, edx
         }
-        UINT64 result = (UINT64)high << 32 | low;
-        return result;
+        return ((UINT64)high << 32) | low;
     }
 
-    VOID NAKED NOINLINE __writemsr2(_In_ UINT32 _ecx, _In_ UINT32 _eax, _In_ UINT32 _edx)
-    {
-        __asm {
-            push rax
-            push rcx
-            push rdx
-            push r8
-
-            mov eax, edx
-            mov edx, r8d
-            wrmsr
-
-            pop r8
-            pop rdx
-            pop rcx
-            pop rax
-            ret
-        }
-    }
-
-    VOID NOINLINE __writemsr(_In_ UINT32 msr, _In_ UINT64 value)
+    VOID __writemsr(_In_ UINT32 msr, _In_ UINT64 value)
     {
         UINT32 low = (UINT32)(value & 0xFFFFFFFF);
         UINT32 high = (UINT32)(value >> 32);
@@ -369,50 +617,20 @@ extern "C" {
             mov eax, low
             mov edx, high
             wrmsr
-        }return;
-    }
-
-    VOID NAKED __sidt(_In_ SEGMENT_REGISTER* _idtr)
-    {
-        __asm {
-            mov rax, rcx
-            sidt[rax]
-            ret
         }
     }
 
-    VOID NAKED __sgdt(_In_ SEGMENT_REGISTER* _gdtr)
+    UINT64 __rdtscp(_Out_ UINT32* aux)
     {
+        UINT32 low, high, ecx;
         __asm {
-            mov rax, rcx
-            sgdt[rax]
-            ret
+            rdtscp
+            mov low, eax
+            mov high, edx
+            mov ecx, ecx
         }
-    }
-
-    PHYSICAL_ADDRESS __vmrun(_Inout_ PHYSICAL_ADDRESS vmcb)
-    {
-        __asm {
-            mov rax, vmcb
-            vmrun rax
-            ret
-        }
-    }
-
-    VOID __vmsave(_In_ PHYSICAL_ADDRESS vmcb)
-    {
-        __asm {
-            mov rax, vmcb
-            vmsave rax
-        }return;
-    }
-
-    VOID __vmload(_Inout_ PHYSICAL_ADDRESS vmcb)
-    {
-        __asm {
-            mov rax, vmcb
-            vmload rax
-        }return;
+        if (aux) *aux = ecx;
+        return ((UINT64)high << 32) | low;
     }
 
     UINT64 __rdpmc(_In_ UINT32 counter)
@@ -424,7 +642,212 @@ extern "C" {
             mov low, eax
             mov high, edx
         }
-        UINT64 result = (UINT64)high << 32 | low;
-        return result;
-	}
+        return ((UINT64)high << 32) | low;
+    }
+
+    VOID NAKED __sidt(_Out_ SEGMENT_REGISTER* idtr)
+    {
+        __asm {
+            mov rax, rcx
+            sidt[rax]
+            ret
+        }
+    }
+
+    VOID NAKED __sgdt(_Out_ SEGMENT_REGISTER* gdtr)
+    {
+        __asm {
+            mov rax, rcx
+            sgdt[rax]
+            ret
+        }
+    }
+
+    UINT16 __sldt()
+    {
+        UINT16 ldtr;
+        __asm {
+            sldt ax
+            mov ldtr, ax
+        }
+        return ldtr;
+    }
+
+    VOID __lldt(_In_ UINT16 selector)
+    {
+        __asm {
+            mov ax, selector
+            lldt ax
+        }
+    }
+
+    UINT16 __str()
+    {
+        UINT16 tr;
+        __asm {
+            str ax
+            mov tr, ax
+        }
+        return tr;
+    }
+
+    VOID __ltr(_In_ UINT16 selector)
+    {
+        __asm {
+            mov ax, selector
+            ltr ax
+        }
+    }
+
+    UINT16 __readcs()
+    {
+        UINT16 cs;
+        __asm {
+            mov ax, cs
+            mov cs, ax
+        }
+        return cs;
+    }
+
+    UINT16 __readds()
+    {
+        UINT16 ds;
+        __asm {
+            mov ax, ds
+            mov ds, ax
+        }
+        return ds;
+    }
+
+    UINT16 __readss()
+    {
+        UINT16 ss;
+        __asm {
+            mov ax, ss
+            mov ss, ax
+        }
+        return ss;
+    }
+
+    UINT16 __reades()
+    {
+        UINT16 es;
+        __asm {
+            mov ax, es
+            mov es, ax
+        }
+        return es;
+    }
+
+    UINT16 __readfs()
+    {
+        UINT16 fs;
+        __asm {
+            mov ax, fs
+            mov fs, ax
+        }
+        return fs;
+    }
+
+    UINT16 __readgs()
+    {
+        UINT16 gs;
+        __asm {
+            mov ax, gs
+            mov gs, ax
+        }
+        return gs;
+    }
+
+    VOID __writeds(_In_ UINT16 value)
+    {
+        __asm {
+            mov ax, value
+            mov ds, ax
+        }
+    }
+
+    VOID __writess(_In_ UINT16 value)
+    {
+        __asm {
+            mov ax, value
+            mov ss, ax
+        }
+    }
+
+    VOID __writees(_In_ UINT16 value)
+    {
+        __asm {
+            mov ax, value
+            mov es, ax
+        }
+    }
+
+    VOID __writefs(_In_ UINT16 value)
+    {
+        __asm {
+            mov ax, value
+            mov fs, ax
+        }
+    }
+
+    VOID __writegs(_In_ UINT16 value)
+    {
+        __asm {
+            mov ax, value
+            mov gs, ax
+        }
+    }
+
+    PHYSICAL_ADDRESS NAKED __vmrun(_In_ PHYSICAL_ADDRESS vmcb)
+    {
+        __asm {
+            mov rax, rcx
+            vmrun rax
+            ret
+        }
+    }
+
+    VOID NAKED __vmsave(_In_ PHYSICAL_ADDRESS vmcb)
+    {
+        __asm {
+            mov rax, rcx
+            vmsave rax
+            ret
+        }
+    }
+
+    VOID NAKED __vmload(_In_ PHYSICAL_ADDRESS vmcb)
+    {
+        __asm {
+            mov rax, rcx
+            vmload rax
+            ret
+        }
+    }
+
+    VOID NAKED __stgi()
+    {
+        __asm {
+            stgi
+            ret
+        }
+    }
+
+    VOID NAKED __clgi()
+    {
+        __asm {
+            clgi
+            ret
+        }
+    }
+
+    VOID NAKED __skinit(_In_ UINT32 slb_physical_address)
+    {
+        __asm {
+            mov eax, ecx
+            skinit
+            ret
+        }
+    }
 }

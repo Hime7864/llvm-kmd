@@ -3,24 +3,24 @@
 class Utils
 {
 public:
-    static QWORD deref(
+    static QWORD ResolveRel32(
         UCHAR count,
         QWORD address
     );
 
-    static QWORD sig_scan(
+    static QWORD SigScan(
         QWORD scan_start,
         QWORD max_scan,
         PCSTR ida_sig
     );
 
-    static QWORD sig_scan_safe(
+    static QWORD SigScan_s(
         QWORD scan_start,
         QWORD max_scan,
         PCSTR ida_sig
     );
 
-    static QWORD sig_scan_reverse(
+    static QWORD SigScanBack(
         QWORD scan_start,
         QWORD max_scan,
         PCSTR ida_sig

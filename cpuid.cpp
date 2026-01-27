@@ -2,7 +2,7 @@
 
 LPSTR CPUID::vendor_string()
 {
-    DWORD leaf = CPUID::_CPUID_PROCESSOR_VENDOR;
+    DWORD leaf = 0x0000000UL;
     static char results[13]{ 0 };
     __asm
     {
@@ -18,7 +18,7 @@ LPSTR CPUID::vendor_string()
 
 UINT32 CPUID::current_core_number()
 {
-    DWORD leaf = CPUID::_CPUID_EXTENDED_TOPOLOGY;
+    DWORD leaf = 0x0000000BU;
     static UINT32 results = 0;
     __asm
     {
@@ -33,7 +33,7 @@ UINT32 CPUID::current_core_number()
 
 CPUID_SVM_REVISION CPUID::svm_revision()
 {
-    DWORD leaf = CPUID::_CPUID_SVM_REVISION_IDENTIFICATION;
+    DWORD leaf = 0x8000000AUL;
     static UINT32 results{ 0 };
     __asm
     {
@@ -47,7 +47,7 @@ CPUID_SVM_REVISION CPUID::svm_revision()
 
 CPUID_SVM_REVISION_AND_FEATURE_IDENTIFICATION CPUID::svm_revision_and_feature_identification()
 {
-    DWORD leaf = CPUID::_CPUID_SVM_REVISION_IDENTIFICATION;
+    DWORD leaf = 0x8000000AUL;
     static UINT32 results{ 0 };
     __asm
     {
@@ -61,7 +61,7 @@ CPUID_SVM_REVISION_AND_FEATURE_IDENTIFICATION CPUID::svm_revision_and_feature_id
 
 CPUID_SVM_FEATURE_IDENTIFICATION CPUID::svm_feature_identification()
 {
-    DWORD leaf = _CPUID_SVM_REVISION_IDENTIFICATION;
+    DWORD leaf = 0x8000000AUL;
     static UINT32 results{ 0 };
     __asm
     {
