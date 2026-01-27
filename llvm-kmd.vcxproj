@@ -137,12 +137,12 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <ExceptionHandling>false</ExceptionHandling>
-      <Optimization>Disabled</Optimization>
-      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
+      <Optimization>Full</Optimization>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EntryPointSymbol>start</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
@@ -162,8 +162,8 @@
     <ClInclude Include="fwAlloc.hpp" />
     <ClInclude Include="imports.hpp" />
     <ClInclude Include="main.hpp" />
-    <ClInclude Include="nt_exports.hpp" />
     <ClInclude Include="msr.hpp" />
+    <ClInclude Include="nt_imports.hpp" />
     <ClInclude Include="nt_methods.hpp" />
     <ClInclude Include="nt_structs.hpp" />
     <ClInclude Include="utils.hpp" />
