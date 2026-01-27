@@ -149,6 +149,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="cleanup.cpp" />
+    <ClCompile Include="Initialize.cpp" />
     <ClCompile Include="KMD\basics.cpp" />
     <ClCompile Include="KMD\cpuid.cpp" />
     <ClCompile Include="KMD\entry.cpp" />
@@ -156,8 +158,12 @@
     <ClCompile Include="KMD\msr.cpp" />
     <ClCompile Include="KMD\utils.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="mappings.cpp" />
+    <ClCompile Include="svm_utils.cpp" />
+    <ClCompile Include="vmlaunch.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="imports.hpp" />
     <ClInclude Include="KMD\basics.hpp" />
     <ClInclude Include="KMD\cpuid.hpp" />
     <ClInclude Include="KMD\entry.hpp" />
@@ -168,6 +174,10 @@
     <ClInclude Include="KMD\nt_methods.hpp" />
     <ClInclude Include="KMD\nt_structs.hpp" />
     <ClInclude Include="KMD\utils.hpp" />
+    <ClInclude Include="msrpm.hpp" />
+    <ClInclude Include="svm.hpp" />
+    <ClInclude Include="vcore.hpp" />
+    <ClInclude Include="vmcb.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
