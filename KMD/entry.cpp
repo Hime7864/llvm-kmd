@@ -90,6 +90,8 @@ void FreeAndExit(PVOID last_thread)
 		mov rcx, [host_driver_base]
 		mov rdx, [func1]
 		mov r8, [func2]
+		call r8
+
 		call self
 	self:
 		sub rsp, 8h
