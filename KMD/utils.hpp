@@ -131,9 +131,6 @@ public:
     );
 };
 
-// ... existing code ...
-
-// Define the template in the header so it can be instantiated by any .cpp that uses it.
 template<size_t N, size_t Size>
 __forceinline QWORD Utils::SigScan(QWORD scan_start, QWORD max_scan, Pattern<N, Size> pat)
 {
