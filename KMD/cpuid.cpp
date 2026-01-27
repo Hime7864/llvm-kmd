@@ -1,4 +1,4 @@
-#include "imports.hpp"
+#include "intrinsics.hpp"
 
 LPSTR CPUID::vendor_string()
 {

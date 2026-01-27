@@ -1,74 +1,81 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="KMD">
-      <UniqueIdentifier>{604b811e-4ba3-4e55-8652-fdad28eb60fe}</UniqueIdentifier>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{355cfa64-19a4-4aa4-9f4f-263f535f3530}</UniqueIdentifier>
     </Filter>
-    <Filter Include="KMD\Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{35ed6d8b-fe31-481f-830c-032f8b35ea6d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="KMD\Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{f692e060-4577-4877-aef2-161ad63262fc}</UniqueIdentifier>
     </Filter>
-    <Filter Include="KMD\Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="Intrinsics">
+      <UniqueIdentifier>{29fe1c10-2584-4bb0-b832-4a6fd16cebbf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Intrinsics\Header Files">
+      <UniqueIdentifier>{79f626d0-1a1d-45be-bbe3-69d4da1f3f56}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Intrinsics\Source Files">
+      <UniqueIdentifier>{a72e7eeb-d3a0-4abe-b859-f5b05636768c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Intrinsics\Resource Files">
+      <UniqueIdentifier>{d84b8bf7-0583-42e7-81bc-77d31dbf0896}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="basics.cpp">
-      <Filter>KMD\Source Files</Filter>
+    <ClCompile Include="Main.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="cpuid.cpp">
-      <Filter>KMD\Source Files</Filter>
+    <ClCompile Include="KMD\basics.cpp">
+      <Filter>Intrinsics\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="entry.cpp">
-      <Filter>KMD\Source Files</Filter>
+    <ClCompile Include="KMD\cpuid.cpp">
+      <Filter>Intrinsics\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="msr.cpp">
-      <Filter>KMD\Source Files</Filter>
+    <ClCompile Include="KMD\entry.cpp">
+      <Filter>Intrinsics\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="utils.cpp">
-      <Filter>KMD\Source Files</Filter>
+    <ClCompile Include="KMD\fwAlloc.cpp">
+      <Filter>Intrinsics\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Main.cpp" />
-    <ClCompile Include="fwAlloc.cpp">
-      <Filter>KMD\Source Files</Filter>
+    <ClCompile Include="KMD\msr.cpp">
+      <Filter>Intrinsics\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KMD\utils.cpp">
+      <Filter>Intrinsics\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="basics.hpp">
-      <Filter>KMD\Header Files</Filter>
+    <ClInclude Include="KMD\basics.hpp">
+      <Filter>Intrinsics\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="cpuid.hpp">
-      <Filter>KMD\Header Files</Filter>
+    <ClInclude Include="KMD\cpuid.hpp">
+      <Filter>Intrinsics\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="entry.hpp">
-      <Filter>KMD\Header Files</Filter>
+    <ClInclude Include="KMD\entry.hpp">
+      <Filter>Intrinsics\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="main.hpp">
-      <Filter>KMD\Header Files</Filter>
+    <ClInclude Include="KMD\fwAlloc.hpp">
+      <Filter>Intrinsics\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="msr.hpp">
-      <Filter>KMD\Header Files</Filter>
+    <ClInclude Include="KMD\msr.hpp">
+      <Filter>Intrinsics\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="utils.hpp">
-      <Filter>KMD\Header Files</Filter>
+    <ClInclude Include="KMD\utils.hpp">
+      <Filter>Intrinsics\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="nt_structs.hpp">
-      <Filter>KMD\Resource Files</Filter>
+    <ClInclude Include="KMD\nt_structs.hpp">
+      <Filter>Intrinsics\Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="nt_methods.hpp">
-      <Filter>KMD\Resource Files</Filter>
+    <ClInclude Include="KMD\nt_imports.hpp">
+      <Filter>Intrinsics\Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="imports.hpp" />
-    <ClInclude Include="fwAlloc.hpp">
-      <Filter>KMD\Header Files</Filter>
+    <ClInclude Include="KMD\nt_methods.hpp">
+      <Filter>Intrinsics\Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="nt_imports.hpp">
-      <Filter>KMD\Header Files</Filter>
+    <ClInclude Include="KMD\intrinsics.hpp">
+      <Filter>Intrinsics\Resource Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

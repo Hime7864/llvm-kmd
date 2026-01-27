@@ -24,4 +24,4 @@ inline void Sleep(_In_ UINT32 milliseconds)
 	KeDelayExecutionThread(KernelMode, FALSE, &interval);
 }
 
-#include "main.hpp"
+NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath);

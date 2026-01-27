@@ -1,4 +1,4 @@
-#include "imports.hpp"
+#include "intrinsics.hpp"
 
 QWORD Utils::ResolveRel32(BYTE count, QWORD address)
 {

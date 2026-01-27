@@ -1,4 +1,4 @@
-#include "imports.hpp"
+#include <intrinsics.hpp>
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {

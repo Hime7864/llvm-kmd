@@ -118,6 +118,7 @@
       <ExceptionHandling>false</ExceptionHandling>
       <Optimization>Full</Optimization>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <AdditionalIncludeDirectories>$(SolutionDir)kmd\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -139,6 +140,7 @@
       <ExceptionHandling>false</ExceptionHandling>
       <Optimization>Full</Optimization>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <AdditionalIncludeDirectories>$(SolutionDir)kmd\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -147,26 +149,25 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="basics.cpp" />
-    <ClCompile Include="cpuid.cpp" />
-    <ClCompile Include="entry.cpp" />
-    <ClCompile Include="fwAlloc.cpp" />
+    <ClCompile Include="KMD\basics.cpp" />
+    <ClCompile Include="KMD\cpuid.cpp" />
+    <ClCompile Include="KMD\entry.cpp" />
+    <ClCompile Include="KMD\fwAlloc.cpp" />
+    <ClCompile Include="KMD\msr.cpp" />
+    <ClCompile Include="KMD\utils.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="msr.cpp" />
-    <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="basics.hpp" />
-    <ClInclude Include="cpuid.hpp" />
-    <ClInclude Include="entry.hpp" />
-    <ClInclude Include="fwAlloc.hpp" />
-    <ClInclude Include="imports.hpp" />
-    <ClInclude Include="main.hpp" />
-    <ClInclude Include="msr.hpp" />
-    <ClInclude Include="nt_imports.hpp" />
-    <ClInclude Include="nt_methods.hpp" />
-    <ClInclude Include="nt_structs.hpp" />
-    <ClInclude Include="utils.hpp" />
+    <ClInclude Include="KMD\basics.hpp" />
+    <ClInclude Include="KMD\cpuid.hpp" />
+    <ClInclude Include="KMD\entry.hpp" />
+    <ClInclude Include="KMD\fwAlloc.hpp" />
+    <ClInclude Include="KMD\intrinsics.hpp" />
+    <ClInclude Include="KMD\msr.hpp" />
+    <ClInclude Include="KMD\nt_imports.hpp" />
+    <ClInclude Include="KMD\nt_methods.hpp" />
+    <ClInclude Include="KMD\nt_structs.hpp" />
+    <ClInclude Include="KMD\utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

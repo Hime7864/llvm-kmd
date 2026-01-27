@@ -1,4 +1,4 @@
-#include "imports.hpp"
+#include "intrinsics.hpp"
 
 PHYSICAL_MEMORY_RANGE FWA::fw_range[31];
 UINT64 FWA::fw_range_count = 0;
