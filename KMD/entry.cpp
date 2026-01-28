@@ -34,7 +34,8 @@ FUNCTION_TABLE_ENTRY function_table[]
 	{ str_hash("ZwReadFile"), &NtImports::fn_ZwReadFile},
 	{ str_hash("ZwClose"), &NtImports::fn_ZwClose},
 	{ str_hash("KeGetCurrentThread"), &NtImports::fn_KeGetCurrentThread},
-	{ str_hash("PsGetProcessId"), &NtImports::fn_GetUniqueProcessId},
+	{ str_hash("PsGetProcessId"), &NtImports::fn_PsGetProcessId},
+	{ str_hash("MmIsIoSpaceActive"), &NtImports::fn_MmIsIoSpaceActive},
 };
 
 NTSTATUS resolve_imports()
@@ -63,7 +64,9 @@ NTSTATUS resolve_sigged_imports()
 		return STATUS_UNSUCCESSFUL;
 
 	NtImports::fn_MmPfnDatabase = (decltype(NtImports::fn_MmPfnDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8B 3D ? ? ? ? 48 C1 EF 09")));
-	
+	NtImports::fn_MiGetSystemRegionType = (decltype(NtImports::fn_MiGetSystemRegionType))Utils::ResolveRel32(1, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("E8 ? ? ? ? 8B C8 45 84 FE")));
+
+
 	return STATUS_SUCCESS;
 }
 

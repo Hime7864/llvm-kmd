@@ -317,8 +317,18 @@ PEPROCESS FORCEINLINE PsInitialSystemProcess()
 
 PMMPFN FORCEINLINE MmPfnDatabase()
 {
-	return NtImports::fn_MmPfnDatabase();
+	return *(PMMPFN*)NtImports::fn_MmPfnDatabase;
 }
+
+UINT32 FORCEINLINE MiGetSystemRegionType(
+	_In_ PVOID PfnEntry
+)
+{
+	return NtImports::fn_MiGetSystemRegionType(
+		PfnEntry
+	);
+}
+
 
 VOID FORCEINLINE RtlInitUnicodeString(
 	_Out_ PUNICODE_STRING DestinationString,
@@ -424,11 +434,22 @@ PETHREAD FORCEINLINE KeGetCurrentThread()
 	return NtImports::fn_KeGetCurrentThread();
 }
 
-UINT64 FORCEINLINE GetUniqueProcessId(
+UINT64 FORCEINLINE PsGetProcessId(
 	_In_ PEPROCESS Process
 )
 {
-	return NtImports::fn_GetUniqueProcessId(
+	return NtImports::fn_PsGetProcessId(
 		Process
+	);
+}
+
+BOOLEAN FORCEINLINE MmIsIoSpaceActive(
+	_In_ PHYSICAL_ADDRESS PhysicalAddress,
+	_In_ SIZE_T NumberOfBytes
+)
+{
+	return NtImports::fn_MmIsIoSpaceActive(
+		PhysicalAddress,
+		NumberOfBytes
 	);
 }
