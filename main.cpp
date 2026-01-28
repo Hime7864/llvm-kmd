@@ -1,5 +1,6 @@
 #include <intrinsics.hpp>
 
+#define printf(Format, ...) NtImports::fn_DbgPrintEx(0, 0, Format, __VA_ARGS__)
 
 PEPROCESS FindEproc(UINT32 pid)
 {
@@ -289,6 +290,7 @@ void ScanEProcess()
 	printf("=== Scanning usermode for Pte Manipulation ===\n");
 	printf("  - Only scans for 4kb mappings\n");
 	printf("  - Only 4 level translation supported\n");
+	printf("  - dosn't scan for PFN xref ctx-2-ctx\n");
 	auto MHz = MSR::PSTATE(0).get_frequency_mhz();
 	auto tsc_start = MSR::TSC();
 	auto flink = (UINT64)PsInitialSystemProcess();
