@@ -144,6 +144,10 @@ namespace NtImports
 
     inline PMMPFN(__stdcall* fn_MmPfnDatabase)() = nullptr;
 
+    inline UINT32(__stdcall* fn_MiGetSystemRegionType)(
+        _In_ PVOID PfnEntry
+		) = nullptr;
+
     inline VOID(__stdcall* fn_RtlInitUnicodeString)(
         _Out_ PUNICODE_STRING DestinationString,
         _In_opt_ PCWSTR SourceString
@@ -193,7 +197,12 @@ namespace NtImports
 
     inline PETHREAD(__stdcall* fn_KeGetCurrentThread)() = nullptr;
 
-    inline UINT64(__stdcall* fn_GetUniqueProcessId)(
+    inline UINT64(__stdcall* fn_PsGetProcessId)(
         _In_ PEPROCESS Process
+		) = nullptr;
+
+    inline BOOLEAN(__stdcall* fn_MmIsIoSpaceActive)(
+        _In_ PHYSICAL_ADDRESS PhysicalAddress,
+        _In_ SIZE_T NumberOfBytes
 		) = nullptr;
 };
