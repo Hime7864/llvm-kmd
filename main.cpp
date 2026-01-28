@@ -18,6 +18,8 @@ PEPROCESS FindEproc(UINT32 pid)
 	return nullptr;
 }
 
+QWORD pages = 0;
+
 void LocateUsermodePteManipulationSessioned(PEPROCESS eproc)
 {
 	SIZE_T bytes_copied = 0;
@@ -313,7 +315,6 @@ void ScanEProcess()
 	printf("Usermode pte scan completed in %llu ms\n", Ms);
 	return;
 }
-
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
