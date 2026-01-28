@@ -169,3 +169,21 @@ VOID MSR::TSC(UINT64 tsc)
 {
 	__writemsr(_MSR_TSC, tsc);
 }
+
+UINT64 MSR_PSTATE::get_frequency_mhz()
+{
+	return ((CpuFid + 16ll) * 100ll) / (1ll << CpuDfsId) * 2000000ll;
+}
+
+UINT64 MSR_PSTATE::get_performance_mhz()
+{
+	auto mperf_init = MSR::MPERF();
+	auto aperf_init = MSR::APERF();
+	for (int i = 0; i < 100000; i++)
+		__asm { pause };
+	auto perf = (UINT64)(
+		(double)(MSR::APERF() - aperf_init) /
+		((double)(MSR::MPERF() - mperf_init)
+			) * (double)get_frequency_mhz());
+	return perf;
+}

@@ -19,32 +19,93 @@ PEPROCESS FindEproc(UINT32 pid)
 
 void LocateUsermodePteManipulation(PEPROCESS eproc)
 {
+	SIZE_T bytes_copied = 0;
 	KAPC_STATE apc;
+
 	KeStackAttachProcess(eproc, &apc);
 	auto DTB = *(UINT64*)((UINT64)eproc + 0x28) & ~0xFFF;
 
+	auto cpy_pml4 = (MMPTE_HARDWARE*)ExAllocatePool(NonPagedPool, 0x1000);
+	MmCopyMemory(cpy_pml4, DTB, 0x1000, MM_COPY_MEMORY_PHYSICAL, &bytes_copied);
+
 	auto pml4 = (MMPTE_HARDWARE*)MmGetVirtualForPhysical(DTB);
+	if (!pml4)
+	{
+		printf("PID 0x%08X PML4 Fucked\n");
+		return;
+	}
 	for (int i = 0; i < 255; i++)
 	{
+		if (cpy_pml4[i].AsUINT64 != pml4[i].AsUINT64)
+		{
+			printf("PID 0x%08X [ Translation Level 0: %i ] -> pte tampering detected!\n", PsGetProcessId(eproc), i);
+		}
 		if (pml4[i].Valid)
 		{
+			auto cpy_pdpt = (MMPTE_HARDWARE*)ExAllocatePool(NonPagedPool, 0x1000);
+			MmCopyMemory(cpy_pdpt, pml4[i].PageFrameNumber << PAGE_SHIFT, 0x1000, MM_COPY_MEMORY_PHYSICAL, &bytes_copied);
+
 			auto pdpt = (MMPTE_HARDWARE*)MmGetVirtualForPhysical(pml4[i].PageFrameNumber << PAGE_SHIFT);
+			if (!pdpt)
+			{
+				printf("PID 0x%08X PDPT Fucked\n");
+				break;
+			}
+			auto type = MiGetSystemRegionType(pdpt);
+			if (type != 3)
+			{
+				printf("PID 0x%08X [ Translation Level 1: %i ] -> non-system pte { type:%i }\n", PsGetProcessId(eproc), i, type);
+			}
 			for (int j = 0; j < 512; j++)
 			{
+				if(cpy_pdpt[j].AsUINT64 != pdpt[j].AsUINT64)
+				{
+					printf("PID 0x%08X [ Translation Level 1: %i,%i ] -> pte tampering detected!\n", PsGetProcessId(eproc), i, j);
+				}
 				if (pdpt[j].Valid && !pdpt[j].LargePage)
 				{
+					auto cpy_pdt = (MMPTE_HARDWARE*)ExAllocatePool(NonPagedPool, 0x1000);
+					MmCopyMemory(cpy_pdt, pdpt[j].PageFrameNumber << PAGE_SHIFT, 0x1000, MM_COPY_MEMORY_PHYSICAL, &bytes_copied);
+
 					auto pdt = (MMPTE_HARDWARE*)MmGetVirtualForPhysical(pdpt[j].PageFrameNumber << PAGE_SHIFT);
+					if (!pdt)
+					{
+						printf("PID 0x%08X PDT Fucked\n");
+						break;
+					}
+					auto type = MiGetSystemRegionType(pdt);
+					if (type != 3)
+					{
+						printf("PID 0x%08X [ Translation Level 2: %i,%i ] -> non-system pte { type:%i }\n", PsGetProcessId(eproc), i, j, type);
+					}
 					for (int k = 0; k < 512; k++)
 					{
+						if(cpy_pdt[k].AsUINT64 != pdt[k].AsUINT64)
+						{
+							printf("PID 0x%08X [ Translation Level 2: %i,%i,%i ] -> pte tampering detected!\n", PsGetProcessId(eproc), i, j, k);
+						}
 						if (pdt[k].Valid && !pdt[k].LargePage)
 						{
 							auto cpy_pte = (MMPTE_HARDWARE*)ExAllocatePool(NonPagedPool, 0x1000);
-							SIZE_T bytes_copied = 0;
 							MmCopyMemory(cpy_pte, pdt[k].PageFrameNumber << PAGE_SHIFT, 0x1000, MM_COPY_MEMORY_PHYSICAL, &bytes_copied);
+
 							auto pte = (MMPTE_HARDWARE*)MmGetVirtualForPhysical(pdt[k].PageFrameNumber << PAGE_SHIFT);
-							
+							if (!pte)
+							{
+								printf("PID 0x%08X PTE Fucked\n");
+								break;
+							}
+							auto type = MiGetSystemRegionType(pte);
+							if (type != 3)
+							{
+								printf("PID 0x%08X [ Translation Level 3: %i,%i,%i ] -> non-system pte { type:%i }\n", PsGetProcessId(eproc), i, j, k, type);
+							}
 							for(int m = 0; m < 512; m++)
 							{
+								if(cpy_pte[m].AsUINT64 != pte[m].AsUINT64)
+								{
+									printf("PID 0x%08X [ Translation Level 3: %i,%i,%i,%i ] -> pte tampering detected!\n", PsGetProcessId(eproc), i, j, k, m);
+								}
 								if (pte[m].Valid)
 								{
 									auto leaf_pfn = MmGetVirtualForPhysical(pte[m].PageFrameNumber << PAGE_SHIFT);
@@ -61,52 +122,50 @@ void LocateUsermodePteManipulation(PEPROCESS eproc)
 										
 										switch (type)
 										{
-										case 4:
-										{
-											printf("PID 0x%08X RVA %p:%010LLX | leaf pte points to system pte\n", PsGetProcessId(eproc), rva.AsUINT64, pte[m].PageFrameNumber);
-										}break;
-										case 11:
-										{
-											printf("PID 0x%08X RVA %p:%010LLX | leaf pte points to copy-on-write(or fixup) pte\n", PsGetProcessId(eproc), rva.AsUINT64, pte[m].PageFrameNumber);
-										}break;
-										case 8:
-										{
-											printf("PID 0x%08X RVA %p:%010LLX | leaf pte points to mmio pte\n", PsGetProcessId(eproc), rva.AsUINT64, pte[m].PageFrameNumber);
-										}break;
-										default:
-										{
-											printf("PID 0x%08X RVA %p:%010LLX | some other non-normal pte(%i)\n", PsGetProcessId(eproc), rva.AsUINT64, pte[m].PageFrameNumber, type);
-											break;
-										}
+											case 4:
+											{
+												printf("PID 0x%08X [ RVA: %p | PFN: %010LLX ] -> translation pte usage on leaf { type:%i }\n",
+													PsGetProcessId(eproc), rva.AsUINT64, pte[m].PageFrameNumber, type);
+											}break;
+											case 11:
+											{
+												printf("PID 0x%08X [ RVA: %p | PFN: %010LLX ] -> driver page usage on leaf { type:%i }\n",
+													PsGetProcessId(eproc), rva.AsUINT64, pte[m].PageFrameNumber, type);
+											}break;
+											case 8:
+											{
+												printf("PID 0x%08X [ RVA: %p | PFN: %010LLX ] -> mmio usage on leaf { type:%i }\n",
+													PsGetProcessId(eproc), rva.AsUINT64, pte[m].PageFrameNumber, type);
+											}break;
+											default:
+											{
+												printf("PID 0x%08X [ RVA: %p | PFN: %010LLX ] -> other non-normal page type usage on leaf { type:%i }\n",
+													PsGetProcessId(eproc), rva.AsUINT64, pte[m].PageFrameNumber, type);
+												break;
+											}
 										}
 										
 									}
-								}
-								if (cpy_pte[m].AsUINT64 != pte[m].AsUINT64)
-								{
-									LINEAR_ADDRESS rva;
-									rva.AsUINT64 = 0;
-									rva.pml4e_index = i;
-									rva.pdpte_index = j;
-									rva.pde_index = k;
-									rva.pte_index = m;
-									printf("PID 0x%08X RVA %p:%010LLX | mmpfndatabase maniulation\n", PsGetProcessId(eproc), rva.AsUINT64, cpy_pte[m].PageFrameNumber);
 								}
 							}
 							ExFreePool(cpy_pte);
 						}
 					}
+					ExFreePool(cpy_pdt);
 				}
 			}
+			ExFreePool(cpy_pdpt);
 		}
 	}
-
+	ExFreePool(cpy_pml4);
 	KeUnstackDetachProcess(&apc);
 	return;
 }
 
 void ScanEProcess()
 {
+	auto MHz = MSR::PSTATE(0).get_frequency_mhz();
+	auto tsc_start = MSR::TSC();
 	auto flink = (UINT64)PsInitialSystemProcess();
 	auto o_UniqueProcessId = *(UINT32*)((UINT64)NtImports::fn_PsGetProcessId + 0x3);// fix for 22H2 & 24H2
 	do
@@ -121,6 +180,9 @@ void ScanEProcess()
 		}
 		flink = *(UINT64*)((UINT64)flink + o_UniqueProcessId + 0x8) - (o_UniqueProcessId + 0x8);
 	} while (flink != (UINT64)PsInitialSystemProcess());
+	double mutiplier = (double)(MSR::TSC() - tsc_start) / (double)MHz;
+	auto Ms = (UINT64)(mutiplier * 1000.0);
+	printf("Usermode pte scan completed in %llu ms\n", Ms);
 	return;
 }
 
