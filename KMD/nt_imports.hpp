@@ -18,35 +18,16 @@ namespace NtImports
         _In_opt_ ...
         ) = nullptr;
 
-    inline ULONG(__stdcall* fn_vDbgPrintEx)(
-        _In_ ULONG ComponentId,
-        _In_ ULONG Level,
-        _In_ PCSTR Format,
-        _In_ va_list ArgList
-        ) = nullptr;
-
     inline int(__stdcall* fn_sprintf)(
         _Out_ char* Buffer,
         _In_ PCSTR Format,
         _In_opt_ ...
         ) = nullptr;
 
-    inline int(__stdcall* fn_vsprintf)(
-        _Out_ char* Buffer,
-        _In_ PCSTR Format,
-        _In_ va_list ArgList
-        ) = nullptr;
-
     inline int(__stdcall* fn_swprintf)(
         _Out_ wchar_t* Buffer,
         _In_ PCWSTR Format,
         _In_opt_ ...
-        ) = nullptr;
-
-    inline int(__stdcall* fn_vswprintf)(
-        _Out_ wchar_t* Buffer,
-        _In_ PCWSTR Format,
-        _In_ va_list ArgList
         ) = nullptr;
 
     inline PMDL(__stdcall* fn_IoAllocateMdl)(
@@ -162,8 +143,6 @@ namespace NtImports
     inline PEPROCESS(__stdcall* fn_PsInitialSystemProcess)() = nullptr;
 
     inline PMMPFN(__stdcall* fn_MmPfnDatabase)() = nullptr;
-
-	inline UINT32(__stdcall* fn_MiSystemRegionTypeDatabase)() = nullptr;
 
     inline UINT32(__stdcall* fn_MiGetSystemRegionType)(
         _In_ PVOID PfnEntry

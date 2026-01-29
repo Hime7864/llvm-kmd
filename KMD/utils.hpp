@@ -54,14 +54,6 @@ public:
         QWORD* section_size
     );
 
-    // Hash-based overload (mirrors how other APIs are used with str_hash("...")).
-    static NTSTATUS GetSectionInfo(
-        QWORD module_base,
-        DWORD section_hash,
-        QWORD* section_address,
-        QWORD* section_size
-    );
-
     static NTSTATUS ReadPhysical(
         PHYSICAL_ADDRESS address, 
         PVOID buffer, 
@@ -99,7 +91,7 @@ public:
     static PHYSICAL_ADDRESS LinearTranslate(
         LINEAR_ADDRESS rva
     );
-
+    
     static NTSTATUS ReadLinear(
         PHYSICAL_ADDRESS dtb, 
         LINEAR_ADDRESS rva, 
@@ -108,10 +100,15 @@ public:
     );
 
     template <typename type>
-    static type ReadLinear(
+    FORCEINLINE static type ReadLinear(
         PHYSICAL_ADDRESS dtb,
         LINEAR_ADDRESS rva
-    );
+    )
+    {
+        type buffer = { 0 };
+        ReadLinear(dtb, rva, &buffer, sizeof(type));
+        return buffer;
+    }
 
     static NTSTATUS ReadLinear(
         LINEAR_ADDRESS rva, 
@@ -120,9 +117,14 @@ public:
     );
 
     template <typename type>
-    static type ReadLinear(
+    FORCEINLINE static type ReadLinear(
         LINEAR_ADDRESS rva
-    );
+    )
+    {
+        type buffer = { 0 };
+        ReadLinear(rva, &buffer, sizeof(type));
+        return buffer;
+    }
 
     static BOOLEAN RvaValid(
         PHYSICAL_ADDRESS dtb, 
