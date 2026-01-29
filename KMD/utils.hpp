@@ -108,10 +108,15 @@ public:
     );
 
     template <typename type>
-    static type ReadLinear(
+    FORCEINLINE static type ReadLinear(
         PHYSICAL_ADDRESS dtb,
         LINEAR_ADDRESS rva
-    );
+    )
+    {
+        type buffer = { 0 };
+        ReadLinear(dtb, rva, &buffer, sizeof(type));
+        return buffer;
+    }
 
     static NTSTATUS ReadLinear(
         LINEAR_ADDRESS rva, 
@@ -120,9 +125,14 @@ public:
     );
 
     template <typename type>
-    static type ReadLinear(
+    FORCEINLINE static type ReadLinear(
         LINEAR_ADDRESS rva
-    );
+    )
+    {
+        type buffer = { 0 };
+        ReadLinear(rva, &buffer, sizeof(type));
+        return buffer;
+    }
 
     static BOOLEAN RvaValid(
         PHYSICAL_ADDRESS dtb, 
