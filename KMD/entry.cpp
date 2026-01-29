@@ -5,8 +5,11 @@ FUNCTION_TABLE_ENTRY function_table[]
 	{ str_hash("ExAllocatePool"), &NtImports::fn_ExAllocatePool},
 	{ str_hash("ExFreePool"), &NtImports::fn_ExFreePool},
 	{ str_hash("DbgPrintEx"), &NtImports::fn_DbgPrintEx},
+	{ str_hash("vDbgPrintEx"), &NtImports::fn_vDbgPrintEx},
 	{ str_hash("sprintf"), &NtImports::fn_sprintf},
+	{ str_hash("vsprintf"), &NtImports::fn_vsprintf},
 	{ str_hash("swprintf"), &NtImports::fn_swprintf},
+	{ str_hash("vswprintf"), &NtImports::fn_vswprintf},
 	{ str_hash("IoAllocateMdl"), &NtImports::fn_IoAllocateMdl},
 	{ str_hash("IoFreeMdl"), &NtImports::fn_IoFreeMdl},
 	{ str_hash("KeQueryActiveProcessorCount"), &NtImports::fn_KeQueryActiveProcessorCount},
@@ -60,12 +63,15 @@ NTSTATUS resolve_sigged_imports()
 		return STATUS_UNSUCCESSFUL;
 
 	QWORD kernel_text_base, kernel_text_size;
-	if (!NT_SUCCESS(Utils::GetSectionInfo(kernel_base, ".text", &kernel_text_base, &kernel_text_size)))
+
+
+
+	if (!NT_SUCCESS(Utils::GetSectionInfo(kernel_base, str_hash(".text"), &kernel_text_base, &kernel_text_size)))
 		return STATUS_UNSUCCESSFUL;
 
 	NtImports::fn_MmPfnDatabase = (decltype(NtImports::fn_MmPfnDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8B 3D ? ? ? ? 48 C1 EF 09")));
 	NtImports::fn_MiGetSystemRegionType = (decltype(NtImports::fn_MiGetSystemRegionType))Utils::ResolveRel32(1, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("E8 ? ? ? ? 8B C8 45 84 FE")));
-
+	NtImports::fn_MiSystemRegionTypeDatabase = (decltype(NtImports::fn_MiSystemRegionTypeDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8D 0D ? ? ? ? 0F B6 04 08 C3")));
 
 	return STATUS_SUCCESS;
 }

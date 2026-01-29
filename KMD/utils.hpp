@@ -54,6 +54,14 @@ public:
         QWORD* section_size
     );
 
+    // Hash-based overload (mirrors how other APIs are used with str_hash("...")).
+    static NTSTATUS GetSectionInfo(
+        QWORD module_base,
+        DWORD section_hash,
+        QWORD* section_address,
+        QWORD* section_size
+    );
+
     static NTSTATUS ReadPhysical(
         PHYSICAL_ADDRESS address, 
         PVOID buffer, 
@@ -91,7 +99,7 @@ public:
     static PHYSICAL_ADDRESS LinearTranslate(
         LINEAR_ADDRESS rva
     );
-    
+
     static NTSTATUS ReadLinear(
         PHYSICAL_ADDRESS dtb, 
         LINEAR_ADDRESS rva, 
