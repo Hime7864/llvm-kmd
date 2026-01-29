@@ -459,23 +459,9 @@ NTSTATUS Utils::ReadLinear(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva, PVOID buffe
 	return STATUS_UNSUCCESSFUL;
 }
 
-template <typename type>
-type Utils::ReadLinear(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
-{
-	type buffer = { 0 };
-	ReadLinear(dtb, rva, &buffer, sizeof(type));
-	return buffer;
-}
-
 NTSTATUS Utils::ReadLinear(LINEAR_ADDRESS rva, PVOID buffer, SIZE_T size)
 {
 	return ReadLinear(__readcr3(), rva, buffer, size);
-}
-
-template <typename type>
-type Utils::ReadLinear(LINEAR_ADDRESS rva)
-{
-	return ReadLinear<type>(__readcr3(), rva);
 }
 
 BOOLEAN Utils::RvaValid(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)

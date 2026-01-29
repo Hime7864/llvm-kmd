@@ -658,7 +658,7 @@ struct PACKED LINEAR_ADDRESS
     LINEAR_ADDRESS() : AsUINT64(0) {}
 
     template<typename T>
-    LINEAR_ADDRESS(T data) : AsUINT64(reinterpret_cast<UINT64>(data)) {}
+    LINEAR_ADDRESS(T data) : AsUINT64((UINT64)data) {}
 
     template<typename T>
     FORCEINLINE T as() const { return reinterpret_cast<T>(AsUINT64); }

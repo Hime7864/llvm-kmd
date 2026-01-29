@@ -287,6 +287,213 @@ void LocateUsermodePteManipulationNtoskrnl(PEPROCESS eproc)
 	return;
 }
 
+
+//0x4 bytes (sizeof)
+enum _MI_ASSIGNED_REGION_TYPES
+{
+	AssignedRegionPfnDatabase = 0,
+	AssignedRegionNonPagedPool = 1,
+	AssignedRegionPagedPool = 2,
+	AssignedRegionSystemCache = 3,
+	AssignedRegionSystemPtes = 4,
+	AssignedRegionKasan = 5,
+	AssignedRegionUltraZero = 6,
+	AssignedRegionCfg = 7,
+	AssignedRegionHyperSpace = 8,
+	AssignedRegionKernelStacks = 9,
+	AssignedRegionNonCachedMappings = 10,
+	AssignedRegionSoftWsles = 11,
+	AssignedRegionPageTables = 12,
+	AssignedRegionNotUsed = 13,
+	AssignedRegionSecureNonPagedPool = 14,
+	AssignedRegionKernelShadowStacks = 15,
+	AssignedRegionSystemDataViews = 16,
+	AssignedRegionSystemImages = 17,
+	AssignedRegionMaximum = 18
+};
+
+const char* GetRegionName(UINT32 type)
+{
+	switch (type)
+	{
+	case AssignedRegionPfnDatabase:          return "PfnDatabase";
+	case AssignedRegionNonPagedPool:         return "NonPagedPool";
+	case AssignedRegionPagedPool:            return "PagedPool";
+	case AssignedRegionSystemCache:          return "SystemCache";
+	case AssignedRegionSystemPtes:           return "SystemPtes";
+	case AssignedRegionKasan:                return "Kasan";
+	case AssignedRegionUltraZero:            return "UltraZero";
+	case AssignedRegionCfg:                  return "Cfg";
+	case AssignedRegionHyperSpace:           return "HyperSpace";
+	case AssignedRegionKernelStacks:         return "KernelStacks";
+	case AssignedRegionNonCachedMappings:    return "NonCachedMappings";
+	case AssignedRegionSoftWsles:            return "SoftWsles";
+	case AssignedRegionPageTables:           return "PageTables";
+	case AssignedRegionNotUsed:              return "NotUsed";
+	case AssignedRegionSecureNonPagedPool:   return "SecureNonPagedPool";
+	case AssignedRegionKernelShadowStacks:   return "KernelShadowStacks";
+	case AssignedRegionSystemDataViews:      return "SystemDataViews";
+	case AssignedRegionSystemImages:         return "SystemImages";
+	case AssignedRegionMaximum:              return "Maximum";
+
+	default:                                 return "Unknown";
+	}
+}
+
+
+void ValidatePageMap(PHYSICAL_ADDRESS dtb, PHYSICAL_ADDRESS page_map)
+{
+	auto PfnDatabase = MmPfnDatabase();
+
+	auto pPteVa = &PfnDatabase[page_map >> PAGE_SHIFT].PteAddress;
+	printf("pPteVa %p\n", pPteVa);
+
+	auto pPteSession = Utils::ReadLinear<LINEAR_ADDRESS>(dtb, pPteVa);
+	auto pPteKernel = Utils::ReadLinear<LINEAR_ADDRESS>(pPteVa);
+
+	if(pPteSession.AsUINT64 != pPteKernel.AsUINT64)
+		printf("Session vs Kernel PfnDatabase Linear Mismatch\n");
+
+	auto pfnSession = Utils::LinearTranslatePte(dtb, pPteSession).PageFrameNumber;
+	auto pfnKernel = Utils::LinearTranslatePte(pPteKernel).PageFrameNumber;
+
+	
+
+	auto pPteSession2 = &PfnDatabase[pfnSession].PteAddress;
+	auto pPteKernel2 = &PfnDatabase[pfnKernel].PteAddress;
+
+	printf("PFN Session PTE Addr: %p\n", pPteSession2);
+	printf("PFN Kernel  PTE Addr: %p\n", pPteKernel2);
+
+	//MiGetSystemRegionType(pdpt);
+}
+
+void ValidateUsermodePageMapping(PEPROCESS eproc)
+{
+	SIZE_T bytes_copied = 0;
+	KAPC_STATE apc;
+	auto PfnDatabase = MmPfnDatabase();
+	
+	auto pml4 = (MMPTE_HARDWARE*)ExAllocatePool(NonPagedPool, 0x1000);
+	auto pml4_pa = *(UINT64*)((UINT64)eproc + 0x28) & ~0xFFF;
+	if(!NT_SUCCESS(MmCopyMemory(pml4, pml4_pa, 0x1000, MM_COPY_MEMORY_PHYSICAL, &bytes_copied)))
+	{
+		printf("Failed to read PML4\n");
+		return;
+	}
+
+	for (int l4 = 0; l4 < 256; l4++)
+	{
+		if (!pml4[l4].Valid)
+			continue;
+
+		auto pdpt = (MMPTE_HARDWARE*)ExAllocatePool(NonPagedPool, 0x1000);
+		auto pdpt_pa = pml4[l4].PageFrameNumber << PAGE_SHIFT;
+		if (!NT_SUCCESS(MmCopyMemory(pdpt, pdpt_pa, 0x1000, MM_COPY_MEMORY_PHYSICAL, &bytes_copied)))
+		{
+			printf("Failed to read PDPT\n");
+			return;
+		}
+
+		for (int l3 = 0; l3 < 512; l3++)
+		{
+			if (!pdpt[l3].Valid)
+				continue;
+
+			auto pdt = (MMPTE_HARDWARE*)ExAllocatePool(NonPagedPool, 0x1000);
+			auto pdt_pa = pdpt[l3].PageFrameNumber << PAGE_SHIFT;
+			if (!NT_SUCCESS(MmCopyMemory(pdt, pdt_pa, 0x1000, MM_COPY_MEMORY_PHYSICAL, &bytes_copied)))
+			{
+				printf("Failed to read PDT\n");
+				return;
+			}
+
+			for (int l2 = 0; l2 < 512; l2++)
+			{
+				if (!pdt[l2].Valid)
+					continue;
+
+				auto pte = (MMPTE_HARDWARE*)ExAllocatePool(NonPagedPool, 0x1000);
+				auto pte_pa = pdt[l2].PageFrameNumber << PAGE_SHIFT;
+				if (!NT_SUCCESS(MmCopyMemory(pte, pte_pa, 0x1000, MM_COPY_MEMORY_PHYSICAL, &bytes_copied)))
+				{
+					printf("Failed to read PTE\n");
+					return;
+				}
+
+				for (int l1 = 0; l1 < 512; l1++)
+				{
+					if (!pte[l1].Valid)
+						continue;
+
+					auto pPteVa = PfnDatabase[pte[l1].PageFrameNumber].PteAddress;
+
+					auto pa = Utils::LinearTranslate(pml4_pa, pPteVa);
+
+					auto pfnEntry = &PfnDatabase[pa >> PAGE_SHIFT].PteAddress;
+
+					auto PtSession = Utils::ReadLinear<MMPTE_HARDWARE>(pml4_pa, pPteVa);
+					auto PtKernel = Utils::ReadLinear<MMPTE_HARDWARE>(pPteVa);
+
+					if (PtSession.AsUINT64 != PtKernel.AsUINT64 && PtKernel.AsUINT64)
+					{
+						printf("Session PTE Addr: %p\n", PtSession.AsUINT64);
+						printf("Kernel  PTE Addr: %p\n", PtKernel.AsUINT64);
+					}
+					else if (PtSession.AsUINT64 == PtKernel.AsUINT64)
+					{
+						LINEAR_ADDRESS rva;
+						rva.AsUINT64 = 0;
+						rva.pml4e_index = l4;
+						rva.pdpte_index = l3;
+						rva.pde_index = l2;
+						rva.pte_index = l1;
+						//printf("Matching PTEs at RVA: %p | PTE: %p\n", rva.AsUINT64, PtKernel.AsUINT64);
+						auto type = MiGetSystemRegionType(PfnDatabase[PtKernel.PageFrameNumber].PteAddress);
+						if (type != AssignedRegionKasan && type != AssignedRegionPfnDatabase)
+						{
+							printf("K&S PID 0x%08X [ RVA: %p | PFN: %010LLX ] type { %s }\n",
+								PsGetProcessId(eproc), rva.AsUINT64, PtKernel.PageFrameNumber, GetRegionName(type));
+						}
+						//printf("Type: %s\n", GetRegionName(type));
+					}
+					else
+					{
+						LINEAR_ADDRESS rva;
+						rva.AsUINT64 = 0;
+						rva.pml4e_index = l4;
+						rva.pdpte_index = l3;
+						rva.pde_index = l2;
+						rva.pte_index = l1;
+
+						auto type = MiGetSystemRegionType(PfnDatabase[PtSession.PageFrameNumber].PteAddress);
+						if (type != AssignedRegionSystemCache)
+						{
+							printf("S   PID 0x%08X [ RVA: %p | PFN: %010LLX ] type { %s }\n",
+								PsGetProcessId(eproc), rva.AsUINT64, PtSession.PageFrameNumber, GetRegionName(type));
+						}
+					}
+
+					//printf("Session PTE Addr: %p\n", pPteSession);
+
+
+					//auto pPteKernel = PfnDatabase[pa >> PAGE_SHIFT].PteAddress;
+
+					
+					
+
+				}
+				ExFreePool(pte);
+			}
+			ExFreePool(pdt);
+		}
+		ExFreePool(pdpt);
+	}
+	ExFreePool(pml4);
+}
+
+
+
 void ScanEProcess()
 {
 	printf("=== Scanning usermode for Pte Manipulation ===\n");
@@ -304,8 +511,11 @@ void ScanEProcess()
 			auto PEB = *(QWORD*)(flink + o_UniqueProcessId + 0x110);
 			if (PEB)
 			{
-				LocateUsermodePteManipulationSessioned((PEPROCESS)flink);
-				LocateUsermodePteManipulationNtoskrnl((PEPROCESS)flink);
+				printf("Scanning PID 0x%08X\n", PsGetProcessId((PEPROCESS)flink));
+				ValidateUsermodePageMapping((PEPROCESS)flink);
+
+				//LocateUsermodePteManipulationSessioned((PEPROCESS)flink);
+				//LocateUsermodePteManipulationNtoskrnl((PEPROCESS)flink);
 			}
 		}
 		flink = *(UINT64*)((UINT64)flink + o_UniqueProcessId + 0x8) - (o_UniqueProcessId + 0x8);
