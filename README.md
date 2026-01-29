@@ -27,6 +27,7 @@ This section lists the **project-specific helpers** exposed in the `KMD/` header
 - **`QWORD GetProcAddress(QWORD module, PCSTR export_name)`**: Resolve an exported symbol from a PE image in memory.
 - **`VOID GetProcAddressBuffer(QWORD module, FUNCTION_TABLE_ENTRY* table, DWORD count)`**: Bulk resolve exports into a table using `str_hash` hashes.
 - **`NTSTATUS GetSectionInfo(QWORD module_base, PCSTR section_name, QWORD* section_address, QWORD* section_size)`**: Get section VA + size from a PE image.
+- **`NTSTATUS GetSectionInfo(QWORD module_base, DWORD section_hash, QWORD* section_address, QWORD* section_size)`**: Same as above, but matches sections by `str_hash()` of the section name (up to 8 bytes).
 - **`NTSTATUS ReadPhysical(PHYSICAL_ADDRESS address, PVOID buffer, SIZE_T size)`**: Read physical memory into a buffer.
   - `template <typename T> T ReadPhysical(PHYSICAL_ADDRESS address)`
 - **Page table translation helpers**:

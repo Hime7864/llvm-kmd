@@ -18,7 +18,7 @@ VOID FORCEINLINE ExFreePool(
 	return NtImports::fn_ExFreePool(P);
 }
 
-ULONG FORCEINLINE DbgPrintEx(
+VOID FORCEINLINE DbgPrintEx(
 	_In_ ULONG ComponentId,
 	_In_ ULONG Level,
 	_In_ PCSTR Format,
@@ -27,14 +27,9 @@ ULONG FORCEINLINE DbgPrintEx(
 {
 	va_list args;
 	va_start(args, Format);
-	auto ret = NtImports::fn_DbgPrintEx(
-		ComponentId,
-		Level,
-		Format,
-		args
-	);
+	NtImports::fn_vDbgPrintEx(ComponentId, Level, Format, args);
 	va_end(args);
-	return ret;
+	return;
 }
 
 int FORCEINLINE sprintf(
@@ -45,11 +40,9 @@ int FORCEINLINE sprintf(
 {
 	va_list args;
 	va_start(args, Format);
-	auto ret = NtImports::fn_sprintf(
-		Buffer,
-		Format,
-		args
-	);
+	auto ret = NtImports::fn_vsprintf
+		? NtImports::fn_vsprintf(Buffer, Format, args)
+		: 0;
 	va_end(args);
 	return ret;
 }
@@ -62,11 +55,9 @@ int FORCEINLINE swprintf(
 {
 	va_list args;
 	va_start(args, Format);
-	auto ret = NtImports::fn_swprintf(
-		Buffer,
-		Format,
-		args
-	);
+	auto ret = NtImports::fn_vswprintf
+		? NtImports::fn_vswprintf(Buffer, Format, args)
+		: 0;
 	va_end(args);
 	return ret;
 }
@@ -318,6 +309,11 @@ PEPROCESS FORCEINLINE PsInitialSystemProcess()
 PMMPFN FORCEINLINE MmPfnDatabase()
 {
 	return *(PMMPFN*)NtImports::fn_MmPfnDatabase;
+}
+
+PBYTE FORCEINLINE MiSystemRegionTypeDatabase()
+{
+	return (PBYTE)NtImports::fn_MiSystemRegionTypeDatabase;
 }
 
 UINT32 FORCEINLINE MiGetSystemRegionType(
