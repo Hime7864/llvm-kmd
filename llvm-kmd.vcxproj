@@ -109,8 +109,7 @@
     <ClCompile>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>
-      </PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -118,15 +117,12 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <ExceptionHandling>false</ExceptionHandling>
       <Optimization>Full</Optimization>
-      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <AdditionalIncludeDirectories>$(SolutionDir)kmd\</AdditionalIncludeDirectories>
-      <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
-      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
-      <OmitFramePointers>false</OmitFramePointers>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
       <EntryPointSymbol>start</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
@@ -136,25 +132,15 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>
-      </PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <DebugInformationFormat>None</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <ExceptionHandling>false</ExceptionHandling>
-      <Optimization>MinSpace</Optimization>
+      <Optimization>Full</Optimization>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <AdditionalIncludeDirectories>$(SolutionDir)kmd\</AdditionalIncludeDirectories>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
-      <OmitFramePointers>true</OmitFramePointers>
-      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <FloatingPointExceptions>false</FloatingPointExceptions>
-      <StructMemberAlignment>1Byte</StructMemberAlignment>
-      <ControlFlowGuard>false</ControlFlowGuard>
-      <CompileAs>Default</CompileAs>
-      <OmitDefaultLibName>false</OmitDefaultLibName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -165,6 +151,7 @@
   <ItemGroup>
     <ClCompile Include="KMD\basics.cpp" />
     <ClCompile Include="KMD\cpuid.cpp" />
+    <ClCompile Include="KMD\dTlbPoison.cpp" />
     <ClCompile Include="KMD\entry.cpp" />
     <ClCompile Include="KMD\fwAlloc.cpp" />
     <ClCompile Include="KMD\msr.cpp" />
@@ -174,6 +161,7 @@
   <ItemGroup>
     <ClInclude Include="KMD\basics.hpp" />
     <ClInclude Include="KMD\cpuid.hpp" />
+    <ClInclude Include="KMD\dTlbPoison.hpp" />
     <ClInclude Include="KMD\entry.hpp" />
     <ClInclude Include="KMD\fwAlloc.hpp" />
     <ClInclude Include="KMD\intrinsics.hpp" />
@@ -182,9 +170,6 @@
     <ClInclude Include="KMD\nt_methods.hpp" />
     <ClInclude Include="KMD\nt_structs.hpp" />
     <ClInclude Include="KMD\utils.hpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
