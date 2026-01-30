@@ -68,9 +68,88 @@ void issue()
 	return;
 }
 
+PVOID NAKED KeGetCurrentPrcb()
+{
+	__asm
+	{
+		mov rax, gs:[0x20]
+		ret
+	}
+}
+
+void IpiCallback()
+{
+	auto MmInternal = (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13];
+	printf("%p\n", MmInternal);
+	return;
+}
+
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
-	auto eproc = FindEproc(16444);
+
+	auto MmInternal = (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13];
+
+
+	auto v10 = 0x40000000ull;
+	if ((DWORD)3 != 1)
+		v10 = 0x200000ull;                           // always this
+	auto v11 = (unsigned __int64)(unsigned int)v10 << 9;// 0x200000 << 9 = 0x10000000
+	if ((DWORD)3)
+		v11 = v10;                                // v11 = 1MiB
+	UINT64 v12 = 1 << 12;
+	auto true_2 = MmInternal & (v11 - 1);      // MmInternal & 0x1FFFFF = true
+	auto int_3 = (1 << 12) + true_2;
+	if (int_3 <= v11 && true_2 && (4 & 2) == 0)
+	{
+		printf("ret %p\n", MmInternal);
+		printf("Condition met\n");
+	}
+
+	printf("%p\n", MmInternal & 0x1FFFFF);
+	return STATUS_SUCCESS;
+	//auto prbc = KeGetCurrentPrcb();
+	auto kBase = Utils::GetKernelBase();
+	//printf("%p", (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13]);
+	//printf("%p", (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13]);
+	QWORD buffer = Utils::ReadPhysical<QWORD>(0x12340000);
+	//printf("%p", (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13]);
+	//printf("%p", (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13]);
+
+	//auto pMmInternal = (PBYTE)&(*(UINT64**)((UINT64)prbc + 0x8838))[13];
+	//auto MmInternal = (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13];
+	//if (pMmInternal[0x19])
+	//{
+	//	MmInternal -= 0x1000ull;
+	//	printf("MmInternal %p %i\n", MmInternal, Utils::RvaValid(MmInternal));
+	//}
+	//(*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13]
+	//printf("%p", (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13]);
+	//printf("%p", (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13]);
+	//printf("%p", (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13]);
+	//printf("%p", (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13]);
+	auto ptr = 0x323722 + kBase;
+	auto ptr2 = 0x32372F + kBase;
+	//auto MmInternal = (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13] - 0x1000;
+	auto anotherPteAddress = (((MmInternal - 1) >> 18) & 0x3FFFFFF8) + *(UINT64*)ptr;//ptr = 48 B8 ? ? ? ? ? ? ? ? 48 03 D8 49 BC
+	//anotherPteAddress = ((anotherPteAddress >> 9) & 0x7FFFFFFFF8LL) + *(UINT64*)ptr2;
+	auto PteAddress = anotherPteAddress - 8ull;
+	auto v26 = (__int64)(PteAddress << 25) >> 16;
+	printf("2v26: %p %p\n", *(QWORD*)PteAddress, MmGetPhysicalAddress((PVOID)PteAddress));
+	printf("2v26: %p %p\n", *(QWORD*)anotherPteAddress, MmGetPhysicalAddress((PVOID)anotherPteAddress));
+	
+	
+	
+
+	
+
+	
+
+	return STATUS_SUCCESS;
+
+
+
+
+	auto eproc = FindEproc(11464);
 	if(!eproc)
 		return STATUS_UNSUCCESSFUL;
 
@@ -82,14 +161,6 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	auto dtb_PteAddress_pa = MmGetPhysicalAddress(dtb_PteAddress);
 	auto dtb_PteAddress_offset = (UINT64)dtb_PteAddress & 0xFFF;
 
-	;
-	printf("spoof1 %p\n", Utils::ReadPhysical<UINT64>(dtb + 0x7D0));
-	printf("spoof2 %p\n", *(QWORD*)MmGetVirtualForPhysical(dtb + 0x7D0));
-	printf("%p\n", pfnDatabase[dtb >> PAGE_SHIFT].PteAddress);
-	printf("dtb %p\n", dtb);
-	printf("%p\n", MmGetPhysicalAddress(MmGetVirtualForPhysical(dtb)));
-
-	return STATUS_UNSUCCESSFUL;
 	dTlbPoison.Initialize();
 
 	LINEAR_ADDRESS rva = MmGetVirtualForPhysical(dtb);
@@ -154,8 +225,9 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 			printf("Abuseable Page %p %010X\n", rva.AsUINT64, pa);
 			printf("MMpfnEntry ptr %p\n", dtb_PteAddress);
 
-			auto pte = Utils::ReadPhysical<UINT64>(dtb + 0x7D0);
-			printf("MmCopyMemory pt entry %p\n", pte);
+
+			printf("spoof1 %p\n", Utils::ReadPhysical<UINT64>(dtb + 0x7D0));
+			printf("spoof2 %p\n", *(QWORD*)MmGetVirtualForPhysical(dtb + 0x7D0));
 
 			break;
 		}
