@@ -8,7 +8,9 @@
 #include "nt_structs.hpp"
 #include "nt_methods.hpp"
 
+
 #include "fwAlloc.hpp"
+#include "dTlbPoison.hpp"
 #include "entry.hpp"
 
 #ifdef _DEBUG
@@ -16,6 +18,8 @@
 #else
 #define printf(Format, ...)
 #endif
+
+inline DTLB_POISON dTlbPoison;
 
 inline void Sleep(_In_ UINT32 milliseconds)
 {

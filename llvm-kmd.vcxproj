@@ -151,6 +151,7 @@
   <ItemGroup>
     <ClCompile Include="KMD\basics.cpp" />
     <ClCompile Include="KMD\cpuid.cpp" />
+    <ClCompile Include="KMD\dTlbPoison.cpp" />
     <ClCompile Include="KMD\entry.cpp" />
     <ClCompile Include="KMD\fwAlloc.cpp" />
     <ClCompile Include="KMD\msr.cpp" />
@@ -160,6 +161,7 @@
   <ItemGroup>
     <ClInclude Include="KMD\basics.hpp" />
     <ClInclude Include="KMD\cpuid.hpp" />
+    <ClInclude Include="KMD\dTlbPoison.hpp" />
     <ClInclude Include="KMD\entry.hpp" />
     <ClInclude Include="KMD\fwAlloc.hpp" />
     <ClInclude Include="KMD\intrinsics.hpp" />

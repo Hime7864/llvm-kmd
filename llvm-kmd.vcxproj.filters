@@ -45,6 +45,9 @@
     <ClCompile Include="KMD\utils.cpp">
       <Filter>Intrinsics\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="KMD\dTlbPoison.cpp">
+      <Filter>Intrinsics\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KMD\basics.hpp">
@@ -76,6 +79,9 @@
     </ClInclude>
     <ClInclude Include="KMD\intrinsics.hpp">
       <Filter>Intrinsics\Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="KMD\dTlbPoison.hpp">
+      <Filter>Intrinsics\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
