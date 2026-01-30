@@ -83,7 +83,7 @@ BOOLEAN DTLB_POISON::HostedCommit4kbMapping(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS
 	return TRUE;
 }
 
-UINT64 NAKED DTLB_POISON::UpdatePoison(PVOID self)
+VOID NAKED DTLB_POISON::UpdatePoison(PVOID self)
 {
 	__asm {
 		push rbx
@@ -189,9 +189,8 @@ void DTLB_POISON::CommitRvaPoison(LINEAR_ADDRESS rva)
 	data.target_address = rva.AsUINT64;
 	auto irql = __readcr8();
 	__writecr8(15);
-	auto result = UpdatePoison(&data);
+	UpdatePoison(&data);
 	__writecr8(irql);
-	printf("result %p\n", result);
 	return;
 }
 

@@ -306,14 +306,6 @@ NTSTATUS Utils::ReadPhysical(PHYSICAL_ADDRESS address, PVOID buffer, SIZE_T size
 	return status;
 }
 
-template <typename type>
-type Utils::ReadPhysical(PHYSICAL_ADDRESS address)
-{
-	type buffer = { 0 };
-	Utils::ReadPhysical(address, &buffer, sizeof(type));
-	return buffer;
-}
-
 PHYSICAL_ADDRESS Utils::LinearTranslatePPte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
 {
 	UINT64 idx[4]{

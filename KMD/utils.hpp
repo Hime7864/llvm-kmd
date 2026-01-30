@@ -71,7 +71,12 @@ public:
 	template <typename type>
     static type ReadPhysical(
         PHYSICAL_ADDRESS address
-    );
+    )
+    {
+        type buffer = { 0 };
+        Utils::ReadPhysical(address, &buffer, sizeof(type));
+        return buffer;
+    }
 
     static PHYSICAL_ADDRESS LinearTranslatePPte(
         PHYSICAL_ADDRESS dtb, 

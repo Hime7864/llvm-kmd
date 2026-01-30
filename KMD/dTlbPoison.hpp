@@ -13,7 +13,7 @@ private:
 	void HostedFreeVirtual(UINT64 address);
 	MMPTE_HARDWARE HostedValidateTranslation(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva);
 	BOOLEAN HostedCommit4kbMapping(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva, MMPTE_HARDWARE pte);
-	UINT64 NAKED UpdatePoison(PVOID self);
+	VOID NAKED UpdatePoison(PVOID self);
 
 public:
 	BOOLEAN Initialize();
