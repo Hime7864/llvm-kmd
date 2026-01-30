@@ -18,7 +18,7 @@ VOID FORCEINLINE ExFreePool(
 	return NtImports::fn_ExFreePool(P);
 }
 
-ULONG FORCEINLINE DbgPrintEx(
+VOID FORCEINLINE DbgPrintEx(
 	_In_ ULONG ComponentId,
 	_In_ ULONG Level,
 	_In_ PCSTR Format,
@@ -27,14 +27,9 @@ ULONG FORCEINLINE DbgPrintEx(
 {
 	va_list args;
 	va_start(args, Format);
-	auto ret = NtImports::fn_DbgPrintEx(
-		ComponentId,
-		Level,
-		Format,
-		args
-	);
+	NtImports::fn_vDbgPrintEx(ComponentId, Level, Format, args);
 	va_end(args);
-	return ret;
+	return;
 }
 
 int FORCEINLINE sprintf(
@@ -45,11 +40,9 @@ int FORCEINLINE sprintf(
 {
 	va_list args;
 	va_start(args, Format);
-	auto ret = NtImports::fn_sprintf(
-		Buffer,
-		Format,
-		args
-	);
+	auto ret = NtImports::fn_vsprintf
+		? NtImports::fn_vsprintf(Buffer, Format, args)
+		: 0;
 	va_end(args);
 	return ret;
 }
@@ -62,11 +55,9 @@ int FORCEINLINE swprintf(
 {
 	va_list args;
 	va_start(args, Format);
-	auto ret = NtImports::fn_swprintf(
-		Buffer,
-		Format,
-		args
-	);
+	auto ret = NtImports::fn_vswprintf
+		? NtImports::fn_vswprintf(Buffer, Format, args)
+		: 0;
 	va_end(args);
 	return ret;
 }
@@ -317,8 +308,23 @@ PEPROCESS FORCEINLINE PsInitialSystemProcess()
 
 PMMPFN FORCEINLINE MmPfnDatabase()
 {
-	return NtImports::fn_MmPfnDatabase();
+	return *(PMMPFN*)NtImports::fn_MmPfnDatabase;
 }
+
+PBYTE FORCEINLINE MiSystemRegionTypeDatabase()
+{
+	return (PBYTE)NtImports::fn_MiSystemRegionTypeDatabase;
+}
+
+UINT32 FORCEINLINE MiGetSystemRegionType(
+	_In_ PVOID PfnEntry
+)
+{
+	return NtImports::fn_MiGetSystemRegionType(
+		PfnEntry
+	);
+}
+
 
 VOID FORCEINLINE RtlInitUnicodeString(
 	_Out_ PUNICODE_STRING DestinationString,
@@ -424,11 +430,22 @@ PETHREAD FORCEINLINE KeGetCurrentThread()
 	return NtImports::fn_KeGetCurrentThread();
 }
 
-UINT64 FORCEINLINE GetUniqueProcessId(
+UINT64 FORCEINLINE PsGetProcessId(
 	_In_ PEPROCESS Process
 )
 {
-	return NtImports::fn_GetUniqueProcessId(
+	return NtImports::fn_PsGetProcessId(
 		Process
+	);
+}
+
+BOOLEAN FORCEINLINE MmIsIoSpaceActive(
+	_In_ PHYSICAL_ADDRESS PhysicalAddress,
+	_In_ SIZE_T NumberOfBytes
+)
+{
+	return NtImports::fn_MmIsIoSpaceActive(
+		PhysicalAddress,
+		NumberOfBytes
 	);
 }
