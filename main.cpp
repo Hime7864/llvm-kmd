@@ -86,10 +86,55 @@ void IpiCallback()
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
+	auto target_pa = MmGetPhysicalAddress(DriverEntry) & ~0xFFF;
 
-	auto MmInternal = (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13];
+	auto alloc = ExAllocatePool(NonPagedPool, 0xA000);
+	RtlFillMemory(alloc, 0xA000, 0xFF);
+	auto alloc_va = MmMapIoSpace(MmGetPhysicalAddress(alloc), 0xA000, MmNonCached);
+	printf("alloc %p\n", alloc);
+	printf("alloc_va %p\n", alloc_va);
+	printf("target_pa %p\n", target_pa);
+	if(!alloc_va)
+		return STATUS_UNSUCCESSFUL;
+	Sleep(1000);
+	SIZE_T bytesCopied = 0;
 
 
+	auto old = (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13];
+	(*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13] = (UINT64)alloc_va;
+
+	QWORD buffer = 0;
+	MmCopyMemory(&buffer, target_pa, 0x8, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
+	printf("  > MmCopyMemory PFN[%X] -> %p", target_pa >> PAGE_SHIFT, buffer);
+	
+	(*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13] = old;
+	MmUnmapIoSpace(alloc_va, 0xA000);
+	ExFreePool(alloc);
+
+
+	//auto v10 = 0x40000000ull;
+	//if ((DWORD)3 != 1)
+	//	v10 = 0x200000ull;                           // always this
+	//auto v11 = (unsigned __int64)(unsigned int)v10 << 9;// 0x200000 << 9 = 0x10000000
+	//if ((DWORD)3)
+	//	v11 = v10;                                // v11 = 1MiB
+	//UINT64 v12 = 1 << 12;
+	//auto true_2 = *MmInternal & (v11 - 1);      // MmInternal & 0x1FFFFF = true
+	//auto int_3 = (1 << 12) + true_2;
+	//if (int_3 <= v11 && true_2 && (4 & 2) == 0)
+	//{
+	//	printf("[+] Condition met\n");
+	//}
+	//else
+	//{
+	//	printf("[!] Condition not met\n");
+	//}
+
+	return STATUS_SUCCESS;
+
+	//auto MmInternal = (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13];
+
+	/*
 	auto v10 = 0x40000000ull;
 	if ((DWORD)3 != 1)
 		v10 = 0x200000ull;                           // always this
@@ -141,7 +186,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	
 
 	
-
+	*/
 	
 
 	return STATUS_SUCCESS;
