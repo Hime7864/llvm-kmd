@@ -84,47 +84,130 @@ void IpiCallback()
 	return;
 }
 
+PVOID black_magic()
+{
+	auto alloc = ExAllocatePool(NonPagedPool, 0x1000);
+	(*(UINT64*)alloc) = (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13];
+	(*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13] = (UINT64)alloc + 0x8;
+	RtlCopyMemory((PVOID)((UINT64)alloc + 0x8), "Get fucked lol", 0x10);
+	return alloc;
+}
+
+void prevent_bsod(PVOID alloc)
+{
+	(*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13] = (*(UINT64*)alloc);
+	ExFreePool(alloc);
+	return;
+}
+
+UCHAR b2c(UCHAR val)
+{
+	if (val == 0x20)
+		return val;
+	if (val >= '0' && val <= '9')
+		return val;
+	if (val >= 'A' && val <= 'Z')
+		return val;
+	if (val >= 'a' && val <= 'z')
+		return val;
+	return '.';
+}
+
+void dmp_bytes(PVOID buffer, int bytes)
+{
+	for (int i = 0; i < bytes / 16; i++)
+	{
+		auto buf = (BYTE*)buffer + i * 16;
+		printf("%04X : %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x : %c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c\n",
+			i * 16,
+			buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7],
+			buf[8], buf[9], buf[10], buf[11], buf[12], buf[13], buf[14], buf[15],
+			b2c(buf[0]), b2c(buf[1]), b2c(buf[2]), b2c(buf[3]), b2c(buf[4]), b2c(buf[5]), b2c(buf[6]), b2c(buf[7]),
+			b2c(buf[8]), b2c(buf[9]), b2c(buf[10]), b2c(buf[11]), b2c(buf[12]), b2c(buf[13]), b2c(buf[14]), b2c(buf[15])
+		);
+	}
+}
+
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
-	auto target_pa = MmGetPhysicalAddress(DriverEntry) & ~0xFFF;
-	SIZE_T bytesCopied = 0;
-	QWORD buffer = 0;
+	auto eproc = FindEproc(100);
+	if (eproc)
+	{
+		auto dtb = *(UINT64*)((UINT64)eproc + 0x28) & ~0xFFF;
+		auto pfnDatabase = MmPfnDatabase();
+		pfnDatabase[dtb >> PAGE_SHIFT].u2.LockBit = 1;
+		pfnDatabase[dtb >> PAGE_SHIFT].u3.e1.CacheAttribute = 2;
 
-	MmCopyMemory(&buffer, target_pa, 0x8, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
-	printf("  Normal > MmCopyMemory PFN[%X] -> %p", target_pa >> PAGE_SHIFT, buffer);
+	}
 
+	auto kBase = Utils::GetKernelBase();
 	auto alloc = ExAllocatePool(NonPagedPool, 0x1000);
-	RtlFillMemory(alloc, 0x1000, 0x69);
-	UINT64 data[4];
+	RtlCopyMemory(alloc, "My Little Cannary", 18);
+	auto target_pa = MmGetPhysicalAddress(alloc);
 
-	int idx = 13;
+	//(*(UINT64*)(kBase + 0xE35A00)) = target_pa >> PAGE_SHIFT;
 
-	auto ptr = *(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838);
+	
 
-	data[0] = ptr[idx + 0];
-	data[1] = ptr[idx + 1];
-	data[2] = ptr[idx + 2];
-	data[3] = ptr[idx + 3];
+	//E35A00
+	auto pfnDatabase = MmPfnDatabase();
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u2.LockBit = 1;
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u3.e1.CacheAttribute = 2;
 
-	ptr[idx + 0] = (UINT64)alloc + 0x111;
-	ptr[idx + 1] = (UINT64)0;
-	ptr[idx + 2] = (UINT64)0;
-	ptr[idx + 3] = (UINT64)0;
 
-	printf("%p\n", ptr[idx + 0]);
 
-	MmCopyMemory(&buffer, target_pa, 0x8, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
-	printf("  Spoofed > MmCopyMemory PFN[%X] -> %p", target_pa >> PAGE_SHIFT, buffer);
+	//auto a1 = &pfnDatabase[target_pa >> PAGE_SHIFT];
+	//auto v16 = (UINT64)a1 + 0x30 * 1;
 
-	printf("%p\n", ptr[idx + 0]);
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u3.e4.EntireField = 0xFFFFFFFF;
 
-	ptr[idx + 0] = data[0];
-	ptr[idx + 1] = data[1];
-	ptr[idx + 2] = data[2];
-	ptr[idx + 3] = data[3];
+	//printf("PageSizeIndex %i\n", pfnDatabase[target_pa >> PAGE_SHIFT].u3.e1.CacheAttribute);
+	
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u2.LockBit = 1;
 
-	ExFreePool(alloc);
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u4.PfnExists = 0;
 
+	//auto flag = (*(QWORD*)(a1 + 0x28) & 0x10000000000LL) == 0;
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u4.EntireField = 0;
+	//auto result2 = (*(DWORD*)(a1 + 0x24) >> 27);// 3 - ((*(DWORD*)(a1 + 0x24) >> 27) & 3u);
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u5.Active.AnchorLargePageSize = 0;
+
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u5.Active.PageTableLinked
+	//printf("result2 %i\n", result2);
+	//printf("test %08X\n", pfnDatabase[target_pa >> PAGE_SHIFT].u5.Active.AnchorLargePageSize);
+
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u3.e1.ReadInProgress = 0;
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u3.e1.CacheAttribute = 2;
+	
+	SIZE_T bytesCopied = 0;
+	//*(DWORD*)((UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8EB8) + 0x14) = 0xFFFF;
+	//auto flag = *(DWORD*)((UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8EB8) + 0x14);
+	//printf("Current CPU flags: %X\n", flag);
+
+
+
+	BYTE buffer[0x21]{0};
+	auto stat = MmCopyMemory(&buffer, target_pa, 0x20, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
+	printf("  Normal > MmCopyMemory(%08X) PFN[%X] -> %s", stat, target_pa >> PAGE_SHIFT, buffer);
+	printf("counter %i\n", *(int*)(kBase + 0xE2DA54));
+	//flag = *(DWORD*)((UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8EB8) + 0x14);
+	//printf("Current CPU flags: %X\n", flag);
+
+	//printf("CacheAttribute %i\n", pfnDatabase[target_pa >> PAGE_SHIFT].u3.e1.CacheAttribute);
+
+	auto status = black_magic();
+	MmCopyMemory(&buffer, target_pa, 0x20, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
+	printf(" Spoofed > MmCopyMemory PFN[%X] -> %s", target_pa >> PAGE_SHIFT, buffer);
+	prevent_bsod(status);
+	
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u3.e1.CacheAttribute = 2;
+	//MmCopyMemory(alloc, target_pa, 0x1000, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
+	//pfnDatabase[target_pa >> PAGE_SHIFT].u3.e1.CacheAttribute = 0;
+	//printf("Force Page Miss\n");
+	//dmp_bytes(alloc, 0x1000);
+	//printf("  Normal > MmCopyMemory PFN[%X] -> %s", target_pa >> PAGE_SHIFT, buffer);
+	
+	//printf("CacheAttribute %i\n", pfnDatabase[target_pa >> PAGE_SHIFT].u3.e1.CacheAttribute);
 	//auto alloc = ExAllocatePool(NonPagedPool, 0xA000);
 	//RtlFillMemory(alloc, 0x1000, 0x67);
 	//auto alloc_va = MmMapIoSpace(MmGetPhysicalAddress(alloc), 0xA000, MmNonCached);
@@ -232,7 +315,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	if(!eproc)
 		return STATUS_UNSUCCESSFUL;
 
-	auto pfnDatabase = MmPfnDatabase();
+	//auto pfnDatabase = MmPfnDatabase();
 
 	auto dtb = *(UINT64*)((UINT64)eproc + 0x28) & ~0xFFF;
 
