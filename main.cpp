@@ -87,29 +87,63 @@ void IpiCallback()
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
 	auto target_pa = MmGetPhysicalAddress(DriverEntry) & ~0xFFF;
-
-	auto alloc = ExAllocatePool(NonPagedPool, 0xA000);
-	RtlFillMemory(alloc, 0xA000, 0xFF);
-	auto alloc_va = MmMapIoSpace(MmGetPhysicalAddress(alloc), 0xA000, MmNonCached);
-	printf("alloc %p\n", alloc);
-	printf("alloc_va %p\n", alloc_va);
-	printf("target_pa %p\n", target_pa);
-	if(!alloc_va)
-		return STATUS_UNSUCCESSFUL;
-	Sleep(1000);
 	SIZE_T bytesCopied = 0;
-
-
-	auto old = (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13];
-	(*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13] = (UINT64)alloc_va;
-
 	QWORD buffer = 0;
+
 	MmCopyMemory(&buffer, target_pa, 0x8, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
-	printf("  > MmCopyMemory PFN[%X] -> %p", target_pa >> PAGE_SHIFT, buffer);
-	
-	(*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13] = old;
-	MmUnmapIoSpace(alloc_va, 0xA000);
+	printf("  Normal > MmCopyMemory PFN[%X] -> %p", target_pa >> PAGE_SHIFT, buffer);
+
+	auto alloc = ExAllocatePool(NonPagedPool, 0x1000);
+	RtlFillMemory(alloc, 0x1000, 0x69);
+	UINT64 data[4];
+
+	int idx = 13;
+
+	auto ptr = *(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838);
+
+	data[0] = ptr[idx + 0];
+	data[1] = ptr[idx + 1];
+	data[2] = ptr[idx + 2];
+	data[3] = ptr[idx + 3];
+
+	ptr[idx + 0] = (UINT64)alloc + 0x111;
+	ptr[idx + 1] = (UINT64)0;
+	ptr[idx + 2] = (UINT64)0;
+	ptr[idx + 3] = (UINT64)0;
+
+	printf("%p\n", ptr[idx + 0]);
+
+	MmCopyMemory(&buffer, target_pa, 0x8, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
+	printf("  Spoofed > MmCopyMemory PFN[%X] -> %p", target_pa >> PAGE_SHIFT, buffer);
+
+	printf("%p\n", ptr[idx + 0]);
+
+	ptr[idx + 0] = data[0];
+	ptr[idx + 1] = data[1];
+	ptr[idx + 2] = data[2];
+	ptr[idx + 3] = data[3];
+
 	ExFreePool(alloc);
+
+	//auto alloc = ExAllocatePool(NonPagedPool, 0xA000);
+	//RtlFillMemory(alloc, 0x1000, 0x67);
+	//auto alloc_va = MmMapIoSpace(MmGetPhysicalAddress(alloc), 0xA000, MmNonCached);
+	//
+	//auto old = (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13];
+	//auto bits = (PBYTE) & (*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13];
+	//bits[25] = 0;
+	//(*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13] = (UINT64)alloc_va;
+	//
+	//buffer = 0;
+	//MmCopyMemory(&buffer, target_pa, 0x8, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
+	//printf("  Spoofed > MmCopyMemory PFN[%X] -> %p", target_pa >> PAGE_SHIFT, buffer);
+	//
+	//(*(UINT64**)((UINT64)KeGetCurrentPrcb() + 0x8838))[13] = old;
+	//MmUnmapIoSpace(alloc_va, 0xA000);
+	//ExFreePool(alloc);
+	//
+	//MmCopyMemory(&buffer, target_pa, 0x8, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
+	//printf("  Real > MmCopyMemory PFN[%X] -> %p", target_pa >> PAGE_SHIFT, buffer);
 
 
 	//auto v10 = 0x40000000ull;
