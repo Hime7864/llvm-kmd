@@ -130,17 +130,42 @@ void dmp_bytes(PVOID buffer, int bytes)
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
-	auto eproc = FindEproc(100);
-	if (eproc)
+	auto kBase = Utils::GetKernelBase();
+	auto eproc2 = FindEproc(4816);
+	if (eproc2)
 	{
-		auto dtb = *(UINT64*)((UINT64)eproc + 0x28) & ~0xFFF;
-		auto pfnDatabase = MmPfnDatabase();
-		pfnDatabase[dtb >> PAGE_SHIFT].u2.LockBit = 1;
-		pfnDatabase[dtb >> PAGE_SHIFT].u3.e1.CacheAttribute = 2;
+		QWORD text_base = 0, text_size = 0;
+		Utils::GetSectionInfo(
+			kBase,
+			".text",
+			&text_base,
+			&text_size
+		);
+
+		auto qword_E35A00 = Utils::ResolveRel32(3, Utils::SigScan_s(
+			text_base,
+			text_size,
+			"48 2B 0D ? ? ? ? 8B F1"
+		));
+
+		if (qword_E35A00)
+		{
+			auto dtb = *(UINT64*)((UINT64)eproc2 + 0x28) & ~0xFFF;
+			*(UINT64*)qword_E35A00 = dtb;
+			auto pfnDatabase = MmPfnDatabase();
+			pfnDatabase[dtb >> PAGE_SHIFT].u2.LockBit = 1;
+			pfnDatabase[dtb >> PAGE_SHIFT].u3.e1.CacheAttribute = 2;
+		}
+
+		//auto dtb = *(UINT64*)((UINT64)eproc2 + 0x28) & ~0xFFF;
+		//auto pfnDatabase = MmPfnDatabase();
+		//pfnDatabase[dtb >> PAGE_SHIFT].u2.LockBit = 1;
+		//pfnDatabase[dtb >> PAGE_SHIFT].u3.e1.CacheAttribute = 2;
 
 	}
 
-	auto kBase = Utils::GetKernelBase();
+	return STATUS_SUCCESS;
+
 	auto alloc = ExAllocatePool(NonPagedPool, 0x1000);
 	RtlCopyMemory(alloc, "My Little Cannary", 18);
 	auto target_pa = MmGetPhysicalAddress(alloc);
