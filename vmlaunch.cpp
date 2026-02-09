@@ -1,5 +1,17 @@
 #include "imports.hpp"
 
+void exitThread()
+{
+	auto method = NtImports::fn_PsTerminateSystemThread;
+	__asm
+	{
+		mov rax, [method]
+		xor ecx, ecx
+		call rax
+		ret
+	}
+}
+
 void SVM::LaunchCore()
 {
 	auto core_idx = CPUID::current_core_number();
@@ -14,7 +26,8 @@ void SVM::LaunchCore()
 
 	saveArea->Rax = ctx->Rax;
 	saveArea->RSP = ctx->Rsp;
-	saveArea->Rip = ctx->Rip;
+	//saveArea->Rip = ctx->Rip;
+	saveArea->Rip = (UINT64)exitThread;
 	saveArea->RFLAGS = ctx->EFlags;
 
 	saveArea->ES.selector = ctx->SegEs;
@@ -64,13 +77,25 @@ void SVM::LaunchCore()
 
 	__vmsave(storage->vmcb);
 
-	VmLoop(vCore, hCr3);
+
+	return;
+	auto old = __readcr3();
+	__writecr3(hCr3);
+
+	VmLoop(vCore, storage->vmcb);
+
+	__writecr3(old);
 
 	return;
 }
 
 void SVM::LaunchVm()
 {
-	KeIpiGenericCall(LaunchCore, nullptr);
+	HANDLE thread_handle = 0;
+	_OBJECT_ATTRIBUTES object_attribues{ };
+	InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
+	PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&LaunchCore, nullptr);
+
+	//KeIpiGenericCall(LaunchCore, nullptr);
 	return;
 }

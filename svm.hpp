@@ -25,9 +25,9 @@ private:
 
 	static void ControlArea();
 
-	static void NAKED VmLoop(VCORE* vCore, PHYSICAL_ADDRESS hCr3);
+	static void NAKED VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb);
 
-	static void VmExit(VCORE* vCore);
+	static void __attribute__((preserve_most)) VmExit(VCORE* vCore);
 
 	static void LaunchCore();
 
