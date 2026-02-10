@@ -42,34 +42,52 @@ void SVM::ControlArea()
 void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 {
 	__asm {
-		
-		lea rax, [rcx + 0x3800]
-		mov rbx, rsp
-		mov rsp, rax
-		push rbx
+		mov rax, rsp
+		lea rsp, [rcx + 0x3800]
+		push rax
 
+	loop:
 		push rcx
 		push rdx
-		mov rax, rdx
 
-		//loop :
+		// Save host context
+		lea rcx, [rcx + 0x04F0]
+		call SaveCtx
+		lea rcx, [rcx - 0x04F0]
+
+		// Load guest context
+		lea rcx, [rcx + 0x0020]
+		call LoadCtx
+
+		// VmRun guest
+		mov rax, [rsp]
 		vmload
-		vmrun
+		//vmrun
 		vmsave
-		push rax
-		push rcx
 
-		mov rcx, [rsp + 18h]
-		call VmExit
-		pop rcx
+		// Save guest context
+		push rcx
+		mov rcx, [rsp + 0x10]
+		lea rcx, [rcx + 0x0020]
+		call SaveCtx
 		pop rax
-		//jmp loop
+		mov [rcx + 0x60], rax
+		lea rcx, [rcx - 0x0020]
+
+		// Restore host context
+		lea rcx, [rcx + 0x04F0]
+		call LoadCtx
+		lea rcx, [rcx - 0x04F0]
+
+		call VmExit
 
 		pop rdx
 		pop rcx
 
-		pop rbx
-		mov rsp, rbx
+		//jmp loop
+
+		pop rax
+		mov rsp, rax
 		ret
 	}
 }
@@ -79,9 +97,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto vmcb = &vCore->vmcb;
 	auto ssa = &vmcb->SaveStateArea;
 	auto ca = &vmcb->ControlArea;
-	
-	auto exitCode = ca->ExitCode;
-	printf("exitCode: %i\n", exitCode);
 
+
+	ssa->Rip = ca->NextRip;
 	return;
 }

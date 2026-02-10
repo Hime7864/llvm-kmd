@@ -155,7 +155,7 @@ VOID FORCEINLINE MmUnmapIoSpace(
 	);
 }
 
-VOID FORCEINLINE RtlCaptureContext(
+UINT64 FORCEINLINE RtlCaptureContext(
 	_Inout_ PCONTEXT ContextRecord
 )
 {
@@ -194,6 +194,15 @@ NTSTATUS FORCEINLINE KeDelayExecutionThread(
 		WaitMode,
 		Alertable,
 		Interval
+	);
+}
+
+KAFFINITY FORCEINLINE KeSetSystemAffinityThread(
+	_In_ KAFFINITY Affinity
+)
+{
+	return NtImports::fn_KeSetSystemAffinityThread(
+		Affinity
 	);
 }
 

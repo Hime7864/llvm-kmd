@@ -1,33 +1,122 @@
 #include "imports.hpp"
 
-void exitThread()
+void NAKED SVM::SaveCtx(VCORE* vCore)
 {
-	auto method = NtImports::fn_PsTerminateSystemThread;
-	__asm
-	{
-		mov rax, [method]
-		xor ecx, ecx
-		call rax
+	__asm {
+		pushfq
+		mov[rcx + 0x58], rax
+		mov[rcx + 0x60], rcx
+		mov[rcx + 0x68], rdx
+		mov[rcx + 0x98], r8
+		mov[rcx + 0xA0], r9
+		mov[rcx + 0xA8], r10
+		mov[rcx + 0xB0], r11
+		movaps xmmword ptr[rcx + 0x180], xmm0
+		movaps xmmword ptr[rcx + 0x190], xmm1
+		movaps xmmword ptr[rcx + 0x1A0], xmm2
+		movaps xmmword ptr[rcx + 0x1B0], xmm3
+		movaps xmmword ptr[rcx + 0x1C0], xmm4
+		movaps xmmword ptr[rcx + 0x1D0], xmm5
+		mov[rcx + 0x70], rbx
+		mov[rcx + 0x80], rbp
+		mov[rcx + 0x88], rsi
+		mov[rcx + 0x90], rdi
+		mov[rcx + 0xB8], r12
+		mov[rcx + 0xC0], r13
+		mov[rcx + 0xC8], r14
+		mov[rcx + 0xD0], r15
+		fnstcw word ptr[rcx + 0xE0]
+		mov dword ptr[rcx + 0xE2], 0
+		movaps xmmword ptr[rcx + 0x1E0], xmm6
+		movaps xmmword ptr[rcx + 0x1F0], xmm7
+		movaps xmmword ptr[rcx + 0x200], xmm8
+		movaps xmmword ptr[rcx + 0x210], xmm9
+		movaps xmmword ptr[rcx + 0x220], xmm10
+		movaps xmmword ptr[rcx + 0x230], xmm11
+		movaps xmmword ptr[rcx + 0x240], xmm12
+		movaps xmmword ptr[rcx + 0x250], xmm13
+		movaps xmmword ptr[rcx + 0x260], xmm14
+		movaps xmmword ptr[rcx + 0x270], xmm15
+		stmxcsr dword ptr[rcx + 0xF8]
+		stmxcsr dword ptr[rcx + 0x14]
+		lea rax, [rsp + 0x10]
+		mov[rcx + 0x78], rax
+		mov rax, [rsp + 0x08]
+		mov[rcx + 0xD8], rax
+		mov eax, [rsp]
+		mov[rcx + 0x24], eax
+		add rsp, 8
 		ret
 	}
 }
 
-void SVM::LaunchCore()
+void NAKED SVM::LoadCtx(VCORE* vCore)
+{
+	__asm {
+		mov rdx, [rcx + 0x68]
+		mov r8, [rcx + 0x98]
+		mov r9, [rcx + 0xA0]
+		mov r10, [rcx + 0xA8]
+		mov r11, [rcx + 0xB0]
+		movaps xmm0, xmmword ptr[rcx + 0x180]
+		movaps xmm1, xmmword ptr[rcx + 0x190]
+		movaps xmm2, xmmword ptr[rcx + 0x1A0]
+		movaps xmm3, xmmword ptr[rcx + 0x1B0]
+		movaps xmm4, xmmword ptr[rcx + 0x1C0]
+		movaps xmm5, xmmword ptr[rcx + 0x1D0]
+		mov rbx, [rcx + 0x70]
+		mov rbp, [rcx + 0x80]
+		mov rsi, [rcx + 0x88]
+		mov rdi, [rcx + 0x90]
+		mov r12, [rcx + 0xB8]
+		mov r13, [rcx + 0xC0]
+		mov r14, [rcx + 0xC8]
+		mov r15, [rcx + 0xD0]
+		fldcw word ptr[rcx + 0xE0]
+		movaps xmm6, xmmword ptr[rcx + 0x1E0]
+		movaps xmm7, xmmword ptr[rcx + 0x1F0]
+		movaps xmm8, xmmword ptr[rcx + 0x200]
+		movaps xmm9, xmmword ptr[rcx + 0x210]
+		movaps xmm10, xmmword ptr[rcx + 0x220]
+		movaps xmm11, xmmword ptr[rcx + 0x230]
+		movaps xmm12, xmmword ptr[rcx + 0x240]
+		movaps xmm13, xmmword ptr[rcx + 0x250]
+		movaps xmm14, xmmword ptr[rcx + 0x260]
+		movaps xmm15, xmmword ptr[rcx + 0x270]
+		ldmxcsr dword ptr[rcx + 0xF8]
+		ldmxcsr dword ptr[rcx + 0x14]
+
+		xor eax, eax
+		mov eax, [rcx + 0x24]
+		push rax
+		popfq
+
+		mov rax, [rcx + 0x430]
+		mov rcx, [rcx + 0x60]
+		ret
+	}
+}
+
+void SVM::LaunchCore(int affinity)
 {
 	auto core_idx = CPUID::current_core_number();
 	auto vCore = &vCpu[core_idx];
 	auto saveArea = &vCore->vmcb.SaveStateArea;
 	auto storage = &vCore->storage;
-	auto ctx = &storage->ctx;
+	auto ctx = &storage->gCtx;
 
 	ControlArea();
 
-	RtlCaptureContext(ctx);
+	auto result = RtlCaptureContext(ctx);
+	if (ctx->Rax == result)
+	{
+		printf("in Guest\n");
+		return;
+	}
 
 	saveArea->Rax = ctx->Rax;
 	saveArea->RSP = ctx->Rsp;
-	//saveArea->Rip = ctx->Rip;
-	saveArea->Rip = (UINT64)exitThread;
+	saveArea->Rip = ctx->Rip;
 	saveArea->RFLAGS = ctx->EFlags;
 
 	saveArea->ES.selector = ctx->SegEs;
@@ -35,8 +124,8 @@ void SVM::LaunchCore()
 	saveArea->SS.selector = ctx->SegSs;
 	saveArea->DS.selector = ctx->SegDs;
 
-	storage->vmcb = Utils::LinearTranslate(&vCore->vmcb);
-	MSR::HSAVE_PA(Utils::LinearTranslate(&vCore->hsave));
+	storage->vmcb = Utils::LinearTranslate(hCr3, &vCore->vmcb);
+	MSR::HSAVE_PA(Utils::LinearTranslate(hCr3, &vCore->hsave));
 
 	auto efer = MSR::EFER();
 	efer.svme = true;
@@ -76,14 +165,12 @@ void SVM::LaunchCore()
 	saveArea->DS.attrib = gdtr.attribute(saveArea->DS.selector);
 
 	__vmsave(storage->vmcb);
-
-
-	return;
+	
 	auto old = __readcr3();
 	__writecr3(hCr3);
-
+	
 	VmLoop(vCore, storage->vmcb);
-
+	
 	__writecr3(old);
 
 	return;
@@ -91,11 +178,6 @@ void SVM::LaunchCore()
 
 void SVM::LaunchVm()
 {
-	HANDLE thread_handle = 0;
-	_OBJECT_ATTRIBUTES object_attribues{ };
-	InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
-	PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&LaunchCore, nullptr);
-
-	//KeIpiGenericCall(LaunchCore, nullptr);
+	KeIpiGenericCall(LaunchCore, nullptr);
 	return;
 }

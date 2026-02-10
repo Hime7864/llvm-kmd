@@ -92,7 +92,7 @@ namespace NtImports
         _In_ SIZE_T NumberOfBytes
         ) = nullptr;
 
-    inline VOID(__stdcall* fn_RtlCaptureContext)(
+    inline UINT64(__stdcall* fn_RtlCaptureContext)(
         _Inout_ PCONTEXT ContextRecord
         ) = nullptr;
 
@@ -110,6 +110,10 @@ namespace NtImports
         _In_ BOOLEAN Alertable,
         _In_ PLARGE_INTEGER Interval
         ) = nullptr;
+
+    inline KAFFINITY(__stdcall* fn_KeSetSystemAffinityThread)(
+        _In_ KAFFINITY Affinity
+		) = nullptr;
 
     inline NTSTATUS(__stdcall* fn_PsCreateSystemThread)(
         _Out_ PHANDLE ThreadHandle,

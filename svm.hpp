@@ -29,7 +29,11 @@ private:
 
 	static void __attribute__((preserve_most)) VmExit(VCORE* vCore);
 
-	static void LaunchCore();
+	static void NAKED SaveCtx(VCORE* vCore);
+
+	static void NAKED LoadCtx(VCORE* vCore);
+
+	static void LaunchCore(int affinity);
 
 public:
 	static void Initialize();
