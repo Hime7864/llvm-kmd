@@ -62,7 +62,7 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		// VmRun guest
 		mov rax, [rsp]
 		vmload
-		//vmrun
+		vmrun
 		vmsave
 
 		// Save guest context

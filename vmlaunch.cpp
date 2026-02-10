@@ -178,6 +178,7 @@ void SVM::LaunchCore(int affinity)
 
 void SVM::LaunchVm()
 {
-	KeIpiGenericCall(LaunchCore, nullptr);
+	LaunchCore(0);
+	//KeIpiGenericCall(LaunchCore, nullptr);
 	return;
 }
