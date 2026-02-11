@@ -27,12 +27,13 @@ void SVM::ControlArea()
 	controlArea->TlbControl.GuestASID = CPUID::current_core_number() + 1;
 	controlArea->TlbControl.FlushGuestNonGlobalTLB = 1;
 	controlArea->Intercept.VMRUN = 1;
-	//controlArea->Intercept.CPUID = 1;
-	//controlArea->Intercept.VMMCALL = 1;
-	//controlArea->Intercept.MSR_Prot = 1;
+	controlArea->Intercept.VINTR = 1;
+	controlArea->Intercept.CPUID = 1;
+	controlArea->Intercept.VMMCALL = 1;
+	controlArea->Intercept.MSR_Prot = 1;
 
-	//msrPm->read(MSR::_MSR_EFER, true);
-	//msrPm->write(MSR::_MSR_EFER, true);
+	msrPm->read(MSR::_MSR_EFER, true);
+	msrPm->write(MSR::_MSR_EFER, true);
 
 	controlArea->NestedPagingControl.NP_Enable = 1;
 	controlArea->NestedCr3 = gCr3;
@@ -105,7 +106,7 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		lea rcx, [rcx - 0x0500]
 
 		call VmExit
-		//jmp loop
+		jmp loop
 
 		pop rax
 		mov rsp, rax
@@ -119,7 +120,57 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto ssa = &vmcb->SaveStateArea;
 	auto ca = &vmcb->ControlArea;
 
-	printf("VMEXIT: code=%llx\n", ca->ExitCode);
+	auto storage = &vCore->storage;
+	auto gCtx = &storage->gCtx;
+
+	auto exitCode = ca->ExitCode;
+	auto exitInfo1 = ca->ExitInfo1;
+	auto exitInfo2 = ca->ExitInfo2;
+
+	switch (exitCode)
+	{
+	case VMEXIT_CPUID:
+	{
+		if (ssa->Rax == 0xDEAD)
+		{
+			gCtx->R8 = __rdtsc();
+			gCtx->R9 = storage->tsc;
+			gCtx->R10 = MSR::APERF();
+			gCtx->R11 = storage->aperf;
+			gCtx->R12 = MSR::MPERF();
+			gCtx->R13 = storage->mperf;
+		}
+		else
+		{
+			_cpuid(ssa->Rax, &ssa->Rax, &gCtx->Rbx, &gCtx->Rcx, &gCtx->Rdx);
+		}
+	}break;
+	case VMEXIT_MSR:
+	{
+		switch ((UINT32)gCtx->Rcx)
+		{
+			case MSR::_MSR_EFER:
+			{
+				if (exitInfo1.MSR.isWrite)
+				{
+					MSR_EFER efer = { 0 };
+					efer.AsUINT64 = gCtx->Rdx << 32 | (gCtx->Rax & 0xFFFFFFFF);
+					storage->efer = efer;
+				}
+				else
+				{
+					ssa->Rax = storage->efer.AsUINT64 & 0xFFFFFFFF;
+					gCtx->Rdx = (storage->efer.AsUINT64 >> 32) & 0xFFFFFFFF;
+				}
+			}break;
+			default:
+				break;
+		}
+	}break;
+	default:
+		break;
+	}
+
 
 	if(ca->NextRip)
 		ssa->Rip = ca->NextRip;

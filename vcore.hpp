@@ -12,6 +12,7 @@ struct ALIGN(4096) STORAGE
 	UINT64 aperf; // 0x0028
 	CONTEXT gCtx; // 0x0030
 	CONTEXT hCtx; // 0x0500
+	MSR_EFER efer; // 0x09D0
 };
 
 struct ALIGN(4096) VCORE

@@ -473,7 +473,7 @@ extern "C"
     VOID __invlpg(_In_ PVOID address);
 
 	// CPUID instruction
-    VOID _cpuid(_In_ UINT32 leaf, _Out_ UINT32* eax, _Out_ UINT32* ebx,  _Out_ UINT32* ecx, _Out_ UINT32* edx);
+    VOID _cpuid(_In_ UINT32 leaf, _Out_ UINT64* eax, _Out_ UINT64* ebx,  _Out_ UINT64* ecx, _Out_ UINT64* edx);
 
     // MSR access
     UINT64 __readmsr(_In_ UINT32 msr);

@@ -106,7 +106,7 @@ void SVM::LaunchCore(int affinity)
 	auto result = RtlCaptureContext(ctx);
 	if (ctx->Rax == result)
 	{
-		printf("in Guest\n");
+		printf("Core %i Online\n", core_idx);
 		return;
 	}
 
@@ -162,12 +162,12 @@ void SVM::LaunchCore(int affinity)
 
 	__vmsave(storage->vmcb);
 	
-	//auto old = __readcr3();
-	//__writecr3(hCr3);
+	auto old = __readcr3();
+	__writecr3(hCr3);
 	
 	VmLoop(vCore, storage->vmcb);
 	
-	//__writecr3(old);
+	__writecr3(old);
 
 
 
@@ -176,7 +176,7 @@ void SVM::LaunchCore(int affinity)
 
 void SVM::LaunchVm()
 {
-	LaunchCore(0);
-	//KeIpiGenericCall(LaunchCore, nullptr);
+	//LaunchCore(0);
+	KeIpiGenericCall(LaunchCore, nullptr);
 	return;
 }

@@ -575,25 +575,25 @@ extern "C"
 
     VOID _cpuid(
         _In_ UINT32 leaf,
-        _Out_ UINT32* eax,
-        _Out_ UINT32* ebx,
-        _Out_ UINT32* ecx,
-        _Out_ UINT32* edx
+        _Out_ UINT64* rax,
+        _Out_ UINT64* rbx,
+        _Out_ UINT64* rcx,
+        _Out_ UINT64* rdx
     )
     {
-        UINT32 _eax, _ebx, _ecx, _edx;
+        UINT64 _rax, _rbx, _rcx, _rdx;
         __asm {
             mov eax, leaf
             cpuid
-            mov _eax, eax
-            mov _ebx, ebx
-            mov _ecx, ecx
-            mov _edx, edx
+            mov [_rax], rax
+            mov [_rbx], rbx
+            mov [_rcx], rcx
+            mov [_rdx], rdx
         }
-        if (eax) *eax = _eax;
-        if (ebx) *ebx = _ebx;
-        if (ecx) *ecx = _ecx;
-        if (edx) *edx = _edx;
+        *rax = _rax;
+        *rbx = _rbx;
+        *rcx = _rcx;
+        *rdx = _rdx;
     }
 
     UINT64 __readmsr(_In_ UINT32 msr)
