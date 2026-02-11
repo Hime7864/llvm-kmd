@@ -578,7 +578,7 @@ struct PACKED SAVE_STATE_AREA// Table B-2. VMCB Layout, State Save Area (40332-r
     SEGMENT LDTR; // 0x070
     SEGMENT IDTR; // 0x080
     SEGMENT TR; // 0x090
-    struct PACKED
+    struct
     { 
         unsigned : 32;
         unsigned : 32;
@@ -590,8 +590,8 @@ struct PACKED SAVE_STATE_AREA// Table B-2. VMCB Layout, State Save Area (40332-r
         unsigned : 32;
         unsigned : 32;
         unsigned : 32;
-        unsigned : 24;
     };
+    UCHAR Reserved[3];
     UCHAR CPL; // 0x0CB
     struct { unsigned : 32; };
     UINT64 EFER; // 0x0D0

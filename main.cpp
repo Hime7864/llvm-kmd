@@ -46,44 +46,65 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		lea rsp, [rcx + 0x3800]
 		push rax
 
-	loop:
+		loop:
+
+		lea rcx, [rcx + 0x0500]
+		call SaveCtx
+		lea rcx, [rcx - 0x0500]
 		push rcx
+
 		push rdx
 
-		// Save host context
-		lea rcx, [rcx + 0x04F0]
-		call SaveCtx
-		lea rcx, [rcx - 0x04F0]
-
-		// Load guest context
-		lea rcx, [rcx + 0x0020]
+		lea rcx, [rcx + 0x30]
 		call LoadCtx
 
-		// VmRun guest
-		mov rax, [rsp]
+		pop rax
 		vmload
 		vmrun
 		vmsave
 
-		// Save guest context
+
 		push rcx
-		mov rcx, [rsp + 0x10]
-		lea rcx, [rcx + 0x0020]
-		call SaveCtx
-		pop rax
-		mov [rcx + 0x60], rax
-		lea rcx, [rcx - 0x0020]
+		mov rcx, [rsp + 0x08]
 
-		// Restore host context
-		lea rcx, [rcx + 0x04F0]
-		call LoadCtx
-		lea rcx, [rcx - 0x04F0]
+		push rdx
 
-		call VmExit
+		// Serialize tsc
+		mfence
+		lfence
+		rdtsc
+		mov[rcx + 0x18], eax
+		mov[rcx + 0x1C], edx
+
+		// mperf
+		push rcx
+		mov ecx, 0xE7ul
+		rdmsr
+		pop rcx
+		mov[rcx + 0x20], eax
+		mov[rcx + 0x24], edx
+
+		// aperf
+		push rcx
+		mov ecx, 0xE8ul
+		rdmsr
+		pop rcx
+		mov[rcx + 0x28], eax
+		mov[rcx + 0x2C], edx
 
 		pop rdx
-		pop rcx
 
+		lea rcx, [rcx + 0x30]
+		call SaveCtx
+		pop rax
+		mov[rcx + 0x80], rax
+
+		pop rcx
+		lea rcx, [rcx + 0x0500]
+		call LoadCtx
+		lea rcx, [rcx - 0x0500]
+
+		call VmExit
 		//jmp loop
 
 		pop rax
@@ -98,7 +119,9 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto ssa = &vmcb->SaveStateArea;
 	auto ca = &vmcb->ControlArea;
 
+	printf("VMEXIT: code=%llx\n", ca->ExitCode);
 
-	ssa->Rip = ca->NextRip;
+	if(ca->NextRip)
+		ssa->Rip = ca->NextRip;
 	return;
 }

@@ -7,9 +7,11 @@ struct ALIGN(4096) STORAGE
 	UINT64 switch_cr3; // 0x0010
 
 
-	UINT64 Reserved; // 0x0018
-	CONTEXT hCtx; // 0x0020
-	CONTEXT gCtx; // 0x04F0
+	UINT64 tsc; // 0x0018
+	UINT64 mperf; // 0x0020
+	UINT64 aperf; // 0x0028
+	CONTEXT gCtx; // 0x0030
+	CONTEXT hCtx; // 0x0500
 };
 
 struct ALIGN(4096) VCORE
