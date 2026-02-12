@@ -4,7 +4,10 @@ UINT64 SVM::dCr3 = 0;
 UINT64 SVM::hCr3 = 0;
 UINT64 SVM::gCr3 = 0;
 VCORE* SVM::vCpu = 0;
-UINT32 SVM::coreCount = 0;
+UINT32 SVM::vCoreCount = 0;
+UINT64 SVM::syncRequest = 0;
+UINT64 SVM::syncRelease = 0;
+UINT64 SVM::syncArrived = 0;
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
@@ -25,13 +28,12 @@ void SVM::ControlArea()
 	auto controlArea = &vCore->vmcb.ControlArea;
 	auto msrPm = &vCore->msrpm;
 	auto storage = &vCore->storage;
-	
-	controlArea->VirtualApic.V_INTR_MASKING = true;
 
 	controlArea->TlbControl.GuestASID = CPUID::current_core_number() + 1;
 	controlArea->TlbControl.FlushGuestNonGlobalTLB = true;
 	controlArea->Intercept.VMRUN = true;
 	controlArea->Intercept.VMMCALL = true;
+	//controlArea->Intercept.NMI = true;
 	controlArea->Intercept.MSR_Prot = true;
 
 	// MSR Shadows

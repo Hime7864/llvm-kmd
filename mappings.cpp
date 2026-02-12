@@ -4,8 +4,8 @@ void SVM::CreateMapping()
 {
 	hCr3 = FWA::ReservePages(1);
 
-	coreCount = KeQueryActiveProcessorCount(0);
-	auto vCpuSize = coreCount * sizeof(VCORE);
+	vCoreCount = KeQueryActiveProcessorCount(0);
+	auto vCpuSize = vCoreCount * sizeof(VCORE);
 	auto vCpuPa = FWA::ReservePages(vCpuSize >> 12);
 	vCpu = (VCORE*)MmMapIoSpace(vCpuPa, vCpuSize, MmNonCached);
 

@@ -14,7 +14,10 @@ private:
 	static UINT64 hCr3;
 	static UINT64 gCr3;
 	static VCORE* vCpu;
-	static UINT32 coreCount;
+	static UINT32 vCoreCount;
+	static UINT64 syncRequest;
+	static UINT64 syncRelease;
+	static UINT64 syncArrived;
 
 	static UINT64 HostedGetVirtual(PHYSICAL_ADDRESS address);
 

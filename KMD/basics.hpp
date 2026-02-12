@@ -469,6 +469,9 @@ extern "C"
     VOID __writefs(_In_ UINT16 value);
     VOID __writees(_In_ UINT16 value);
 
+	VOID __clflush(PVOID address);
+	VOID __clflushopt(PVOID address);
+
     // TLB management
     VOID __invlpg(_In_ PVOID address);
 

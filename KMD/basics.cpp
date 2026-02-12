@@ -565,6 +565,22 @@ extern "C"
         }
     }
 
+    VOID NAKED __clflush(PVOID address)
+    {
+        __asm {
+			clflush[rcx]
+            ret
+        }
+    }
+
+    VOID NAKED __clflushopt(PVOID address)
+    {
+        __asm {
+            clflushopt[rcx]
+			ret
+		}
+    }
+
     VOID __invlpg(_In_ PVOID address)
     {
         __asm {
