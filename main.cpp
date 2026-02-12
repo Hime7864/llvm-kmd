@@ -4,6 +4,7 @@ UINT64 SVM::dCr3 = 0;
 UINT64 SVM::hCr3 = 0;
 UINT64 SVM::gCr3 = 0;
 VCORE* SVM::vCpu = 0;
+UINT32 SVM::coreCount = 0;
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
@@ -23,21 +24,46 @@ void SVM::ControlArea()
 	auto vCore = &vCpu[core_idx];
 	auto controlArea = &vCore->vmcb.ControlArea;
 	auto msrPm = &vCore->msrpm;
+	auto storage = &vCore->storage;
+	
 
 	controlArea->TlbControl.GuestASID = CPUID::current_core_number() + 1;
 	controlArea->TlbControl.FlushGuestNonGlobalTLB = 1;
 	controlArea->Intercept.VMRUN = 1;
 	controlArea->Intercept.VINTR = 1;
-	controlArea->Intercept.CPUID = 1;
+	//controlArea->Intercept.CPUID = 1;
 	controlArea->Intercept.VMMCALL = 1;
 	controlArea->Intercept.MSR_Prot = 1;
 
+	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
 	msrPm->write(MSR::_MSR_EFER, true);
+	storage->efer = MSR::EFER();
+	storage->efer.svme = false;
+
+	msrPm->read(MSR::_MSR_HSAVE_PA, true);
+	msrPm->write(MSR::_MSR_HSAVE_PA, true);
+	storage->hsave = 0x0;
+
 
 	controlArea->NestedPagingControl.NP_Enable = 1;
 	controlArea->NestedCr3 = gCr3;
 	return;
+}
+
+void NAKED SVM::RestoreCore(VCORE* vCore)
+{
+	__asm {// rip = 0x7578, rsp = 0x75D8
+		mov rsp, [rcx + 0x75D8]
+		mov rax, [rcx + 0x7578]
+		add rax, 3
+		push rax
+		mov rax, [rcx + 0x7550]
+		mov cr3, rax
+		call LoadCtx
+		pop rax
+		jmp rax
+	}
 }
 
 void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
@@ -49,14 +75,13 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 
 		loop:
 
-		lea rcx, [rcx + 0x0500]
+		lea rcx, [rcx + 0x04D0]
 		call SaveCtx
-		lea rcx, [rcx - 0x0500]
+		lea rcx, [rcx - 0x04D0]
 		push rcx
 
 		push rdx
 
-		lea rcx, [rcx + 0x30]
 		call LoadCtx
 
 		pop rax
@@ -64,46 +89,16 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		vmrun
 		vmsave
 
-
 		push rcx
 		mov rcx, [rsp + 0x08]
-
-		push rdx
-
-		// Serialize tsc
-		mfence
-		lfence
-		rdtsc
-		mov[rcx + 0x18], eax
-		mov[rcx + 0x1C], edx
-
-		// mperf
-		push rcx
-		mov ecx, 0xE7ul
-		rdmsr
-		pop rcx
-		mov[rcx + 0x20], eax
-		mov[rcx + 0x24], edx
-
-		// aperf
-		push rcx
-		mov ecx, 0xE8ul
-		rdmsr
-		pop rcx
-		mov[rcx + 0x28], eax
-		mov[rcx + 0x2C], edx
-
-		pop rdx
-
-		lea rcx, [rcx + 0x30]
 		call SaveCtx
 		pop rax
 		mov[rcx + 0x80], rax
 
 		pop rcx
-		lea rcx, [rcx + 0x0500]
+		lea rcx, [rcx + 0x04D0]
 		call LoadCtx
-		lea rcx, [rcx - 0x0500]
+		lea rcx, [rcx - 0x04D0]
 
 		call VmExit
 		jmp loop
@@ -129,21 +124,16 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 	switch (exitCode)
 	{
+	case VMEXIT_VMMCALL:
+	{
+		if (ssa->CPL == 0)
+		{
+			RestoreCore(vCore);
+		}
+	}break;
 	case VMEXIT_CPUID:
 	{
-		if (ssa->Rax == 0xDEAD)
-		{
-			gCtx->R8 = __rdtsc();
-			gCtx->R9 = storage->tsc;
-			gCtx->R10 = MSR::APERF();
-			gCtx->R11 = storage->aperf;
-			gCtx->R12 = MSR::MPERF();
-			gCtx->R13 = storage->mperf;
-		}
-		else
-		{
-			_cpuid(ssa->Rax, &ssa->Rax, &gCtx->Rbx, &gCtx->Rcx, &gCtx->Rdx);
-		}
+		_cpuid(ssa->Rax, &ssa->Rax, &gCtx->Rbx, &gCtx->Rcx, &gCtx->Rdx);
 	}break;
 	case VMEXIT_MSR:
 	{
@@ -154,13 +144,24 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				if (exitInfo1.MSR.isWrite)
 				{
 					MSR_EFER efer = { 0 };
-					efer.AsUINT64 = gCtx->Rdx << 32 | (gCtx->Rax & 0xFFFFFFFF);
+					efer.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					storage->efer = efer;
 				}
 				else
 				{
 					ssa->Rax = storage->efer.AsUINT64 & 0xFFFFFFFF;
 					gCtx->Rdx = (storage->efer.AsUINT64 >> 32) & 0xFFFFFFFF;
+				}
+			}break;
+			case MSR::_MSR_HSAVE_PA:
+			{
+				if (exitInfo1.MSR.isWrite)
+				{
+					storage->hsave = gCtx->Rax;
+				}
+				else
+				{
+					ssa->Rax = storage->hsave;
 				}
 			}break;
 			default:

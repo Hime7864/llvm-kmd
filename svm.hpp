@@ -14,6 +14,7 @@ private:
 	static UINT64 hCr3;
 	static UINT64 gCr3;
 	static VCORE* vCpu;
+	static UINT32 coreCount;
 
 	static UINT64 HostedGetVirtual(PHYSICAL_ADDRESS address);
 
@@ -26,6 +27,8 @@ private:
 	static void ControlArea();
 
 	static void NAKED VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb);
+
+	static void NAKED RestoreCore(VCORE* vCore);
 
 	static void __attribute__((preserve_most)) VmExit(VCORE* vCore);
 

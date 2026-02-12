@@ -162,12 +162,12 @@ void SVM::LaunchCore(int affinity)
 
 	__vmsave(storage->vmcb);
 	
-	auto old = __readcr3();
-	__writecr3(hCr3);
+	//auto old = __readcr3();
+	//__writecr3(hCr3);
 	
 	VmLoop(vCore, storage->vmcb);
 	
-	__writecr3(old);
+	//__writecr3(old);
 
 
 
