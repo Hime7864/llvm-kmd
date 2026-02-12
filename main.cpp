@@ -26,14 +26,13 @@ void SVM::ControlArea()
 	auto msrPm = &vCore->msrpm;
 	auto storage = &vCore->storage;
 	
+	controlArea->VirtualApic.V_INTR_MASKING = true;
 
 	controlArea->TlbControl.GuestASID = CPUID::current_core_number() + 1;
-	controlArea->TlbControl.FlushGuestNonGlobalTLB = 1;
-	controlArea->Intercept.VMRUN = 1;
-	controlArea->Intercept.VINTR = 1;
-	//controlArea->Intercept.CPUID = 1;
-	controlArea->Intercept.VMMCALL = 1;
-	controlArea->Intercept.MSR_Prot = 1;
+	controlArea->TlbControl.FlushGuestNonGlobalTLB = true;
+	controlArea->Intercept.VMRUN = true;
+	controlArea->Intercept.VMMCALL = true;
+	controlArea->Intercept.MSR_Prot = true;
 
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
@@ -49,15 +48,6 @@ void SVM::ControlArea()
 	controlArea->NestedPagingControl.NP_Enable = 1;
 	controlArea->NestedCr3 = gCr3;
 	return;
-}
-
-void NAKED NOINLINE SVM::RestoreCore(VCORE* vCore)
-{
-	__asm {
-		mov rsp, [rcx + 0x75D8]
-		call LoadCtx
-		jmp rax
-	}
 }
 
 void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
@@ -120,16 +110,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	{
 	case VMEXIT_VMMCALL:
 	{
-		if (ssa->CPL == 0)
-		{
-			__vmload(storage->vmcb);
-			if (ca->NextRip)
-				ssa->Rip = ca->NextRip;
-			else
-				ssa->Rip += 3;
-			gCtx->Rax = ssa->Rip;
-			RestoreCore(vCore);
-		}
+		ssa->Rax = 0xDEADBEEF;
 	}break;
 	case VMEXIT_CPUID:
 	{
@@ -137,8 +118,10 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	}break;
 	case VMEXIT_MSR:
 	{
-		switch ((UINT32)gCtx->Rcx)
+		if (ssa->CPL == 0)
 		{
+			switch ((UINT32)gCtx->Rcx)
+			{
 			case MSR::_MSR_EFER:
 			{
 				if (exitInfo1.MSR.isWrite)
@@ -166,6 +149,13 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			}break;
 			default:
 				break;
+			}
+		}
+		else
+		{
+			ca->EventInjection.VECTOR = 13;// #GP
+			ca->EventInjection.TYPE = 3;// Exception
+			ca->EventInjection.V = true;
 		}
 	}break;
 	default:
