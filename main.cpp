@@ -51,17 +51,11 @@ void SVM::ControlArea()
 	return;
 }
 
-void NAKED SVM::RestoreCore(VCORE* vCore)
+void NAKED NOINLINE SVM::RestoreCore(VCORE* vCore)
 {
-	__asm {// rip = 0x7578, rsp = 0x75D8
+	__asm {
 		mov rsp, [rcx + 0x75D8]
-		mov rax, [rcx + 0x7578]
-		add rax, 3
-		push rax
-		mov rax, [rcx + 0x7550]
-		mov cr3, rax
 		call LoadCtx
-		pop rax
 		jmp rax
 	}
 }
@@ -128,6 +122,12 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	{
 		if (ssa->CPL == 0)
 		{
+			__vmload(storage->vmcb);
+			if (ca->NextRip)
+				ssa->Rip = ca->NextRip;
+			else
+				ssa->Rip += 3;
+			gCtx->Rax = ssa->Rip;
 			RestoreCore(vCore);
 		}
 	}break;
