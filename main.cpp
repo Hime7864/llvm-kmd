@@ -127,6 +127,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			ca->EventInjection.EV = 0;
 			ca->EventInjection.V = 1;
 		}
+		ca->NextRip = 0;
 	}break;
 	case VMEXIT_VMMCALL:
 	{
@@ -151,7 +152,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			syncRelease = 1;
 			_mm_clflush((const PVOID)&syncRelease);
 		}
-		ssa->Rip = ca->NextRip;
 	}break;
 	case VMEXIT_CPUID:
 	{
@@ -163,7 +163,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		{
 			_cpuid(ssa->Rax, &ssa->Rax, &gCtx->Rbx, &gCtx->Rcx, &gCtx->Rdx);
 		}
-		ssa->Rip = ca->NextRip;
 	}break;
 	case VMEXIT_MSR:
 	{
@@ -206,10 +205,13 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			ca->EventInjection.TYPE = 3;// Exception
 			ca->EventInjection.V = true;
 		}
-		ssa->Rip = ca->NextRip;
 	}break;
 	default:
 		break;
 	}
+
+	if(ca->NextRip)
+		ssa->Rip = ca->NextRip;
+	ca->NextRip = 0;
 	return;
 }
