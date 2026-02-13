@@ -357,7 +357,7 @@ struct ALIGN(1024) CONTROL_AREA
     PHYSICAL_ADDRESS IoPmBasePa; // 0x040
     PHYSICAL_ADDRESS MsrPmBasePa; // 0x048
     UINT64 TscOffset; // 0x050
-    union {
+    struct {
         UINT64 GuestASID : 32;
         UINT64 DoNothing : 1;
         UINT64 FlushEntireTLB : 1;
@@ -365,7 +365,7 @@ struct ALIGN(1024) CONTROL_AREA
         UINT64 FlushGuestNonGlobalTLB : 5;
         UINT64 : 22;
     } TlbControl; // 0x058
-    union {
+    struct {
         UINT64 V_TPR : 8;
         UINT64 V_IRQ : 1;
         UINT64 V_GIF : 1;
@@ -380,7 +380,7 @@ struct ALIGN(1024) CONTROL_AREA
         UINT64 V_INTR_VECTOR : 8;
         UINT64 : 24;
     } VirtualApic; // 0x060
-    union {
+    struct {
         UINT64 InterruptShadow : 1;
         UINT64 GuestInterruptMask : 1;
         UINT64 : 62;
@@ -510,7 +510,7 @@ struct ALIGN(1024) CONTROL_AREA
         } Io;
     
     } ExitInfo2; // 0x80
-    union {
+    struct {
         UINT64 Vector : 8;   // Exception/interrupt vector (0–255)
         EXITINTINFO_TYPE Type : 3;   // Delivery type
         UINT64 ErrorCodeValid : 1;   // 1 = Error code pushed (and valid)
@@ -518,7 +518,7 @@ struct ALIGN(1024) CONTROL_AREA
         UINT64 Valid : 1;   // 1 = This EXITINTINFO is valid
         UINT64 Reserved2 : 32;  // Must be zero
     } ExitInfoIntercept; // 0x88
-    union {
+    struct {
         UINT64 NP_Enable : 1;
         UINT64 SEV_Enable : 1;
         UINT64 SEV_ES_Enable : 1;
@@ -529,7 +529,7 @@ struct ALIGN(1024) CONTROL_AREA
     } NestedPagingControl; // 0x090
     PHYSICAL_ADDRESS AvicApicBar; // 0x098
     PHYSICAL_ADDRESS GhcbGpa; // 0x0A0
-    union {
+    struct {
         UINT64 VECTOR : 8;
         UINT64 TYPE : 3;
         UINT64 EV : 1;
@@ -538,14 +538,14 @@ struct ALIGN(1024) CONTROL_AREA
         UINT64 ERRORCODE : 32;
     } EventInjection; // 0x0A8;
     PHYSICAL_ADDRESS NestedCr3; // 0x0B0
-    union {
+    struct {
         UINT64 LBR_VirtEnable : 1;
         UINT64 VMSAVE_VMLOAD_Virt : 1;
         UINT64 : 62;
     } VirtualizationFeatures; // 0x0B8
     UINT64 VmcbCleanBits; // 0x0C0
     UINT64 NextRip; // 0x0C8
-    union {
+    struct {
         INT128 BytesFetched : 8;
         INT128 InstructionBytes : 120;
     }GuestInstructionBytes; // 0x0D0

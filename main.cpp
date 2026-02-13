@@ -5,9 +5,9 @@ UINT64 SVM::hCr3 = 0;
 UINT64 SVM::gCr3 = 0;
 VCORE* SVM::vCpu = 0;
 UINT32 SVM::vCoreCount = 0;
-UINT64 SVM::syncRequest = 0;
-UINT64 SVM::syncRelease = 0;
-UINT64 SVM::syncArrived = 0;
+volatile UINT64 syncRequest = 0;
+volatile UINT64 syncRelease = 0;
+volatile UINT64 syncArrived = 0;
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
@@ -72,7 +72,9 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 
 		pop rax
 		vmload
+		//stgi
 		vmrun
+		//clgi
 		vmsave
 
 		push rcx
@@ -114,6 +116,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	{
 		if (syncRequest)
 		{
+			storage->counter++;
 			__sync_add_and_fetch(&syncArrived, 1);
 			while (syncRelease == 0) { _mm_pause(); };
 		}
@@ -130,9 +133,9 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		if (ssa->Rax == 1)
 		{
 			syncRelease = 0;
-			_mm_clflush(&syncRelease);
+			_mm_clflush((const PVOID) & syncRelease);
 			syncRequest = 1;
-			_mm_clflush(&syncRequest);
+			_mm_clflush((const PVOID)&syncRequest);
 			MSR_ICR icr;
 			icr.AsUINT64 = 0;
 			icr.msg_type = ICR_MSG_TYPE_NMI;
@@ -142,16 +145,25 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			MSR::ICR(icr);
 			while (syncArrived != (vCoreCount - 1)) { _mm_pause(); };
 			syncArrived = 0;
-			_mm_clflush(&syncArrived);
+			_mm_clflush((const PVOID)&syncArrived);
 			syncRequest = 0;
-			_mm_clflush(&syncRequest);
+			_mm_clflush((const PVOID)&syncRequest);
 			syncRelease = 1;
-			_mm_clflush(&syncRelease);
+			_mm_clflush((const PVOID)&syncRelease);
 		}
+		ssa->Rip = ca->NextRip;
 	}break;
 	case VMEXIT_CPUID:
 	{
-		_cpuid(ssa->Rax, &ssa->Rax, &gCtx->Rbx, &gCtx->Rcx, &gCtx->Rdx);
+		if (ssa->Rax == 0xDEADBEEF)
+		{
+			ssa->Rax = storage->counter;
+		}
+		else
+		{
+			_cpuid(ssa->Rax, &ssa->Rax, &gCtx->Rbx, &gCtx->Rcx, &gCtx->Rdx);
+		}
+		ssa->Rip = ca->NextRip;
 	}break;
 	case VMEXIT_MSR:
 	{
@@ -194,13 +206,10 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			ca->EventInjection.TYPE = 3;// Exception
 			ca->EventInjection.V = true;
 		}
+		ssa->Rip = ca->NextRip;
 	}break;
 	default:
 		break;
 	}
-
-
-	if(ca->NextRip)
-		ssa->Rip = ca->NextRip;
 	return;
 }
