@@ -33,7 +33,7 @@ void SVM::ControlArea()
 	controlArea->TlbControl.FlushGuestNonGlobalTLB = true;
 	controlArea->Intercept.VMRUN = true;
 	controlArea->Intercept.VMMCALL = true;
-	//controlArea->Intercept.NMI = true;
+	controlArea->Intercept.NMI = true;
 	controlArea->Intercept.MSR_Prot = true;
 
 	// MSR Shadows
@@ -110,9 +110,44 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 	switch (exitCode)
 	{
+	case VMEXIT_NMI:
+	{
+		if (syncRequest)
+		{
+			__sync_add_and_fetch(&syncArrived, 1);
+			while (syncRelease == 0) { _mm_pause(); };
+		}
+		else// pass through nmi
+		{
+			ca->EventInjection.VECTOR = 2;
+			ca->EventInjection.TYPE = 2;
+			ca->EventInjection.EV = 0;
+			ca->EventInjection.V = 1;
+		}
+	}break;
 	case VMEXIT_VMMCALL:
 	{
-		ssa->Rax = 0xDEADBEEF;
+		if (ssa->Rax == 1)
+		{
+			syncRelease = 0;
+			_mm_clflush(&syncRelease);
+			syncRequest = 1;
+			_mm_clflush(&syncRequest);
+			MSR_ICR icr;
+			icr.AsUINT64 = 0;
+			icr.msg_type = ICR_MSG_TYPE_NMI;
+			icr.level = ICR_LEVEL_ASSERT;
+			icr.trigger_mode = ICR_TRIGGER_EDGE;
+			icr.dest_shorthand = ICR_DEST_ALL_EXCLUDING;
+			MSR::ICR(icr);
+			while (syncArrived != (vCoreCount - 1)) { _mm_pause(); };
+			syncArrived = 0;
+			_mm_clflush(&syncArrived);
+			syncRequest = 0;
+			_mm_clflush(&syncRequest);
+			syncRelease = 1;
+			_mm_clflush(&syncRelease);
+		}
 	}break;
 	case VMEXIT_CPUID:
 	{
