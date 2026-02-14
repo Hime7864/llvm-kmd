@@ -57,21 +57,60 @@ struct MSR_PAT
 	};
 };
 
+
+enum ICR_MSG_TYPE : UINT64
+{
+	ICR_MSG_TYPE_FIXED = 0,  // Fixed delivery
+	ICR_MSG_TYPE_LOWEST_PRIORITY = 1,  // Lowest priority
+	ICR_MSG_TYPE_SMI = 2,  // System Management Interrupt
+	ICR_MSG_TYPE_RESERVED = 3,  // Reserved
+	ICR_MSG_TYPE_NMI = 4,  // Non-Maskable Interrupt
+	ICR_MSG_TYPE_INIT = 5,  // INIT IPI
+	ICR_MSG_TYPE_STARTUP = 6,  // Startup IPI (SIPI)
+	ICR_MSG_TYPE_EXTERNAL = 7,  // External interrupt
+};
+
+enum ICR_DEST_MODE : UINT64
+{
+	ICR_DEST_MODE_PHYSICAL = 0,  // Physical destination mode
+	ICR_DEST_MODE_LOGICAL = 1,  // Logical destination mode
+};
+
+enum ICR_LEVEL : UINT64
+{
+	ICR_LEVEL_DEASSERT = 0,  // Deasserted
+	ICR_LEVEL_ASSERT = 1,  // Asserted
+};
+
+enum ICR_TRIGGER_MODE : UINT64
+{
+	ICR_TRIGGER_EDGE = 0,  // Edge triggered
+	ICR_TRIGGER_LEVEL = 1,  // Level triggered
+};
+
+enum ICR_DEST_SHORTHAND : UINT64
+{
+	ICR_DEST_NO_SHORTHAND = 0,  // No shorthand (use destination field)
+	ICR_DEST_SELF = 1,  // Self
+	ICR_DEST_ALL_INCLUDING = 2,  // All including self
+	ICR_DEST_ALL_EXCLUDING = 3,  // All excluding self
+};
+
 struct MSR_ICR
 {
 	union {
 		UINT64 AsUINT64;
 		struct
 		{
-			UINT64 vec : 8;
-			UINT64 mt : 3;
-			UINT64 dm : 1;
-			UINT64 Reserved0 : 2;
-			UINT64 l : 1;
-			UINT64 tmg : 1;
-			UINT64 Reserved1 : 2;
-			UINT64 dsh : 2;
-			UINT64 Reserved2 : 12;
+			UINT64 vector : 8;
+			ICR_MSG_TYPE msg_type : 3;
+			ICR_DEST_MODE dest_mode : 1;
+			UINT64 : 2;
+			ICR_LEVEL level : 1;
+			ICR_TRIGGER_MODE trigger_mode : 1;
+			UINT64 : 2;
+			ICR_DEST_SHORTHAND dest_shorthand : 2;
+			UINT64 : 12;
 			UINT64 dest : 32;
 		};
 	};
