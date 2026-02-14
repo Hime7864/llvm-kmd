@@ -7,7 +7,6 @@ struct ALIGN(4096) STORAGE
 	PHYSICAL_ADDRESS vmcb; // 0x09A0
 	MSR_EFER efer; // 0x09A8
 	PHYSICAL_ADDRESS hsave; // 0x09B0
-	int counter = 0;
 };
 
 struct ALIGN(4096) VCORE

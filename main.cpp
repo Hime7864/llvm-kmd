@@ -36,6 +36,12 @@ void SVM::ControlArea()
 	controlArea->Intercept.NMI = true;
 	controlArea->Intercept.MSR_Prot = true;
 
+	//controlArea->VirtualApic.V_NMI_ENABLE = true;
+	//controlArea->VirtualApic.V_INTR_MASKING = true;
+
+	//msrPm->read(MSR::_MSR_ICR, true);
+	//msrPm->write(MSR::_MSR_ICR, true);
+
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
 	msrPm->write(MSR::_MSR_EFER, true);
@@ -45,7 +51,6 @@ void SVM::ControlArea()
 	msrPm->read(MSR::_MSR_HSAVE_PA, true);
 	msrPm->write(MSR::_MSR_HSAVE_PA, true);
 	storage->hsave = 0x0;
-
 
 	controlArea->NestedPagingControl.NP_Enable = 1;
 	controlArea->NestedCr3 = gCr3;
@@ -72,9 +77,9 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 
 		pop rax
 		vmload
-		//stgi
+		stgi
 		vmrun
-		//clgi
+		clgi
 		vmsave
 
 		push rcx
@@ -114,55 +119,49 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	{
 	case VMEXIT_NMI:
 	{
-		if (syncRequest)
-		{
-			storage->counter++;
-			__sync_add_and_fetch(&syncArrived, 1);
-			while (syncRelease == 0) { _mm_pause(); };
-		}
-		else// pass through nmi
-		{
-			ca->EventInjection.VECTOR = 2;
-			ca->EventInjection.TYPE = 2;
-			ca->EventInjection.EV = 0;
-			ca->EventInjection.V = 1;
-		}
+		//if (syncRequest)
+		//{
+		//	__sync_add_and_fetch(&syncArrived, 1);
+		//	while (syncRelease == 0) { _mm_pause(); }
+		//}
 		ca->NextRip = 0;
 	}break;
 	case VMEXIT_VMMCALL:
 	{
 		if (ssa->Rax == 1)
 		{
-			syncRelease = 0;
-			_mm_clflush((const PVOID) & syncRelease);
-			syncRequest = 1;
-			_mm_clflush((const PVOID)&syncRequest);
+			//syncArrived = 0;
+			//syncRequest = 1;
+			//syncRelease = 0;
+			//_mm_clflush((const PVOID)&syncArrived);
+			//_mm_clflush((const PVOID)&syncRequest);
+			//_mm_clflush((const PVOID)&syncRelease);
+			//_mm_mfence();
+			//_mm_lfence();
+
 			MSR_ICR icr;
 			icr.AsUINT64 = 0;
 			icr.msg_type = ICR_MSG_TYPE_NMI;
+			icr.dest_mode = ICR_DEST_MODE_PHYSICAL;
 			icr.level = ICR_LEVEL_ASSERT;
 			icr.trigger_mode = ICR_TRIGGER_EDGE;
 			icr.dest_shorthand = ICR_DEST_ALL_EXCLUDING;
 			MSR::ICR(icr);
-			while (syncArrived != (vCoreCount - 1)) { _mm_pause(); };
-			syncArrived = 0;
-			_mm_clflush((const PVOID)&syncArrived);
-			syncRequest = 0;
-			_mm_clflush((const PVOID)&syncRequest);
-			syncRelease = 1;
-			_mm_clflush((const PVOID)&syncRelease);
+
+			//while (syncArrived == (vCoreCount - 1)) { _mm_pause(); };
+			//syncArrived = 0;
+			//syncRequest = 0;
+			//syncRelease = 1;
+			//_mm_clflush((const PVOID)&syncArrived);
+			//_mm_clflush((const PVOID)&syncRequest);
+			//_mm_clflush((const PVOID)&syncRelease);
+			//_mm_mfence();
+			//_mm_lfence();
 		}
 	}break;
 	case VMEXIT_CPUID:
 	{
-		if (ssa->Rax == 0xDEADBEEF)
-		{
-			ssa->Rax = storage->counter;
-		}
-		else
-		{
-			_cpuid(ssa->Rax, &ssa->Rax, &gCtx->Rbx, &gCtx->Rcx, &gCtx->Rdx);
-		}
+		_cpuid(ssa->Rax, &ssa->Rax, &gCtx->Rbx, &gCtx->Rcx, &gCtx->Rdx);
 	}break;
 	case VMEXIT_MSR:
 	{
@@ -203,6 +202,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		{
 			ca->EventInjection.VECTOR = 13;// #GP
 			ca->EventInjection.TYPE = 3;// Exception
+			ca->EventInjection.EV = 0;
 			ca->EventInjection.V = true;
 		}
 	}break;

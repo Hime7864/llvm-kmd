@@ -491,8 +491,8 @@ extern "C"
     // Descriptor tables
     VOID __sidt(_Out_ SEGMENT_REGISTER* idtr);
     VOID __sgdt(_Out_ SEGMENT_REGISTER* gdtr);
-    VOID __lidt(_In_ const SEGMENT_REGISTER* idtr);
-    VOID __lgdt(_In_ const SEGMENT_REGISTER* gdtr);
+    VOID __lidt(_In_ SEGMENT_REGISTER* idtr);
+    VOID __lgdt(_In_ SEGMENT_REGISTER* gdtr);
     UINT16 __sldt();
     VOID __lldt(_In_ UINT16 selector);
     UINT16 __str();

@@ -679,6 +679,25 @@ extern "C"
         }
     }
 
+    VOID NAKED __lidt(_In_ SEGMENT_REGISTER* idtr)
+    {
+        __asm {
+            mov rax, rcx
+            lidt[rax]
+            ret
+		}
+    }
+
+
+    VOID NAKED __lgdt(_In_ SEGMENT_REGISTER* gdtr)
+    {
+        __asm {
+            mov rax, rcx
+            lgdt[rax]
+            ret
+		}
+    }
+
     UINT16 __sldt()
     {
         UINT16 ldtr;
