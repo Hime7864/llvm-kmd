@@ -5,6 +5,7 @@ UINT64 SVM::hCr3 = 0;
 UINT64 SVM::gCr3 = 0;
 VCORE* SVM::vCpu = 0;
 UINT32 SVM::vCoreCount = 0;
+volatile UINT64 syncTsc = 0;
 volatile UINT64 syncRequest = 0;
 volatile UINT64 syncRelease = 0;
 volatile UINT64 syncArrived = 0;
@@ -142,19 +143,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
 
-	if (exitCode == VMEXIT_VMMCALL)
-	{
-		_mm_lfence();
-		_mm_mfence();
-		gCtx->Rdx = __rdtsc();
-		ssa->Rax = MSR::APERF() - storage->aperf;
-		gCtx->Rbx = MSR::MPERF() - storage->mperf;
-		gCtx->Rcx = storage->tsc;
-	}
-
-	switch (exitCode)
-	{
-	case VMEXIT_NMI:
+	if (exitCode == VMEXIT_NMI)
 	{
 		if (syncArrived)
 		{
@@ -168,85 +157,83 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			ca->EventInjection.V = SVM_EVENTINJ_VALID;
 		}
 		ca->NextRip = 0;
-	}break;
-	case VMEXIT_VMMCALL:
+	}
+	else
 	{
-		//if (ssa->Rax == 1)
-		{
-			syncRequest = 1;
-			syncRelease = 0;
-			_mm_clflush((const PVOID)&syncRequest);
-			_mm_clflush((const PVOID)&syncRelease);
-			_mm_mfence();
-			_mm_lfence();
+		syncRequest = 1;
+		syncRelease = 0;
+		_mm_clflush((const PVOID)&syncRequest);
+		_mm_clflush((const PVOID)&syncRelease);
+		_mm_mfence();
+		_mm_lfence();
 
-			MSR_ICR icr;
-			icr.AsUINT64 = 0;
-			icr.msg_type = ICR_MSG_TYPE_NMI;
-			icr.dest_mode = ICR_DEST_MODE_PHYSICAL;
-			icr.level = ICR_LEVEL_ASSERT;
-			icr.trigger_mode = ICR_TRIGGER_EDGE;
-			icr.dest_shorthand = ICR_DEST_ALL_INCLUDING;
-			MSR::ICR(icr);
+		MSR_ICR icr;
+		icr.AsUINT64 = 0;
+		icr.msg_type = ICR_MSG_TYPE_NMI;
+		icr.dest_mode = ICR_DEST_MODE_PHYSICAL;
+		icr.level = ICR_LEVEL_ASSERT;
+		icr.trigger_mode = ICR_TRIGGER_EDGE;
+		icr.dest_shorthand = ICR_DEST_ALL_INCLUDING;
+		MSR::ICR(icr);
 
-			while (syncArrived == vCoreCount) { _mm_pause(); };
-			syncRequest = 0;
-			syncRelease = 1;
-			_mm_clflush((const PVOID)&syncRequest);
-			_mm_clflush((const PVOID)&syncRelease);
-			_mm_mfence();
-			_mm_lfence();
-		}
-	}break;
-	case VMEXIT_CPUID:
-	{
-		_cpuid(ssa->Rax, &ssa->Rax, &gCtx->Rbx, &gCtx->Rcx, &gCtx->Rdx);
-	}break;
-	case VMEXIT_MSR:
-	{
-		if (ssa->CPL == 0)
+		switch (exitCode)
 		{
-			switch ((UINT32)gCtx->Rcx)
+		case VMEXIT_MSR:
+		{
+			if (ssa->CPL == 0)
 			{
-			case MSR::_MSR_EFER:
-			{
-				if (exitInfo1.MSR.isWrite)
+				switch ((UINT32)gCtx->Rcx)
 				{
-					MSR_EFER efer = { 0 };
-					efer.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
-					storage->efer = efer;
-				}
-				else
+				case MSR::_MSR_EFER:
 				{
-					ssa->Rax = storage->efer.AsUINT64 & 0xFFFFFFFF;
-					gCtx->Rdx = (storage->efer.AsUINT64 >> 32) & 0xFFFFFFFF;
-				}
-			}break;
-			case MSR::_MSR_HSAVE_PA:
-			{
-				if (exitInfo1.MSR.isWrite)
+					if (exitInfo1.MSR.isWrite)
+					{
+						MSR_EFER efer = { 0 };
+						efer.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
+						storage->efer = efer;
+					}
+					else
+					{
+						ssa->Rax = storage->efer.AsUINT64 & 0xFFFFFFFF;
+						gCtx->Rdx = (storage->efer.AsUINT64 >> 32) & 0xFFFFFFFF;
+					}
+				}break;
+				case MSR::_MSR_HSAVE_PA:
 				{
-					storage->hsave = gCtx->Rax;
+					if (exitInfo1.MSR.isWrite)
+					{
+						storage->hsave = gCtx->Rax;
+					}
+					else
+					{
+						ssa->Rax = storage->hsave;
+					}
+				}break;
+				default:
+					break;
 				}
-				else
-				{
-					ssa->Rax = storage->hsave;
-				}
-			}break;
-			default:
-				break;
 			}
+			else
+			{
+				ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_GP;
+				ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_EXCEPTION;
+				ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
+				ca->EventInjection.V = SVM_EVENTINJ_VALID;
+			}
+		}break;
+		default:
+			break;
 		}
-		else
-		{
-			ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_GP;
-			ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_EXCEPTION;
-			ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
-			ca->EventInjection.V = SVM_EVENTINJ_VALID;
-		}
-	}break;
-	default:
-		break;
+
+		while (syncArrived == vCoreCount) { _mm_pause(); };
+		syncRequest = 0;
+		syncRelease = 1;
+		//syncTsc = __rdtsc() - (storage->tsc - 400);
+		//_mm_clflush((const PVOID)&syncTsc);
+		_mm_clflush((const PVOID)&syncRequest);
+		_mm_clflush((const PVOID)&syncRelease);
+		_mm_mfence();
+		_mm_lfence();
 	}
 
 	if(ca->NextRip)
