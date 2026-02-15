@@ -127,6 +127,7 @@ void SVM::LaunchCore(int affinity)
 {
 	auto core_idx = CPUID::current_core_number();
 	auto vCore = &vCpu[core_idx];
+	auto controlArea = &vCore->vmcb.ControlArea;
 	auto saveArea = &vCore->vmcb.SaveStateArea;
 	auto storage = &vCore->storage;
 	auto ctx = &storage->gCtx;
@@ -152,6 +153,8 @@ void SVM::LaunchCore(int affinity)
 
 	storage->vmcb = Utils::LinearTranslate(hCr3, &vCore->vmcb);
 	MSR::HSAVE_PA(Utils::LinearTranslate(hCr3, &vCore->hsave));
+
+	controlArea->MsrPmBasePa = Utils::LinearTranslate(hCr3, (UINT64)&vCore->msrpm);
 
 	auto efer = MSR::EFER();
 	efer.svme = true;
