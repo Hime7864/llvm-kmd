@@ -175,6 +175,46 @@ enum EXITINTINFO_TYPE : UINT64 {
     SVM_EXITINTINFO_TYPE_SW_EXCEPTION = 3   // INT3, ICEBP, BOUND, INTO
 };
 
+enum EVENTINJ_TYPE : UINT64 {
+    SVM_EVENTINJ_TYPE_INTR = 0,      // External interrupt
+    SVM_EVENTINJ_TYPE_NMI = 2,       // NMI
+    SVM_EVENTINJ_TYPE_EXCEPTION = 3, // Exception
+    SVM_EVENTINJ_TYPE_SOFT = 4       // Software interrupt
+};
+
+enum EVENTINJ_ERROR_CODE_VALID : UINT64 {
+    SVM_EVENTINJ_ERROR_CODE_INVALID = 0,
+    SVM_EVENTINJ_ERROR_CODE_VALID = 1
+};
+
+enum EVENTINJ_VALID : UINT64 {
+    SVM_EVENTINJ_NOT_VALID = 0,
+    SVM_EVENTINJ_VALID = 1
+};
+
+enum EVENTINJ_VECTOR : UINT64 {
+    SVM_EVENTINJ_VECTOR_DE = 0,   // #DE Divide Error
+    SVM_EVENTINJ_VECTOR_DB = 1,   // #DB Debug
+    SVM_EVENTINJ_VECTOR_NMI = 2,  // NMI
+    SVM_EVENTINJ_VECTOR_BP = 3,   // #BP Breakpoint
+    SVM_EVENTINJ_VECTOR_OF = 4,   // #OF Overflow
+    SVM_EVENTINJ_VECTOR_BR = 5,   // #BR BOUND range exceeded
+    SVM_EVENTINJ_VECTOR_UD = 6,   // #UD Invalid opcode
+    SVM_EVENTINJ_VECTOR_NM = 7,   // #NM Device not available
+    SVM_EVENTINJ_VECTOR_DF = 8,   // #DF Double fault
+    SVM_EVENTINJ_VECTOR_TS = 10,  // #TS Invalid TSS
+    SVM_EVENTINJ_VECTOR_NP = 11,  // #NP Segment not present
+    SVM_EVENTINJ_VECTOR_SS = 12,  // #SS Stack-segment fault
+    SVM_EVENTINJ_VECTOR_GP = 13,  // #GP General protection
+    SVM_EVENTINJ_VECTOR_PF = 14,  // #PF Page fault
+    SVM_EVENTINJ_VECTOR_MF = 16,  // #MF x87 floating-point error
+    SVM_EVENTINJ_VECTOR_AC = 17,  // #AC Alignment check
+    SVM_EVENTINJ_VECTOR_MC = 18,  // #MC Machine check
+    SVM_EVENTINJ_VECTOR_XF = 19,  // #XF SIMD floating-point exception
+    SVM_EVENTINJ_VECTOR_VE = 20,  // #VE Virtualization exception
+    SVM_EVENTINJ_VECTOR_CP = 21   // #CP Control protection
+};
+
 struct SEGMENT
 {
     USHORT selector; // 0x00
@@ -271,7 +311,7 @@ struct ALIGN(1024) CONTROL_AREA
         unsigned AlignmentCheck : 1;  // #AC   vector 17
         unsigned MachineCheck : 1;  // #MC   vector 18
         unsigned SimdException : 1;  // #XF   vector 19
-        unsigned : 12; //       vectors 20–31 (reserved)
+        unsigned : 12; //       vectors 20ï¿½31 (reserved)
         unsigned INTR : 1;
         unsigned NMI : 1;
         unsigned SMI : 1;
@@ -411,7 +451,7 @@ struct ALIGN(1024) CONTROL_AREA
     
         //Table 15-4. EXITINFO1 for INTn
         struct {
-            UINT64 Vector : 8;   // Interrupt vector (0–255)
+            UINT64 Vector : 8;   // Interrupt vector (0ï¿½255)
             UINT64 Reserved : 56;   // Must be zero
         } INTn;
     
@@ -422,14 +462,14 @@ struct ALIGN(1024) CONTROL_AREA
     
         //Table 15-2. EXITINFO1 for MOV CRx
         struct {
-            UINT64 GPRn : 4;   // General-purpose register number (0–15)
+            UINT64 GPRn : 4;   // General-purpose register number (0ï¿½15)
             UINT64 : 59; // Must be zero
             UINT64 toOrFrom : 1;// MOV-to-CR == 0 || MOV-from-CR == 1
         } MOVCRX;
     
         //Table 15-3. EXITINFO1 for MOV DRx
         struct {
-            UINT64 GPRn : 4;   // General-purpose register number (0–15)
+            UINT64 GPRn : 4;   // General-purpose register number (0ï¿½15)
             UINT64 : 60; // Must be zero
         } MOVDRX;
     
@@ -451,26 +491,26 @@ struct ALIGN(1024) CONTROL_AREA
     
         //15.25.6 Nested versus Guest Page Faults, Fault Ordering
         struct {
-            //Bit 0 (P)—cleared to 0 if the nested page was not present, 1 otherwise
+            //Bit 0 (P)ï¿½cleared to 0 if the nested page was not present, 1 otherwise
             UINT64 P : 1;
-            //Bit 1 (RW)—set to 1 if the nested page table level access was a write. Note that host table walks for
+            //Bit 1 (RW)ï¿½set to 1 if the nested page table level access was a write. Note that host table walks for
             //guest page tables are always treated as data writes
             UINT64 RW : 1;
-            //Bit 2 (US)—set to 1 if the nested page table level access was a user access. Note that nested page
+            //Bit 2 (US)ï¿½set to 1 if the nested page table level access was a user access. Note that nested page
             //table accesses performed by the MMU are treated as user accesses unless there are features
             //enabled that override this.
             UINT64 US : 1;
-            //Bit 3 (RSV)—set to 1 if reserved bits were set in the corresponding nested page table entry
+            //Bit 3 (RSV)ï¿½set to 1 if reserved bits were set in the corresponding nested page table entry
             UINT64 RSV : 1;
-            //Bit 4 (ID)—set to 1 if the nested page table level access was a code read. Note that nested table
+            //Bit 4 (ID)ï¿½set to 1 if the nested page table level access was a code read. Note that nested table
             //walks for guest page tables are always treated as data writes, even if the access itself is a code read
             UINT64 ID : 1;
             UINT64 : 27;
-            //Bit 32—set to 1 if nested page fault occurred while translating the guest’s final physical address
+            //Bit 32ï¿½set to 1 if nested page fault occurred while translating the guestï¿½s final physical address
             UINT64 NPF : 1;
-            //Bit 33—set to 1 if nested page fault occurred while translating the guest page tables
+            //Bit 33ï¿½set to 1 if nested page fault occurred while translating the guest page tables
             UINT64 GPF : 1;
-            //Bit 34 (ENC): Set to 1 if the guest’s effective C-bit was 1, 0 otherwise.
+            //Bit 34 (ENC): Set to 1 if the guestï¿½s effective C-bit was 1, 0 otherwise.
             UINT64 ENC : 1;
             //Bit 35 (SIZEM): Set to 1 if the fault was caused by a size mismatch between PVALIDATE or
             //RMPADJUST and the RMP, 0 otherwise.
@@ -516,7 +556,7 @@ struct ALIGN(1024) CONTROL_AREA
     
     } ExitInfo2; // 0x80
     struct {
-        UINT64 Vector : 8;   // Exception/interrupt vector (0–255)
+        UINT64 Vector : 8;   // Exception/interrupt vector (0ï¿½255)
         EXITINTINFO_TYPE Type : 3;   // Delivery type
         UINT64 ErrorCodeValid : 1;   // 1 = Error code pushed (and valid)
         UINT64 Reserved1 : 19;  // Must be zero
@@ -535,11 +575,11 @@ struct ALIGN(1024) CONTROL_AREA
     PHYSICAL_ADDRESS AvicApicBar; // 0x098
     PHYSICAL_ADDRESS GhcbGpa; // 0x0A0
     struct {
-        UINT64 VECTOR : 8;
-        UINT64 TYPE : 3;
-        UINT64 EV : 1;
+        EVENTINJ_VECTOR VECTOR : 8;
+        EVENTINJ_TYPE TYPE : 3;
+        EVENTINJ_ERROR_CODE_VALID EV : 1;
         UINT64 : 19;
-        UINT64 V : 1;
+        EVENTINJ_VALID V : 1;
         UINT64 ERRORCODE : 32;
     } EventInjection; // 0x0A8;
     PHYSICAL_ADDRESS NestedCr3; // 0x0B0

@@ -77,13 +77,38 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 
 		pop rax
 		vmload
-		stgi
 		vmrun
-		clgi
 		vmsave
 
 		push rcx
 		mov rcx, [rsp + 0x08]
+		push rdx
+
+		// Serialize tsc
+		mfence
+		lfence
+		rdtsc
+		mov[rcx + 0x9B8], eax
+		mov[rcx + 0x9BC], edx
+
+		// mperf
+		push rcx
+		mov ecx, 0xE7ul
+		rdmsr
+		pop rcx
+		mov[rcx + 0x9C0], eax
+		mov[rcx + 0x9C4], edx
+
+		// aperf
+		push rcx
+		mov ecx, 0xE8ul
+		rdmsr
+		pop rcx
+		mov[rcx + 0x9C8], eax
+		mov[rcx + 0x9CC], edx
+
+		pop rdx
+
 		call SaveCtx
 		pop rax
 		mov[rcx + 0x80], rax
@@ -104,6 +129,8 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 
 void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 {
+	__sync_fetch_and_add(&syncArrived, 1);
+
 	auto vmcb = &vCore->vmcb;
 	auto ssa = &vmcb->SaveStateArea;
 	auto ca = &vmcb->ControlArea;
@@ -115,29 +142,43 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
 
+	if (exitCode == VMEXIT_VMMCALL)
+	{
+		_mm_lfence();
+		_mm_mfence();
+		gCtx->Rdx = __rdtsc();
+		ssa->Rax = MSR::APERF() - storage->aperf;
+		gCtx->Rbx = MSR::MPERF() - storage->mperf;
+		gCtx->Rcx = storage->tsc;
+	}
+
 	switch (exitCode)
 	{
 	case VMEXIT_NMI:
 	{
-		//if (syncRequest)
-		//{
-		//	__sync_add_and_fetch(&syncArrived, 1);
-		//	while (syncRelease == 0) { _mm_pause(); }
-		//}
+		if (syncArrived)
+		{
+			while (!syncRelease) { _mm_pause(); };
+		}
+		else
+		{
+			ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_NMI;
+			ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_NMI;
+			ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
+			ca->EventInjection.V = SVM_EVENTINJ_VALID;
+		}
 		ca->NextRip = 0;
 	}break;
 	case VMEXIT_VMMCALL:
 	{
-		if (ssa->Rax == 1)
+		//if (ssa->Rax == 1)
 		{
-			//syncArrived = 0;
-			//syncRequest = 1;
-			//syncRelease = 0;
-			//_mm_clflush((const PVOID)&syncArrived);
-			//_mm_clflush((const PVOID)&syncRequest);
-			//_mm_clflush((const PVOID)&syncRelease);
-			//_mm_mfence();
-			//_mm_lfence();
+			syncRequest = 1;
+			syncRelease = 0;
+			_mm_clflush((const PVOID)&syncRequest);
+			_mm_clflush((const PVOID)&syncRelease);
+			_mm_mfence();
+			_mm_lfence();
 
 			MSR_ICR icr;
 			icr.AsUINT64 = 0;
@@ -145,18 +186,16 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			icr.dest_mode = ICR_DEST_MODE_PHYSICAL;
 			icr.level = ICR_LEVEL_ASSERT;
 			icr.trigger_mode = ICR_TRIGGER_EDGE;
-			icr.dest_shorthand = ICR_DEST_ALL_EXCLUDING;
+			icr.dest_shorthand = ICR_DEST_ALL_INCLUDING;
 			MSR::ICR(icr);
 
-			//while (syncArrived == (vCoreCount - 1)) { _mm_pause(); };
-			//syncArrived = 0;
-			//syncRequest = 0;
-			//syncRelease = 1;
-			//_mm_clflush((const PVOID)&syncArrived);
-			//_mm_clflush((const PVOID)&syncRequest);
-			//_mm_clflush((const PVOID)&syncRelease);
-			//_mm_mfence();
-			//_mm_lfence();
+			while (syncArrived == vCoreCount) { _mm_pause(); };
+			syncRequest = 0;
+			syncRelease = 1;
+			_mm_clflush((const PVOID)&syncRequest);
+			_mm_clflush((const PVOID)&syncRelease);
+			_mm_mfence();
+			_mm_lfence();
 		}
 	}break;
 	case VMEXIT_CPUID:
@@ -200,10 +239,10 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		}
 		else
 		{
-			ca->EventInjection.VECTOR = 13;// #GP
-			ca->EventInjection.TYPE = 3;// Exception
-			ca->EventInjection.EV = 0;
-			ca->EventInjection.V = true;
+			ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_GP;
+			ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_EXCEPTION;
+			ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
+			ca->EventInjection.V = SVM_EVENTINJ_VALID;
 		}
 	}break;
 	default:
@@ -213,5 +252,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	if(ca->NextRip)
 		ssa->Rip = ca->NextRip;
 	ca->NextRip = 0;
+	__sync_fetch_and_sub(&syncArrived, 1);
 	return;
 }

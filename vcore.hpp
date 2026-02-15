@@ -7,6 +7,9 @@ struct ALIGN(4096) STORAGE
 	PHYSICAL_ADDRESS vmcb; // 0x09A0
 	MSR_EFER efer; // 0x09A8
 	PHYSICAL_ADDRESS hsave; // 0x09B0
+	UINT64 tsc; // 0x09B8
+	UINT64 mperf; // 0x09C0
+	UINT64 aperf; // 0x09C8
 };
 
 struct ALIGN(4096) VCORE
@@ -16,4 +19,5 @@ struct ALIGN(4096) VCORE
 	BYTE hsave[0x1000]; // 0x4000
 	MSRPM msrpm; // 0x5000
 	VMCB vmcb; // 0x7000
+	BYTE idt[0x1000]; // 0x8000
 };

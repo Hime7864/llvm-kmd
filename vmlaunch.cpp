@@ -1,5 +1,35 @@
 #include "imports.hpp"
 
+struct PACKED IDT_GATE64
+{
+	UINT16 offset_low;
+	UINT16 selector;
+	UINT8 ist;
+	UINT8 type_attr;
+	UINT16 offset_mid;
+	UINT32 offset_high;
+	UINT32 reserved;
+};
+
+static void SetIdtGate(IDT_GATE64* gate, PVOID handler, UINT16 selector)
+{
+	auto address = (UINT64)handler;
+	gate->offset_low = (UINT16)(address & 0xFFFF);
+	gate->selector = selector;
+	gate->ist = 0;
+	gate->type_attr = 0x8E;
+	gate->offset_mid = (UINT16)((address >> 16) & 0xFFFF);
+	gate->offset_high = (UINT32)((address >> 32) & 0xFFFFFFFF);
+	gate->reserved = 0;
+}
+
+extern "C" VOID NAKED HostNmiIretStub()
+{
+	__asm {
+		iretq
+	}
+}
+
 void NAKED SVM::SaveCtx(VCORE* vCore)
 {
 	__asm {
@@ -140,11 +170,6 @@ void SVM::LaunchCore(int affinity)
 	saveArea->GDTR.base = gdtr.Base;
 	saveArea->GDTR.limit = gdtr.Limit;
 
-	SEGMENT_REGISTER idtr{ 0 };
-	__sidt(&idtr);
-	saveArea->IDTR.base = idtr.Base;
-	saveArea->IDTR.limit = idtr.Limit;
-
 	saveArea->ES.base = gdtr.base(saveArea->ES.selector);
 	saveArea->CS.base = gdtr.base(saveArea->CS.selector);
 	saveArea->SS.base = gdtr.base(saveArea->SS.selector);
@@ -160,6 +185,19 @@ void SVM::LaunchCore(int affinity)
 	saveArea->SS.attrib = gdtr.attribute(saveArea->SS.selector);
 	saveArea->DS.attrib = gdtr.attribute(saveArea->DS.selector);
 
+	SEGMENT_REGISTER idtr{ 0 };
+	__sidt(&idtr);
+	saveArea->IDTR.base = idtr.Base;
+	saveArea->IDTR.limit = idtr.Limit;
+
+	// Create host idt
+	auto idt = (IDT_GATE64*)vCore->idt;
+	// IRETQ nmi handler
+	SetIdtGate(&idt[2], HostNmiIretStub, __readcs());
+	idtr.Base = (UINT64)idt;
+	idtr.Limit = sizeof(vCore->idt) - 1;
+	__lidt(&idtr);
+
 	__vmsave(storage->vmcb);
 	
 	auto old = __readcr3();
@@ -168,8 +206,6 @@ void SVM::LaunchCore(int affinity)
 	VmLoop(vCore, storage->vmcb);
 	
 	__writecr3(old);
-
-
 
 	return;
 }

@@ -736,62 +736,62 @@ extern "C"
 
     UINT16 __readcs()
     {
-        UINT16 cs;
+        UINT16 _cs;
         __asm {
             mov ax, cs
-            mov cs, ax
+            mov _cs, ax
         }
-        return cs;
+        return _cs;
     }
 
     UINT16 __readds()
     {
-        UINT16 ds;
+        UINT16 _ds;
         __asm {
             mov ax, ds
-            mov ds, ax
+            mov _ds, ax
         }
-        return ds;
+        return _ds;
     }
 
     UINT16 __readss()
     {
-        UINT16 ss;
+        UINT16 _ss;
         __asm {
             mov ax, ss
-            mov ss, ax
+            mov _ss, ax
         }
-        return ss;
+        return _ss;
     }
 
     UINT16 __reades()
     {
-        UINT16 es;
+        UINT16 _es;
         __asm {
             mov ax, es
-            mov es, ax
+            mov _es, ax
         }
-        return es;
+        return _es;
     }
 
     UINT16 __readfs()
     {
-        UINT16 fs;
+        UINT16 _fs;
         __asm {
             mov ax, fs
-            mov fs, ax
+            mov _fs, ax
         }
-        return fs;
+        return _fs;
     }
 
     UINT16 __readgs()
     {
-        UINT16 gs;
+        UINT16 _gs;
         __asm {
             mov ax, gs
-            mov gs, ax
+            mov _gs, ax
         }
-        return gs;
+        return _gs;
     }
 
     VOID __writeds(_In_ UINT16 value)
