@@ -11,32 +11,6 @@ volatile UINT64 syncRequest = 0;
 volatile UINT64 syncRelease = 0;
 volatile UINT64 syncArrived = 0;
 
-
-void AddApicTimeBack(UINT32 tsc_offset)
-{
-	auto LVT_TIMER = MSR::APIC_LVT_TIMER();
-	auto CUR_COUNT = MSR::APIC_TIMER_CUR_COUNT();
-	auto INIT_COUNT = MSR::APIC_TIMER_INIT_COUNT();
-	auto DIV_CONF = MSR::APIC_TIMER_DIV_CONF();
-
-	UINT32 divisor_map[] = { 2, 4, 8, 16, 32, 64, 128, 1 };
-	auto index = ((DIV_CONF & 0x8) >> 1) | (DIV_CONF & 0x3);
-	UINT32 divisor = divisor_map[index];
-
-	UINT32 timer_adjustment = tsc_offset / divisor;
-	UINT32 new_count = INIT_COUNT + timer_adjustment;
-
-	if (LVT_TIMER & 0x20000)
-	{
-		MSR::APIC_TIMER_INIT_COUNT(0);
-		MSR::APIC_TIMER_INIT_COUNT(new_count);
-	}
-	else
-	{
-		MSR::APIC_TIMER_INIT_COUNT(new_count);
-	}
-}
-
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
 	printf("SVM Hypervisor Driver Loaded\n");
@@ -164,7 +138,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				ca->TscOffset = 0;
 			else
 				ca->TscOffset -= syncTsc;
-			//AddApicTimeBack(syncTsc);
 		}
 		else
 		{
@@ -185,14 +158,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		_mm_mfence();
 		_mm_lfence();
 
-		MSR_ICR icr;
-		icr.AsUINT64 = 0;
-		icr.msg_type = ICR_MSG_TYPE_NMI;
-		icr.dest_mode = ICR_DEST_MODE_PHYSICAL;
-		icr.level = ICR_LEVEL_ASSERT;
-		icr.trigger_mode = ICR_TRIGGER_EDGE;
-		icr.dest_shorthand = ICR_DEST_ALL_INCLUDING;
-		MSR::ICR(icr);
 		syncReset = 0;
 		switch (exitCode)
 		{
@@ -234,7 +199,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 					{
 						auto INIT_COUNT = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 						MSR::APIC_TIMER_INIT_COUNT(INIT_COUNT);
-						syncReset = 1;
+						if(syncArrived == 1)
+							syncReset = 1;
 					}
 				}break;
 				default:
@@ -252,17 +218,28 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		default:
 			break;
 		}
+		
+		MSR_ICR icr;
+		icr.AsUINT64 = 0;
+		icr.msg_type = ICR_MSG_TYPE_NMI;
+		icr.dest_mode = ICR_DEST_MODE_PHYSICAL;
+		icr.level = ICR_LEVEL_ASSERT;
+		icr.trigger_mode = ICR_TRIGGER_EDGE;
+		icr.dest_shorthand = ICR_DEST_ALL_INCLUDING;
+		MSR::ICR(icr);
 
 		while (syncArrived == vCoreCount) { _mm_pause(); };
 
 		syncRequest = 0;
 		syncRelease = 1;
-		syncTsc = (__rdtsc() - storage->tsc) + 3000;
+		_mm_mfence();
+		_mm_lfence();
+		syncTsc = (__rdtsc() - storage->tsc) + 3100;
 		if(syncReset)
 			ca->TscOffset = 0;
 		else
 			ca->TscOffset -= syncTsc;
-		//AddApicTimeBack(syncTsc);
+
 		_mm_clflush((const PVOID)&syncReset);
 		_mm_clflush((const PVOID)&syncTsc);
 		_mm_clflush((const PVOID)&syncRequest);
