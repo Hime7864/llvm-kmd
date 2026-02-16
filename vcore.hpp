@@ -8,6 +8,12 @@ struct ALIGN(4096) STORAGE
 	MSR_EFER efer; // 0x09A8
 	PHYSICAL_ADDRESS hsave; // 0x09B0
 	UINT64 tsc; // 0x09B8
+	UINT32 apic_lvt_timer; // 0x09C0
+	UINT32 apic_timer_initial; // 0x09C4
+	UINT32 apic_timer_divide; // 0x09C8
+	UINT64 apic_timer_start_tsc; // 0x09D0
+	UINT32 apic_timer_remaining; // 0x09D8
+	BOOL apic_timer_active; // 0x09DC
 };
 
 struct ALIGN(4096) VCORE

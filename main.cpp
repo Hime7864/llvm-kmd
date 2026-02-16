@@ -5,16 +5,43 @@ UINT64 SVM::hCr3 = 0;
 UINT64 SVM::gCr3 = 0;
 VCORE* SVM::vCpu = 0;
 UINT32 SVM::vCoreCount = 0;
+volatile BOOLEAN syncReset = 0;
 volatile UINT64 syncTsc = 0;
 volatile UINT64 syncRequest = 0;
 volatile UINT64 syncRelease = 0;
 volatile UINT64 syncArrived = 0;
 
+
+void AddApicTimeBack(UINT32 tsc_offset)
+{
+	auto LVT_TIMER = MSR::APIC_LVT_TIMER();
+	auto CUR_COUNT = MSR::APIC_TIMER_CUR_COUNT();
+	auto INIT_COUNT = MSR::APIC_TIMER_INIT_COUNT();
+	auto DIV_CONF = MSR::APIC_TIMER_DIV_CONF();
+
+	UINT32 divisor_map[] = { 2, 4, 8, 16, 32, 64, 128, 1 };
+	auto index = ((DIV_CONF & 0x8) >> 1) | (DIV_CONF & 0x3);
+	UINT32 divisor = divisor_map[index];
+
+	UINT32 timer_adjustment = tsc_offset / divisor;
+	UINT32 new_count = INIT_COUNT + timer_adjustment;
+
+	if (LVT_TIMER & 0x20000)
+	{
+		MSR::APIC_TIMER_INIT_COUNT(0);
+		MSR::APIC_TIMER_INIT_COUNT(new_count);
+	}
+	else
+	{
+		MSR::APIC_TIMER_INIT_COUNT(new_count);
+	}
+}
+
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
 	printf("SVM Hypervisor Driver Loaded\n");
 	SVM::Initialize();
-
+	
 	SVM::LaunchVm();
 	
 	//SVM::Cleanup();
@@ -41,6 +68,8 @@ void SVM::ControlArea()
 
 	//msrPm->read(MSR::_MSR_ICR, true);
 	//msrPm->write(MSR::_MSR_ICR, true);
+
+	msrPm->write(MSR::_MSR_2XAPIC_TIMER_INIT_COUNT, true);
 
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
@@ -131,7 +160,11 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		if (syncRequest)
 		{
 			while (!syncRelease) { _mm_pause(); };
-			ca->TscOffset -= syncTsc;
+			if (syncReset)
+				ca->TscOffset = 0;
+			else
+				ca->TscOffset -= syncTsc;
+			//AddApicTimeBack(syncTsc);
 		}
 		else
 		{
@@ -160,7 +193,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		icr.trigger_mode = ICR_TRIGGER_EDGE;
 		icr.dest_shorthand = ICR_DEST_ALL_INCLUDING;
 		MSR::ICR(icr);
-
+		syncReset = 0;
 		switch (exitCode)
 		{
 		case VMEXIT_MSR:
@@ -195,6 +228,15 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 						gCtx->Rdx = (storage->hsave >> 32) & 0xFFFFFFFF;
 					}
 				}break;
+				case MSR::_MSR_2XAPIC_TIMER_INIT_COUNT:
+				{
+					if (exitInfo1.MSR.isWrite)
+					{
+						auto INIT_COUNT = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
+						MSR::APIC_TIMER_INIT_COUNT(INIT_COUNT);
+						syncReset = 1;
+					}
+				}break;
 				default:
 					break;
 				}
@@ -216,8 +258,12 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		syncRequest = 0;
 		syncRelease = 1;
 		syncTsc = (__rdtsc() - storage->tsc) + 3000;
-		ca->TscOffset -= syncTsc;
-
+		if(syncReset)
+			ca->TscOffset = 0;
+		else
+			ca->TscOffset -= syncTsc;
+		//AddApicTimeBack(syncTsc);
+		_mm_clflush((const PVOID)&syncReset);
 		_mm_clflush((const PVOID)&syncTsc);
 		_mm_clflush((const PVOID)&syncRequest);
 		_mm_mfence();

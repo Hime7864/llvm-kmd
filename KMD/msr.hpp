@@ -173,7 +173,6 @@ struct MSR_TSC_RATIO
 	};
 };
 
-
 struct MSR_PSTATE_CURRENT_LIMIT
 {
 	union {
@@ -254,7 +253,12 @@ public:
 	static constexpr DWORD _MSR_APERF_READ_ONLY = 0xC00000E8UL;
 	static constexpr DWORD _MSR_MPERF_READ_ONLY = 0xC00000E7UL;
 	static constexpr DWORD _MSR_TSC = 0x00000010UL;
-
+	static constexpr DWORD _MSR_TSC_DEADLINE = 0x000006E0UL;
+	static constexpr DWORD _MSR_TSC_ADJUST = 0x0000003BUL;
+	static constexpr DWORD _MSR_2XAPIC_LVT_TIMER = 0x00000832UL;
+	static constexpr DWORD _MSR_2XAPIC_TIMER_INIT_COUNT = 0x00000838UL;
+	static constexpr DWORD _MSR_2XAPIC_TIMER_CUR_COUNT = 0x00000839UL;
+	static constexpr DWORD _MSR_2XAPIC_TIMER_DIV_CONF = 0x0000083EUL;
 
 	static MSR_VM_CR VM_CR();
 	static VOID VM_CR(MSR_VM_CR vm_cr);
@@ -309,4 +313,21 @@ public:
 
 	static UINT64 TSC();
 	static VOID TSC(UINT64 tsc);
+
+	static UINT64 TSC_DEADLINE();
+	static VOID TSC_DEADLINE(UINT64 deadline);
+
+	static UINT64 TSC_ADJUST();
+	static VOID TSC_ADJUST(UINT64 adjust);
+
+	static UINT64 APIC_LVT_TIMER();
+	static VOID APIC_LVT_TIMER(UINT64 lvt_timer);
+
+	static UINT64 APIC_TIMER_INIT_COUNT();
+	static VOID APIC_TIMER_INIT_COUNT(UINT64 init_count);
+
+	static UINT64 APIC_TIMER_CUR_COUNT();
+
+	static UINT64 APIC_TIMER_DIV_CONF();
+	static VOID APIC_TIMER_DIV_CONF(UINT64 div_conf);
 };
