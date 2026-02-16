@@ -41,7 +41,7 @@ void SVM::ControlArea()
 	//msrPm->read(MSR::_MSR_ICR, true);
 	//msrPm->write(MSR::_MSR_ICR, true);
 
-	msrPm->write(MSR::_MSR_2XAPIC_TIMER_INIT_COUNT, true);
+	msrPm->read(MSR::_MSR_2XAPIC_TIMER_INIT_COUNT, true);
 
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
@@ -121,12 +121,14 @@ VOID NAKED SVM::NmiStub()
 
 void __attribute__((preserve_most)) SVM::NmiHandler()
 {
+	auto vCore = &vCpu[CPUID::current_core_number()];
+	auto vmcb = &vCore->vmcb;
+	auto ca = &vmcb->ControlArea;
 	__sync_fetch_and_add(&syncArrived, 1);
 
 	while (syncArrived != vCoreCount) { _mm_pause(); };
 
-	vCpu[CPUID::current_core_number()].vmcb.ControlArea.TscOffset = 0;
-
+	__sync_lock_test_and_set(&ca->TscOffset, 0);
 	__sync_fetch_and_sub(&syncArrived, 1);
 	return;
 }
@@ -163,6 +165,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	}
 	else
 	{
+		ca->TscOffset -= 1000ll - (__rdtsc() - storage->tsc);
 		switch (exitCode)
 		{
 		case VMEXIT_MSR:
@@ -197,22 +200,20 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				}break;
 				case MSR::_MSR_2XAPIC_TIMER_INIT_COUNT:
 				{
-					if (exitInfo1.MSR.isWrite)
-					{
-						auto INIT_COUNT = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
-						MSR::APIC_TIMER_INIT_COUNT(INIT_COUNT);
-						__sync_lock_test_and_set(&syncRequest, 1);
-						__sync_lock_test_and_set(&syncArrived, 0);
-						MSR_ICR icr;
-						icr.AsUINT64 = 0;
-						icr.msg_type = ICR_MSG_TYPE_NMI;
-						icr.dest_mode = ICR_DEST_MODE_PHYSICAL;
-						icr.level = ICR_LEVEL_ASSERT;
-						icr.trigger_mode = ICR_TRIGGER_EDGE;
-						icr.dest_shorthand = ICR_DEST_ALL_INCLUDING;
-						MSR::ICR(icr);
-						__sync_lock_test_and_set(&syncRequest, 0);
-					}
+					ssa->Rax = MSR::APIC_TIMER_INIT_COUNT() & 0xFFFFFFFF;
+					gCtx->Rdx = 0;
+
+					__sync_lock_test_and_set(&syncRequest, 1);
+					__sync_lock_test_and_set(&syncArrived, 0);
+					MSR_ICR icr;
+					icr.AsUINT64 = 0;
+					icr.msg_type = ICR_MSG_TYPE_NMI;
+					icr.dest_mode = ICR_DEST_MODE_PHYSICAL;
+					icr.level = ICR_LEVEL_ASSERT;
+					icr.trigger_mode = ICR_TRIGGER_EDGE;
+					icr.dest_shorthand = ICR_DEST_ALL_INCLUDING;
+					MSR::ICR(icr);
+					__sync_lock_test_and_set(&syncRequest, 0);
 				}break;
 				default:
 					break;
@@ -226,7 +227,12 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				ca->EventInjection.V = SVM_EVENTINJ_VALID;
 			}
 		}break;
+		case VMEXIT_VMMCALL:
+		{
+			ssa->Rax = ca->TscOffset;
+		}break;
 		default:
+
 			break;
 		}
 	}
