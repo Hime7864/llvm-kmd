@@ -5,10 +5,8 @@ UINT64 SVM::hCr3 = 0;
 UINT64 SVM::gCr3 = 0;
 VCORE* SVM::vCpu = 0;
 UINT32 SVM::vCoreCount = 0;
-volatile BOOLEAN syncReset = 0;
-volatile UINT64 syncTsc = 0;
+
 volatile UINT64 syncRequest = 0;
-volatile UINT64 syncRelease = 0;
 volatile UINT64 syncArrived = 0;
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
@@ -88,8 +86,8 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		push rdx
 
 		// Serialize tsc
-		mfence
-		lfence
+		//mfence
+		//lfence
 		rdtsc
 		mov[rcx + 0x9B8], eax
 		mov[rcx + 0x9BC], edx
@@ -113,10 +111,29 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 	}
 }
 
-void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
+VOID NAKED SVM::NmiStub()
+{
+	__asm {
+		call NmiHandler
+		iretq
+	}
+}
+
+void __attribute__((preserve_most)) SVM::NmiHandler()
 {
 	__sync_fetch_and_add(&syncArrived, 1);
 
+	while (syncArrived != vCoreCount) { _mm_pause(); };
+
+	vCpu[CPUID::current_core_number()].vmcb.ControlArea.TscOffset = 0;
+
+	__sync_fetch_and_sub(&syncArrived, 1);
+	return;
+}
+
+void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
+{
+	
 	auto vmcb = &vCore->vmcb;
 	auto ssa = &vmcb->SaveStateArea;
 	auto ca = &vmcb->ControlArea;
@@ -133,11 +150,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	{
 		if (syncRequest)
 		{
-			while (!syncRelease) { _mm_pause(); };
-			if (syncReset)
-				ca->TscOffset = 0;
-			else
-				ca->TscOffset -= syncTsc;
+			NmiHandler();
 		}
 		else
 		{
@@ -150,15 +163,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	}
 	else
 	{
-		syncRequest = 1;
-		syncRelease = 0;
-
-		_mm_clflush((const PVOID)&syncRequest);
-		_mm_clflush((const PVOID)&syncRelease);
-		_mm_mfence();
-		_mm_lfence();
-
-		syncReset = 0;
 		switch (exitCode)
 		{
 		case VMEXIT_MSR:
@@ -171,9 +175,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				{
 					if (exitInfo1.MSR.isWrite)
 					{
-						MSR_EFER efer = { 0 };
-						efer.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
-						storage->efer = efer;
+						storage->efer.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					}
 					else
 					{
@@ -199,8 +201,17 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 					{
 						auto INIT_COUNT = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 						MSR::APIC_TIMER_INIT_COUNT(INIT_COUNT);
-						if(syncArrived == 1)
-							syncReset = 1;
+						__sync_lock_test_and_set(&syncRequest, 1);
+						__sync_lock_test_and_set(&syncArrived, 0);
+						MSR_ICR icr;
+						icr.AsUINT64 = 0;
+						icr.msg_type = ICR_MSG_TYPE_NMI;
+						icr.dest_mode = ICR_DEST_MODE_PHYSICAL;
+						icr.level = ICR_LEVEL_ASSERT;
+						icr.trigger_mode = ICR_TRIGGER_EDGE;
+						icr.dest_shorthand = ICR_DEST_ALL_INCLUDING;
+						MSR::ICR(icr);
+						__sync_lock_test_and_set(&syncRequest, 0);
 					}
 				}break;
 				default:
@@ -218,39 +229,9 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		default:
 			break;
 		}
-		
-		MSR_ICR icr;
-		icr.AsUINT64 = 0;
-		icr.msg_type = ICR_MSG_TYPE_NMI;
-		icr.dest_mode = ICR_DEST_MODE_PHYSICAL;
-		icr.level = ICR_LEVEL_ASSERT;
-		icr.trigger_mode = ICR_TRIGGER_EDGE;
-		icr.dest_shorthand = ICR_DEST_ALL_INCLUDING;
-		MSR::ICR(icr);
-
-		while (syncArrived == vCoreCount) { _mm_pause(); };
-
-		syncRequest = 0;
-		syncRelease = 1;
-		_mm_mfence();
-		_mm_lfence();
-		syncTsc = (__rdtsc() - storage->tsc) + (MSR::PSTATE(0).get_frequency_mhz() / 2000000ll);
-		if(syncReset)
-			ca->TscOffset = 0;
-		else
-			ca->TscOffset -= syncTsc;
-
-		_mm_clflush((const PVOID)&syncReset);
-		_mm_clflush((const PVOID)&syncTsc);
-		_mm_clflush((const PVOID)&syncRequest);
-		_mm_mfence();
-		_mm_lfence();
-		_mm_clflush((const PVOID)&syncRelease);
 	}
 
 	if(ca->NextRip)
 		ssa->Rip = ca->NextRip;
-	ca->NextRip = 0;
-	__sync_fetch_and_sub(&syncArrived, 1);
 	return;
 }

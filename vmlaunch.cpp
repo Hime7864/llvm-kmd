@@ -23,13 +23,6 @@ static void SetIdtGate(IDT_GATE64* gate, PVOID handler, UINT16 selector)
 	gate->reserved = 0;
 }
 
-extern "C" VOID NAKED HostNmiIretStub()
-{
-	__asm {
-		iretq
-	}
-}
-
 void NAKED SVM::SaveCtx(VCORE* vCore)
 {
 	__asm {
@@ -196,7 +189,7 @@ void SVM::LaunchCore(int affinity)
 	// Create host idt
 	auto idt = (IDT_GATE64*)vCore->idt;
 	// IRETQ nmi handler
-	SetIdtGate(&idt[2], HostNmiIretStub, __readcs());
+	SetIdtGate(&idt[2], NmiHandler, __readcs());
 	idtr.Base = (UINT64)idt;
 	idtr.Limit = sizeof(vCore->idt) - 1;
 	__lidt(&idtr);

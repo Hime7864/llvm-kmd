@@ -30,6 +30,10 @@ private:
 
 	static void __attribute__((preserve_most)) VmExit(VCORE* vCore);
 
+	static void __attribute__((preserve_most)) NmiHandler();
+
+	static void NAKED NmiStub();
+
 	static void NAKED SaveCtx(VCORE* vCore);
 
 	static void NAKED LoadCtx(VCORE* vCore);
