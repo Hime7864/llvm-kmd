@@ -234,7 +234,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		syncRelease = 1;
 		_mm_mfence();
 		_mm_lfence();
-		syncTsc = (__rdtsc() - storage->tsc) + 3000;
+		syncTsc = (__rdtsc() - storage->tsc) + (MSR::PSTATE(0).get_frequency_mhz() / 2000000ll);
 		if(syncReset)
 			ca->TscOffset = 0;
 		else
