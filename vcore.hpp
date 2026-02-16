@@ -8,8 +8,6 @@ struct ALIGN(4096) STORAGE
 	MSR_EFER efer; // 0x09A8
 	PHYSICAL_ADDRESS hsave; // 0x09B0
 	UINT64 tsc; // 0x09B8
-	UINT64 mperf; // 0x09C0
-	UINT64 aperf; // 0x09C8
 };
 
 struct ALIGN(4096) VCORE

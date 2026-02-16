@@ -34,11 +34,10 @@ void SVM::ControlArea()
 	controlArea->TlbControl.FlushGuestNonGlobalTLB = true;
 	controlArea->Intercept.VMRUN = true;
 	controlArea->Intercept.VMMCALL = true;
+	controlArea->Intercept.VMLOAD = true;
+	controlArea->Intercept.VMSAVE = true;
 	controlArea->Intercept.NMI = true;
 	controlArea->Intercept.MSR_Prot = true;
-
-	//controlArea->VirtualApic.V_NMI_ENABLE = true;
-	//controlArea->VirtualApic.V_INTR_MASKING = true;
 
 	//msrPm->read(MSR::_MSR_ICR, true);
 	//msrPm->write(MSR::_MSR_ICR, true);
@@ -92,24 +91,7 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		mov[rcx + 0x9B8], eax
 		mov[rcx + 0x9BC], edx
 
-		// mperf
-		push rcx
-		mov ecx, 0xE7ul
-		rdmsr
-		pop rcx
-		mov[rcx + 0x9C0], eax
-		mov[rcx + 0x9C4], edx
-
-		// aperf
-		push rcx
-		mov ecx, 0xE8ul
-		rdmsr
-		pop rcx
-		mov[rcx + 0x9C8], eax
-		mov[rcx + 0x9CC], edx
-
 		pop rdx
-
 		call SaveCtx
 		pop rax
 		mov[rcx + 0x80], rax
@@ -142,12 +124,14 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitCode = ca->ExitCode;
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
+	
 
 	if (exitCode == VMEXIT_NMI)
 	{
-		if (syncArrived)
+		if (syncRequest)
 		{
 			while (!syncRelease) { _mm_pause(); };
+			ca->TscOffset -= syncTsc;
 		}
 		else
 		{
@@ -162,6 +146,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	{
 		syncRequest = 1;
 		syncRelease = 0;
+
 		_mm_clflush((const PVOID)&syncRequest);
 		_mm_clflush((const PVOID)&syncRelease);
 		_mm_mfence();
@@ -202,11 +187,12 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				{
 					if (exitInfo1.MSR.isWrite)
 					{
-						storage->hsave = gCtx->Rax;
+						storage->hsave = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					}
 					else
 					{
-						ssa->Rax = storage->hsave;
+						ssa->Rax = storage->hsave & 0xFFFFFFFF;
+						gCtx->Rdx = (storage->hsave >> 32) & 0xFFFFFFFF;
 					}
 				}break;
 				default:
@@ -226,14 +212,17 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		}
 
 		while (syncArrived == vCoreCount) { _mm_pause(); };
+
 		syncRequest = 0;
 		syncRelease = 1;
-		//syncTsc = __rdtsc() - (storage->tsc - 400);
-		//_mm_clflush((const PVOID)&syncTsc);
+		syncTsc = (__rdtsc() - storage->tsc) + 3000;
+		ca->TscOffset -= syncTsc;
+
+		_mm_clflush((const PVOID)&syncTsc);
 		_mm_clflush((const PVOID)&syncRequest);
-		_mm_clflush((const PVOID)&syncRelease);
 		_mm_mfence();
 		_mm_lfence();
+		_mm_clflush((const PVOID)&syncRelease);
 	}
 
 	if(ca->NextRip)
