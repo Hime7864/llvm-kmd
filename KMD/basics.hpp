@@ -399,6 +399,7 @@ typedef void(__stdcall* PKRUNDOWN_ROUTINE)(
 #define ALIGN(alignment) __attribute__((aligned(alignment)))
 #define NORETURN __attribute__((noreturn))
 #define DEPRECATED __attribute__((deprecated))
+#define PRESERVE __attribute__((preserve_most))
 
 
 #define CONTAINING_RECORD(address, type, field) \
@@ -468,11 +469,14 @@ extern "C"
     VOID __writefs(_In_ UINT16 value);
     VOID __writees(_In_ UINT16 value);
 
+	VOID __clflush(PVOID address);
+	VOID __clflushopt(PVOID address);
+
     // TLB management
     VOID __invlpg(_In_ PVOID address);
 
 	// CPUID instruction
-    VOID _cpuid(_In_ UINT32 leaf, _Out_ UINT32* eax, _Out_ UINT32* ebx,  _Out_ UINT32* ecx, _Out_ UINT32* edx);
+    VOID _cpuid(_In_ UINT32 leaf, _Out_ UINT64* eax, _Out_ UINT64* ebx,  _Out_ UINT64* ecx, _Out_ UINT64* edx);
 
     // MSR access
     UINT64 __readmsr(_In_ UINT32 msr);
@@ -487,8 +491,8 @@ extern "C"
     // Descriptor tables
     VOID __sidt(_Out_ SEGMENT_REGISTER* idtr);
     VOID __sgdt(_Out_ SEGMENT_REGISTER* gdtr);
-    VOID __lidt(_In_ const SEGMENT_REGISTER* idtr);
-    VOID __lgdt(_In_ const SEGMENT_REGISTER* gdtr);
+    VOID __lidt(_In_ SEGMENT_REGISTER* idtr);
+    VOID __lgdt(_In_ SEGMENT_REGISTER* gdtr);
     UINT16 __sldt();
     VOID __lldt(_In_ UINT16 selector);
     UINT16 __str();
@@ -681,41 +685,35 @@ struct PACKED SEGMENT_REGISTER
 
     FORCEINLINE UINT32 limit(USHORT selector) const
     {
-        if (!this || selector == 0)
+        auto sr = this;
+        if (!sr)
             return 0;
-
         UINT16 idx = selector >> 3;
         UINT64 offset = idx * 8;
-
-        if (offset + 7 > Limit)
+        if (offset + 7 > sr->Limit)
             return 0;
+        auto DescBytes = reinterpret_cast<UCHAR*>(sr->Base + offset);
 
-        auto DescBytes = reinterpret_cast<const UCHAR*>(Base + offset);
-
-        UINT32 limitLow = *reinterpret_cast<const UINT16*>(&DescBytes[0]);
+        UINT32 limitLow = *(reinterpret_cast<UINT16*>(&DescBytes[0]));
         UCHAR granFlags = DescBytes[6];
         UINT32 limitHigh = granFlags & 0x0F;
         UINT32 segLimit = (limitHigh << 16) | limitLow;
 
-        // Check granularity bit
         if ((granFlags & 0x80) != 0)
             segLimit = (segLimit << 12) | 0xFFF;
-
         return segLimit;
     }
 
     FORCEINLINE USHORT attribute(USHORT selector) const
     {
-        if (!this || selector == 0)
+        const auto sr = this;
+        if (!sr)
             return 0;
-
         UINT16 idx = selector >> 3;
         UINT64 offset = idx * 8;
-
-        if (offset + 7 > Limit)
+        if (offset + 7 > sr->Limit)
             return 0;
-
-        auto DescBytes = reinterpret_cast<const UCHAR*>(Base + offset);
+        auto DescBytes = reinterpret_cast<UCHAR*>(sr->Base + offset);
         const USHORT access = static_cast<USHORT>(DescBytes[5]);
         const USHORT flags = static_cast<USHORT>((DescBytes[6] & 0xF0) >> 4);
 
@@ -724,36 +722,30 @@ struct PACKED SEGMENT_REGISTER
 
     FORCEINLINE UINT64 base(USHORT selector) const
     {
-        if (!this || selector == 0)
+        const auto sr = this;
+        if (!sr)
             return 0;
-
         UINT16 idx = selector >> 3;
         UINT64 offset = idx * 8;
-
-        if (offset + 7 > Limit)
+        if (offset + 7 > sr->Limit)
             return 0;
-
-        auto DescBytes = reinterpret_cast<const UCHAR*>(Base + offset);
-
-        // Extract base address parts
-        UINT32 baseLow = *reinterpret_cast<const UINT16*>(&DescBytes[2]);
+        auto DescBytes = reinterpret_cast<UCHAR*>(sr->Base + offset);
+        UINT32 baseLow = *(reinterpret_cast<UINT16*>(&DescBytes[2]));
         UINT32 baseMid = DescBytes[4];
         UINT32 baseHigh = DescBytes[7];
-        UINT64 segBase = (static_cast<UINT64>(baseHigh) << 24) |
-            (static_cast<UINT64>(baseMid) << 16) |
-            baseLow;
+        UINT64 segBase = (static_cast<UINT64>(baseHigh) << 24) | (static_cast<UINT64>(baseMid) << 16) | baseLow;
 
-        // Check if this is a system descriptor (64-bit descriptor)
         const UCHAR access = DescBytes[5];
         const bool system_desc = ((access & 0x10) == 0); // S bit == 0
-
-        if (system_desc && (offset + 15 <= Limit))
+        if (system_desc && (offset + 15 <= sr->Limit))
         {
-            // Read upper 32 bits of base for system descriptors
-            const UINT32 baseUpper = *reinterpret_cast<const UINT32*>(&DescBytes[8]);
+            const UINT32 baseUpper =
+                (static_cast<UINT32>(DescBytes[8])) |
+                (static_cast<UINT32>(DescBytes[9]) << 8) |
+                (static_cast<UINT32>(DescBytes[10]) << 16) |
+                (static_cast<UINT32>(DescBytes[11]) << 24);
             segBase |= (static_cast<UINT64>(baseUpper) << 32);
         }
-
         return segBase;
     }
 };

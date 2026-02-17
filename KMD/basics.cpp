@@ -565,6 +565,22 @@ extern "C"
         }
     }
 
+    VOID NAKED __clflush(PVOID address)
+    {
+        __asm {
+			clflush[rcx]
+            ret
+        }
+    }
+
+    VOID NAKED __clflushopt(PVOID address)
+    {
+        __asm {
+            clflushopt[rcx]
+			ret
+		}
+    }
+
     VOID __invlpg(_In_ PVOID address)
     {
         __asm {
@@ -575,25 +591,25 @@ extern "C"
 
     VOID _cpuid(
         _In_ UINT32 leaf,
-        _Out_ UINT32* eax,
-        _Out_ UINT32* ebx,
-        _Out_ UINT32* ecx,
-        _Out_ UINT32* edx
+        _Out_ UINT64* rax,
+        _Out_ UINT64* rbx,
+        _Out_ UINT64* rcx,
+        _Out_ UINT64* rdx
     )
     {
-        UINT32 _eax, _ebx, _ecx, _edx;
+        UINT64 _rax, _rbx, _rcx, _rdx;
         __asm {
             mov eax, leaf
             cpuid
-            mov _eax, eax
-            mov _ebx, ebx
-            mov _ecx, ecx
-            mov _edx, edx
+            mov [_rax], rax
+            mov [_rbx], rbx
+            mov [_rcx], rcx
+            mov [_rdx], rdx
         }
-        if (eax) *eax = _eax;
-        if (ebx) *ebx = _ebx;
-        if (ecx) *ecx = _ecx;
-        if (edx) *edx = _edx;
+        *rax = _rax;
+        *rbx = _rbx;
+        *rcx = _rcx;
+        *rdx = _rdx;
     }
 
     UINT64 __readmsr(_In_ UINT32 msr)
@@ -663,6 +679,25 @@ extern "C"
         }
     }
 
+    VOID NAKED __lidt(_In_ SEGMENT_REGISTER* idtr)
+    {
+        __asm {
+            mov rax, rcx
+            lidt[rax]
+            ret
+		}
+    }
+
+
+    VOID NAKED __lgdt(_In_ SEGMENT_REGISTER* gdtr)
+    {
+        __asm {
+            mov rax, rcx
+            lgdt[rax]
+            ret
+		}
+    }
+
     UINT16 __sldt()
     {
         UINT16 ldtr;
@@ -701,62 +736,62 @@ extern "C"
 
     UINT16 __readcs()
     {
-        UINT16 cs;
+        UINT16 _cs;
         __asm {
             mov ax, cs
-            mov cs, ax
+            mov _cs, ax
         }
-        return cs;
+        return _cs;
     }
 
     UINT16 __readds()
     {
-        UINT16 ds;
+        UINT16 _ds;
         __asm {
             mov ax, ds
-            mov ds, ax
+            mov _ds, ax
         }
-        return ds;
+        return _ds;
     }
 
     UINT16 __readss()
     {
-        UINT16 ss;
+        UINT16 _ss;
         __asm {
             mov ax, ss
-            mov ss, ax
+            mov _ss, ax
         }
-        return ss;
+        return _ss;
     }
 
     UINT16 __reades()
     {
-        UINT16 es;
+        UINT16 _es;
         __asm {
             mov ax, es
-            mov es, ax
+            mov _es, ax
         }
-        return es;
+        return _es;
     }
 
     UINT16 __readfs()
     {
-        UINT16 fs;
+        UINT16 _fs;
         __asm {
             mov ax, fs
-            mov fs, ax
+            mov _fs, ax
         }
-        return fs;
+        return _fs;
     }
 
     UINT16 __readgs()
     {
-        UINT16 gs;
+        UINT16 _gs;
         __asm {
             mov ax, gs
-            mov gs, ax
+            mov _gs, ax
         }
-        return gs;
+        return _gs;
     }
 
     VOID __writeds(_In_ UINT16 value)

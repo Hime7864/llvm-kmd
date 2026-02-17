@@ -22,6 +22,7 @@ FUNCTION_TABLE_ENTRY function_table[]
 	{ str_hash("KeStackAttachProcess"), &NtImports::fn_KeStackAttachProcess},
 	{ str_hash("KeUnstackDetachProcess"), &NtImports::fn_KeUnstackDetachProcess},
 	{ str_hash("KeDelayExecutionThread"), &NtImports::fn_KeDelayExecutionThread},
+	{ str_hash("KeSetSystemAffinityThread"), &NtImports::fn_KeSetSystemAffinityThread},
 	{ str_hash("PsCreateSystemThread"), &NtImports::fn_PsCreateSystemThread},
 	{ str_hash("PsTerminateSystemThread"), &NtImports::fn_PsTerminateSystemThread},
 	{ str_hash("KeIpiGenericCall"), &NtImports::fn_KeIpiGenericCall},
