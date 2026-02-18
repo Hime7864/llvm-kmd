@@ -749,3 +749,76 @@ struct PACKED SEGMENT_REGISTER
         return segBase;
     }
 };
+
+struct xAPIC_REGISTERS
+{
+    enum ICR_MT : UINT32
+    {
+        Fixed = 0,
+        LowestPriority = 1,
+        Smi = 2,
+        RemoteRead = 3,
+        Nmi = 4,
+        Init = 5,
+        StartUp = 6,
+        ExtInt = 7
+    };
+    enum ICR_DM : UINT32
+    {
+        Physical = 0,
+        Logical = 1
+    };
+    enum ICR_DS : UINT32
+    {
+        Idle = 0,
+        SendPending = 1,
+    };
+    enum ICR_L : UINT32
+    {
+        deassert = 0,
+        assert = 1
+    };
+    enum ICR_TGM : UINT32
+    {
+        edge = 0,
+        level = 1
+    };
+    enum ICR_RRS : UINT32
+    {
+        ReadInvalid = 0,
+        DeliveryPending = 1,
+        DeliveryDone = 2
+    };
+    enum ICR_DSH : UINT32
+    {
+        Destination = 0,
+        Self = 1,
+        AllIncludingSelf = 2,
+        AllExcludingSelf = 3
+    };
+    struct ICR_LOW
+    {
+        union
+        {
+            struct
+            {
+                UINT32 VEC : 8;
+                ICR_MT MT : 3;
+                ICR_DM DM : 1;
+                ICR_DS DS : 1;
+                UINT32 : 1;
+                ICR_L L : 1;
+                ICR_TGM TGM : 1;
+                ICR_RRS RRS : 2;
+                ICR_DSH DSH : 2;
+                UINT32 : 12;
+            };
+            UINT32 AsUINT32;
+        };
+    };
+    void WriteICR(ICR_LOW low)
+    {
+        *(DWORD*)((UINT64)this + 0x300) = low.AsUINT32;
+        return;
+    }
+};

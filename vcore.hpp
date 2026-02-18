@@ -17,5 +17,4 @@ struct ALIGN(4096) VCORE
 	BYTE hsave[0x1000]; // 0x4000
 	MSRPM msrpm; // 0x5000
 	VMCB vmcb; // 0x7000
-	BYTE idt[0x1000]; // 0x8000
 };

@@ -15,6 +15,8 @@ private:
 	static UINT64 gCr3;
 	static VCORE* vCpu;
 	static UINT32 vCoreCount;
+	static xAPIC_REGISTERS* vaApicBase;
+	static UINT64 idtBase;
 
 	static UINT64 HostedGetVirtual(PHYSICAL_ADDRESS address);
 
@@ -25,6 +27,8 @@ private:
 	static void CreateMapping();
 
 	static void ControlArea();
+
+	static void broadcast_nmi();
 
 	static void NAKED VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb);
 

@@ -187,11 +187,11 @@ void SVM::LaunchCore(int affinity)
 	saveArea->IDTR.limit = idtr.Limit;
 
 	// Create host idt
-	auto idt = (IDT_GATE64*)vCore->idt;
+	auto idt = (IDT_GATE64*)idtBase;
 	// IRETQ nmi handler
-	SetIdtGate(&idt[2], NmiHandler, __readcs());
+	SetIdtGate(&idt[2], NmiStub, __readcs());
 	idtr.Base = (UINT64)idt;
-	idtr.Limit = sizeof(vCore->idt) - 1;
+	idtr.Limit = 0xFFF;
 	__lidt(&idtr);
 
 	__vmsave(storage->vmcb);

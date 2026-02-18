@@ -5,6 +5,8 @@ UINT64 SVM::hCr3 = 0;
 UINT64 SVM::gCr3 = 0;
 VCORE* SVM::vCpu = 0;
 UINT32 SVM::vCoreCount = 0;
+xAPIC_REGISTERS* SVM::vaApicBase = 0;
+UINT64 SVM::idtBase = 0;
 
 volatile UINT64 syncRequest = 0;
 volatile UINT64 syncArrived = 0;
@@ -16,7 +18,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	
 	SVM::LaunchVm();
 	
-	//SVM::Cleanup();
+	SVM::Cleanup();
 	printf("SVM Hypervisor Driver Unloaded\n");
 	return STATUS_SUCCESS;
 }
@@ -41,8 +43,6 @@ void SVM::ControlArea()
 	//msrPm->read(MSR::_MSR_ICR, true);
 	//msrPm->write(MSR::_MSR_ICR, true);
 
-	msrPm->read(MSR::_MSR_2XAPIC_TIMER_INIT_COUNT, true);
-
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
 	msrPm->write(MSR::_MSR_EFER, true);
@@ -62,7 +62,7 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 {
 	__asm {
 		mov rax, rsp
-		lea rsp, [rcx + 0x3800]
+		lea rsp, [rcx + 0x3000]
 		push rax
 
 		loop:
@@ -85,9 +85,6 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		mov rcx, [rsp + 0x08]
 		push rdx
 
-		// Serialize tsc
-		//mfence
-		//lfence
 		rdtsc
 		mov[rcx + 0x9B8], eax
 		mov[rcx + 0x9BC], edx
@@ -114,7 +111,7 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 VOID NAKED SVM::NmiStub()
 {
 	__asm {
-		call NmiHandler
+		//call NmiHandler
 		iretq
 	}
 }
@@ -126,12 +123,42 @@ void __attribute__((preserve_most)) SVM::NmiHandler()
 	auto ca = &vmcb->ControlArea;
 	__sync_fetch_and_add(&syncArrived, 1);
 
-	while (syncArrived != vCoreCount) { _mm_pause(); };
+	//while (syncArrived != vCoreCount - 1) { _mm_pause(); };
 
 	__sync_lock_test_and_set(&ca->TscOffset, 0);
 	__sync_fetch_and_sub(&syncArrived, 1);
 	return;
 }
+
+
+void SVM::broadcast_nmi()
+{
+	auto apic_base = MSR::APIC_BASE();
+	if (apic_base.extd)
+	{
+		MSR_ICR icr;
+		icr.AsUINT64 = 0;
+		icr.msg_type = ICR_MSG_TYPE_NMI;
+		icr.trigger_mode = ICR_TRIGGER_EDGE;
+		icr.level = ICR_LEVEL_ASSERT;
+		icr.dest_shorthand = ICR_DEST_ALL_EXCLUDING;
+		MSR::ICR(icr);
+	}
+	else
+	{
+		xAPIC_REGISTERS::ICR_LOW icr;
+		icr.AsUINT32 = 0;
+		icr.MT = xAPIC_REGISTERS::ICR_MT::Nmi;
+		icr.TGM = xAPIC_REGISTERS::ICR_TGM::edge;
+		icr.L = xAPIC_REGISTERS::ICR_L::assert;
+		icr.DSH = xAPIC_REGISTERS::ICR_DSH::AllExcludingSelf;
+		vaApicBase->WriteICR(icr);
+		return;
+	}
+	NmiHandler();
+	return;
+}
+
 
 void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 {
@@ -150,22 +177,23 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 	if (exitCode == VMEXIT_NMI)
 	{
-		if (syncRequest)
-		{
-			NmiHandler();
-		}
-		else
-		{
-			ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_NMI;
-			ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_NMI;
-			ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
-			ca->EventInjection.V = SVM_EVENTINJ_VALID;
-		}
+		//NmiHandler();
+		//if (syncRequest)
+		//{
+		//	NmiHandler();
+		//}
+		//else
+		//{
+		//	ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_NMI;
+		//	ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_NMI;
+		//	ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
+		//	ca->EventInjection.V = SVM_EVENTINJ_VALID;
+		//}
 		ca->NextRip = 0;
 	}
 	else
 	{
-		ca->TscOffset -= 1000ll - (__rdtsc() - storage->tsc);
+		//ca->TscOffset -= 1000ll - (__rdtsc() - storage->tsc);
 		switch (exitCode)
 		{
 		case VMEXIT_MSR:
@@ -198,23 +226,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 						gCtx->Rdx = (storage->hsave >> 32) & 0xFFFFFFFF;
 					}
 				}break;
-				case MSR::_MSR_2XAPIC_TIMER_INIT_COUNT:
-				{
-					ssa->Rax = MSR::APIC_TIMER_INIT_COUNT() & 0xFFFFFFFF;
-					gCtx->Rdx = 0;
-
-					__sync_lock_test_and_set(&syncRequest, 1);
-					__sync_lock_test_and_set(&syncArrived, 0);
-					MSR_ICR icr;
-					icr.AsUINT64 = 0;
-					icr.msg_type = ICR_MSG_TYPE_NMI;
-					icr.dest_mode = ICR_DEST_MODE_PHYSICAL;
-					icr.level = ICR_LEVEL_ASSERT;
-					icr.trigger_mode = ICR_TRIGGER_EDGE;
-					icr.dest_shorthand = ICR_DEST_ALL_INCLUDING;
-					MSR::ICR(icr);
-					__sync_lock_test_and_set(&syncRequest, 0);
-				}break;
 				default:
 					break;
 				}
@@ -229,6 +240,10 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		}break;
 		case VMEXIT_VMMCALL:
 		{
+			//__sync_lock_test_and_set(&syncRequest, 1);
+			//__sync_lock_test_and_set(&syncArrived, 0);
+			SVM::broadcast_nmi();
+			//__sync_lock_test_and_set(&syncRequest, 0);
 			ssa->Rax = ca->TscOffset;
 		}break;
 		default:
