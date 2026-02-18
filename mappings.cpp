@@ -11,7 +11,8 @@ void SVM::CreateMapping()
 
 	if (!idtBase)
 	{
-		idtBase = (UINT64)MmMapIoSpace(FWA::ReservePages(1), 0x1000, MmNonCached);
+		auto idtBasePa = FWA::ReservePages(1);
+		idtBase = (UINT64)MmMapIoSpace(idtBasePa, 0x1000, MmNonCached);
 		MMPTE_HARDWARE pte;
 		pte.AsUINT64 = 0;
 		pte.Valid = true;
@@ -19,7 +20,7 @@ void SVM::CreateMapping()
 		pte.Write = true;
 		pte.NoExecute = true;
 		pte.Global = true;
-		pte.PageFrameNumber = MmGetPhysicalAddress((PVOID)idtBase) >> 12;
+		pte.PageFrameNumber = idtBasePa >> 12;
 		HostedCommitMapping(hCr3, idtBase, pte, PAGEMAP_4KB);
 	}
 
