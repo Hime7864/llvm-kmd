@@ -26,7 +26,8 @@ void SVM::CreateMapping()
 
 	if (!MSR::APIC_BASE().extd)
 	{
-		vaApicBase = (xAPIC_REGISTERS*)MmMapIoSpace(MSR::APIC_BASE().aba << 12, 0x1000, MmNonCached);
+		auto apicBasePa = MSR::APIC_BASE().aba;
+		vaApicBase = (xAPIC_REGISTERS*)MmMapIoSpace(apicBasePa << 12, 0x1000, MmNonCached);
 		MMPTE_HARDWARE pte;
 		pte.AsUINT64 = 0;
 		pte.Valid = true;
@@ -35,7 +36,7 @@ void SVM::CreateMapping()
 		pte.CacheDisable = true;
 		pte.NoExecute = true;
 		pte.Global = true;
-		pte.PageFrameNumber = MmGetPhysicalAddress((PVOID)vaApicBase) >> 12;
+		pte.PageFrameNumber = apicBasePa;
 		HostedCommitMapping(hCr3, vaApicBase, pte, PAGEMAP_4KB);
 	}
 	else

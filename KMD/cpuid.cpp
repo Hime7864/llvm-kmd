@@ -16,10 +16,24 @@ LPSTR CPUID::vendor_string()
     return results;
 }
 
+UINT32 CPUID::current_apic_id()
+{
+    DWORD leaf = 0x00000001UL;
+    UINT32 results = 0;
+    __asm
+    {
+        mov eax, leaf
+        CPUID
+        lea r10, results
+        mov[r10], ebx
+    }
+    return results >> 24;
+}
+
 UINT32 CPUID::current_core_number()
 {
     DWORD leaf = 0x0000000BU;
-    static UINT32 results = 0;
+    UINT32 results = 0;
     __asm
     {
         mov eax, leaf

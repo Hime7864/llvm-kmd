@@ -13,8 +13,9 @@ struct ALIGN(4096) STORAGE
 struct ALIGN(4096) VCORE
 {
 	STORAGE storage; // 0x0000
-	BYTE hstack[0x3000]; // 0x1000
-	BYTE hsave[0x1000]; // 0x4000
-	MSRPM msrpm; // 0x5000
-	VMCB vmcb; // 0x7000
+	BYTE hstack[0x2000]; // 0x1000
+	BYTE hstackIntr[0x2000]; // 0x3000
+	BYTE hsave[0x1000]; // 0x5000
+	MSRPM msrpm; // 0x6000
+	VMCB vmcb; // 0x8000
 };

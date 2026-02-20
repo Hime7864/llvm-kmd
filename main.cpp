@@ -10,6 +10,7 @@ UINT64 SVM::idtBase = 0;
 
 volatile UINT64 syncRequest = 0;
 volatile UINT64 syncArrived = 0;
+volatile UINT64 nmiCounter = 0;
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
@@ -40,8 +41,7 @@ void SVM::ControlArea()
 	controlArea->Intercept.NMI = true;
 	controlArea->Intercept.MSR_Prot = true;
 
-	//msrPm->read(MSR::_MSR_ICR, true);
-	//msrPm->write(MSR::_MSR_ICR, true);
+	//controlArea->VirtualApic.V_NMI_ENABLE = 1;
 
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
@@ -62,7 +62,7 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 {
 	__asm {
 		mov rax, rsp
-		lea rsp, [rcx + 0x3000]
+		lea rsp, [rcx + 0x2800]
 		push rax
 
 		loop:
@@ -111,20 +111,55 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 VOID NAKED SVM::NmiStub()
 {
 	__asm {
+
+
+		//push r15
+		//push r14
+		//push r13
+		//push r12
+		//push r11
+		//push r10
+		//push r9
+		//push r8
+		//push rdi
+		//push rsi
+		//push rbp
+		//push rbx
+		//push rdx
+		//push rcx
+		//push rax
+		//sub rsp, 0x20
 		//call NmiHandler
+		//add rsp, 0x20
+		//pop rax
+		//pop rcx
+		//pop rdx
+		//pop rbx
+		//pop rbp
+		//pop rsi
+		//pop rdi
+		//pop r8
+		//pop r9
+		//pop r10
+		//pop r11
+		//pop r12
+		//pop r13
+		//pop r14
+		//pop r15
 		iretq
 	}
 }
 
 void __attribute__((preserve_most)) SVM::NmiHandler()
 {
+	nmiCounter++;
 	auto vCore = &vCpu[CPUID::current_core_number()];
 	auto vmcb = &vCore->vmcb;
 	auto ca = &vmcb->ControlArea;
 	__sync_fetch_and_add(&syncArrived, 1);
-
-	//while (syncArrived != vCoreCount - 1) { _mm_pause(); };
-
+	
+	while (syncArrived != vCoreCount) { _mm_pause(); };
+	
 	__sync_lock_test_and_set(&ca->TscOffset, 0);
 	__sync_fetch_and_sub(&syncArrived, 1);
 	return;
@@ -138,24 +173,26 @@ void SVM::broadcast_nmi()
 	{
 		MSR_ICR icr;
 		icr.AsUINT64 = 0;
-		icr.msg_type = ICR_MSG_TYPE_NMI;
-		icr.trigger_mode = ICR_TRIGGER_EDGE;
-		icr.level = ICR_LEVEL_ASSERT;
-		icr.dest_shorthand = ICR_DEST_ALL_EXCLUDING;
+		icr.MT = ICR_MT::Nmi;
+		icr.TGM = ICR_TGM::edge;
+		icr.L = ICR_L::assert;
+		icr.DSH = ICR_DSH::Self;
 		MSR::ICR(icr);
 	}
 	else
 	{
-		xAPIC_REGISTERS::ICR_LOW icr;
-		icr.AsUINT32 = 0;
-		icr.MT = xAPIC_REGISTERS::ICR_MT::Nmi;
-		icr.TGM = xAPIC_REGISTERS::ICR_TGM::edge;
-		icr.L = xAPIC_REGISTERS::ICR_L::assert;
-		icr.DSH = xAPIC_REGISTERS::ICR_DSH::AllExcludingSelf;
-		vaApicBase->WriteICR(icr);
-		return;
+		xAPIC_REGISTERS::ICR_LOW icr_low;
+		icr_low.AsUINT32 = 0;
+		icr_low.MT = ICR_MT::Nmi;
+		icr_low.TGM = ICR_TGM::edge;
+		icr_low.L = ICR_L::assert;
+		icr_low.DSH = ICR_DSH::Destination;
+		xAPIC_REGISTERS::ICR_HIGH icr_high;
+		icr_high.AsUINT32 = 0;
+		icr_high.DES = CPUID::current_apic_id();
+		vaApicBase->WriteICR(icr_low, icr_high);
 	}
-	NmiHandler();
+	//NmiHandler();
 	return;
 }
 
@@ -177,6 +214,13 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 	if (exitCode == VMEXIT_NMI)
 	{
+		auto mhz = (MSR::PSTATE(0).get_frequency_mhz() / 2) + __rdtsc();
+		__asm { cli }
+		__asm { stgi }
+		while (__rdtsc() < mhz) { _mm_pause(); }
+		__asm { clgi }
+		__asm { sti }
+
 		//NmiHandler();
 		//if (syncRequest)
 		//{
@@ -189,6 +233,12 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		//	ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
 		//	ca->EventInjection.V = SVM_EVENTINJ_VALID;
 		//}
+		
+		//	ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_NMI;
+		//	ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_NMI;
+		//	ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
+		//	ca->EventInjection.V = SVM_EVENTINJ_VALID;
+		
 		ca->NextRip = 0;
 	}
 	else
@@ -242,9 +292,22 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		{
 			//__sync_lock_test_and_set(&syncRequest, 1);
 			//__sync_lock_test_and_set(&syncArrived, 0);
-			SVM::broadcast_nmi();
+
+			xAPIC_REGISTERS::ICR_LOW icr_low;
+			icr_low.AsUINT32 = 0;
+			icr_low.MT = ICR_MT::Nmi;
+			icr_low.TGM = ICR_TGM::edge;
+			icr_low.L = ICR_L::assert;
+			icr_low.DSH = ICR_DSH::Destination;
+			xAPIC_REGISTERS::ICR_HIGH icr_high;
+			icr_high.AsUINT32 = 0;
+			icr_high.DES = CPUID::current_apic_id() + 1;
+			vaApicBase->WriteICR(icr_low, icr_high);
+
+			//NmiHandler();
 			//__sync_lock_test_and_set(&syncRequest, 0);
 			ssa->Rax = ca->TscOffset;
+			gCtx->Rbx = nmiCounter;
 		}break;
 		default:
 

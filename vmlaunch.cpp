@@ -1,26 +1,36 @@
 #include "imports.hpp"
 
-struct PACKED IDT_GATE64
+union IDT_GATE64
 {
-	UINT16 offset_low;
-	UINT16 selector;
-	UINT8 ist;
-	UINT8 type_attr;
-	UINT16 offset_mid;
-	UINT32 offset_high;
-	UINT32 reserved;
+	struct
+	{
+		UINT128 offset_low : 16;
+		UINT128 selector : 16;
+		UINT128 ist : 3;
+		UINT128 : 5;
+		UINT128 type : 4;
+		UINT128 : 1;
+		UINT128 dpl : 2;
+		UINT128 p : 1;
+		UINT128 offset_mid : 16;
+		UINT128 offset_high : 32;
+		UINT128 : 32;
+	};
+	UINT128 AsUINT128;
 };
 
 static void SetIdtGate(IDT_GATE64* gate, PVOID handler, UINT16 selector)
 {
 	auto address = (UINT64)handler;
-	gate->offset_low = (UINT16)(address & 0xFFFF);
+	gate->AsUINT128 = 0;
+	gate->offset_low = (UINT16)(address & 0xFFFFUL);
 	gate->selector = selector;
 	gate->ist = 0;
-	gate->type_attr = 0x8E;
-	gate->offset_mid = (UINT16)((address >> 16) & 0xFFFF);
-	gate->offset_high = (UINT32)((address >> 32) & 0xFFFFFFFF);
-	gate->reserved = 0;
+	gate->p = 1;
+	gate->dpl = 0;
+	gate->type = 0xE; // Interrupt Gate
+	gate->offset_mid = (UINT16)((address >> 16) & 0xFFFFUL);
+	gate->offset_high = (UINT32)((address >> 32) & 0xFFFFFFFFUL);
 }
 
 void NAKED SVM::SaveCtx(VCORE* vCore)

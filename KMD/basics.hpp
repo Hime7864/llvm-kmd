@@ -750,52 +750,59 @@ struct PACKED SEGMENT_REGISTER
     }
 };
 
+enum ICR_MT : UINT32
+{
+    Fixed = 0,
+    LowestPriority = 1,
+    Smi = 2,
+    RemoteRead = 3,
+    Nmi = 4,
+    Init = 5,
+    StartUp = 6,
+    ExtInt = 7
+};
+
+enum ICR_DM : UINT32
+{
+    Physical = 0,
+    Logical = 1
+};
+
+enum ICR_DS : UINT32
+{
+    Idle = 0,
+    SendPending = 1,
+};
+
+enum ICR_L : UINT32
+{
+    deassert = 0,
+    assert = 1
+};
+
+enum ICR_TGM : UINT32
+{
+    edge = 0,
+    level = 1
+};
+
+enum ICR_RRS : UINT32
+{
+    ReadInvalid = 0,
+    DeliveryPending = 1,
+    DeliveryDone = 2
+};
+
+enum ICR_DSH : UINT32
+{
+    Destination = 0,
+    Self = 1,
+    AllIncludingSelf = 2,
+    AllExcludingSelf = 3
+};
+
 struct xAPIC_REGISTERS
 {
-    enum ICR_MT : UINT32
-    {
-        Fixed = 0,
-        LowestPriority = 1,
-        Smi = 2,
-        RemoteRead = 3,
-        Nmi = 4,
-        Init = 5,
-        StartUp = 6,
-        ExtInt = 7
-    };
-    enum ICR_DM : UINT32
-    {
-        Physical = 0,
-        Logical = 1
-    };
-    enum ICR_DS : UINT32
-    {
-        Idle = 0,
-        SendPending = 1,
-    };
-    enum ICR_L : UINT32
-    {
-        deassert = 0,
-        assert = 1
-    };
-    enum ICR_TGM : UINT32
-    {
-        edge = 0,
-        level = 1
-    };
-    enum ICR_RRS : UINT32
-    {
-        ReadInvalid = 0,
-        DeliveryPending = 1,
-        DeliveryDone = 2
-    };
-    enum ICR_DSH : UINT32
-    {
-        Destination = 0,
-        Self = 1,
-        AllIncludingSelf = 2,
-        AllExcludingSelf = 3
-    };
     struct ICR_LOW
     {
         union
@@ -816,9 +823,36 @@ struct xAPIC_REGISTERS
             UINT32 AsUINT32;
         };
     };
-    void WriteICR(ICR_LOW low)
+    struct ICR_HIGH
     {
-        *(DWORD*)((UINT64)this + 0x300) = low.AsUINT32;
+        union
+        {
+            struct
+            {
+                UINT32 : 24;
+                UINT32 DES : 8;
+            };
+            UINT32 AsUINT32;
+        };
+    };
+
+    bool isPending()
+    {
+		return ((ICR_LOW*)((UINT64)this + 0x300))->DS == ICR_DS::SendPending;
+	}
+
+    void WriteICR(ICR_LOW icr, ICR_HIGH dest)
+    {
+        if(icr.DSH == ICR_DSH::Destination)
+		    *(UINT32*)((UINT64)this + 0x314) = dest.AsUINT32;
+        *(UINT32*)((UINT64)this + 0x300) = icr.AsUINT32;
+        return;
+    }
+    void WriteICR(ICR_LOW icr)
+    {
+        if (icr.DSH == ICR_DSH::Destination)
+            return;
+        *(UINT32*)((UINT64)this + 0x300) = icr.AsUINT32;
         return;
     }
 };
