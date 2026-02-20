@@ -17,6 +17,8 @@ private:
 	static UINT32 vCoreCount;
 	static xAPIC_REGISTERS* vaApicBase;
 	static UINT64 idtBase;
+	//static INTERUPT_STACK_TABLE IST;
+
 
 	static UINT64 HostedGetVirtual(PHYSICAL_ADDRESS address);
 

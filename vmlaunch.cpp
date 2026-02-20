@@ -1,25 +1,7 @@
 #include "imports.hpp"
 
-union IDT_GATE64
-{
-	struct
-	{
-		UINT128 offset_low : 16;
-		UINT128 selector : 16;
-		UINT128 ist : 3;
-		UINT128 : 5;
-		UINT128 type : 4;
-		UINT128 : 1;
-		UINT128 dpl : 2;
-		UINT128 p : 1;
-		UINT128 offset_mid : 16;
-		UINT128 offset_high : 32;
-		UINT128 : 32;
-	};
-	UINT128 AsUINT128;
-};
 
-static void SetIdtGate(IDT_GATE64* gate, PVOID handler, UINT16 selector)
+static void SetIdtGate(IDT_GATE* gate, PVOID handler, UINT16 selector)
 {
 	auto address = (UINT64)handler;
 	gate->AsUINT128 = 0;
