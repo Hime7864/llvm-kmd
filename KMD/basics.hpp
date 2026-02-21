@@ -184,7 +184,6 @@ DeclDataType(struct, CLIENT_ID);
 // Descriptor tables
 DeclDataType(struct, DESCRIPTOR_TABLE_REGISTER);
 DeclDataType(struct, SEGMENT_SELECTOR);
-DeclDataType(struct, SEGMENT_DESCRIPTOR);
 
 DeclDataType(enum, KPROCESSOR_MODE);
 DeclDataType(enum, POOL_TYPE);
@@ -678,6 +677,100 @@ struct PACKED LINEAR_ADDRESS
     }
 };
 
+union IDT_GATE
+{
+    struct
+    {
+        UINT128 offset_low : 16;
+        UINT128 selector : 16;
+        UINT128 ist : 3;
+        UINT128 : 5;
+        UINT128 type : 4;
+        UINT128 : 1;
+        UINT128 dpl : 2;
+        UINT128 p : 1;
+        UINT128 offset_mid : 16;
+        UINT128 offset_high : 32;
+        UINT128 : 32;
+    };
+    UINT128 AsUINT128;
+};
+
+
+union SEGMENT_DESCRIPTOR_ACCESS
+{
+    struct
+    {
+        UINT8 A : 1;
+        UINT8 RW : 1;
+        UINT8 DC : 1;
+        UINT8 E : 1;
+        UINT8 S : 1;
+        UINT8 DPL : 2;
+        UINT8 P : 1;
+    };
+    UINT8 AsUINT8;
+};
+
+union SEGMENT_DESCRIPTOR_FLAGS
+{
+    struct
+    {
+        UINT8 : 1;
+        UINT8 L : 1;
+        UINT8 DB : 1;
+        UINT8 G : 1;
+    };
+    UINT8 AsUINT8;
+};
+
+union SEGMENT_DESCRIPTOR
+{
+    struct
+    {
+        UINT128 limitLow : 16;
+        UINT128 baseLow : 16;
+        UINT128 baseMid : 8;
+        UINT128 access : 8;
+        UINT128 limitHigh : 4;
+        UINT128 flags : 4;
+        UINT128 baseHigh : 8;
+        UINT128 baseUpper : 32;
+    };
+    UINT128 AsUINT128;
+};
+
+struct PACKED INTERUPT_STACK_TABLE
+{
+    struct { unsigned : 32; };
+    UINT32 RSP0_low;
+    UINT32 RSP0_high;
+    UINT32 RSP1_low;
+    UINT32 RSP1_high;
+    UINT32 RSP2_low;
+    UINT32 RSP2_high;
+    struct { unsigned : 32; };
+    struct { unsigned : 32; };
+	UINT32 IST1_low;
+	UINT32 IST1_high;
+	UINT32 IST2_low;
+	UINT32 IST2_high;
+	UINT32 IST3_low;
+	UINT32 IST3_high;
+	UINT32 IST4_low;
+	UINT32 IST4_high;
+	UINT32 IST5_low;
+	UINT32 IST5_high;
+	UINT32 IST6_low;
+	UINT32 IST6_high;
+	UINT32 IST7_low;
+	UINT32 IST7_high;
+    struct { unsigned : 32; };
+    struct { unsigned : 32; };
+    struct { UINT16 : 16; };
+    UINT16 IOPB;
+};
+
 struct PACKED SEGMENT_REGISTER
 {
     UINT16 Limit;
@@ -747,5 +840,112 @@ struct PACKED SEGMENT_REGISTER
             segBase |= (static_cast<UINT64>(baseUpper) << 32);
         }
         return segBase;
+    }
+};
+
+enum ICR_MT : UINT32
+{
+    Fixed = 0,
+    LowestPriority = 1,
+    Smi = 2,
+    RemoteRead = 3,
+    Nmi = 4,
+    Init = 5,
+    StartUp = 6,
+    ExtInt = 7
+};
+
+enum ICR_DM : UINT32
+{
+    Physical = 0,
+    Logical = 1
+};
+
+enum ICR_DS : UINT32
+{
+    Idle = 0,
+    SendPending = 1,
+};
+
+enum ICR_L : UINT32
+{
+    deassert = 0,
+    assert = 1
+};
+
+enum ICR_TGM : UINT32
+{
+    edge = 0,
+    level = 1
+};
+
+enum ICR_RRS : UINT32
+{
+    ReadInvalid = 0,
+    DeliveryPending = 1,
+    DeliveryDone = 2
+};
+
+enum ICR_DSH : UINT32
+{
+    Destination = 0,
+    Self = 1,
+    AllIncludingSelf = 2,
+    AllExcludingSelf = 3
+};
+
+struct xAPIC_REGISTERS
+{
+    struct ICR_LOW
+    {
+        union
+        {
+            struct
+            {
+                UINT32 VEC : 8;
+                ICR_MT MT : 3;
+                ICR_DM DM : 1;
+                ICR_DS DS : 1;
+                UINT32 : 1;
+                ICR_L L : 1;
+                ICR_TGM TGM : 1;
+                ICR_RRS RRS : 2;
+                ICR_DSH DSH : 2;
+                UINT32 : 12;
+            };
+            UINT32 AsUINT32;
+        };
+    };
+    struct ICR_HIGH
+    {
+        union
+        {
+            struct
+            {
+                UINT32 : 24;
+                UINT32 DES : 8;
+            };
+            UINT32 AsUINT32;
+        };
+    };
+
+    bool isPending()
+    {
+		return ((ICR_LOW*)((UINT64)this + 0x300))->DS == ICR_DS::SendPending;
+	}
+
+    void WriteICR(ICR_LOW icr, ICR_HIGH dest)
+    {
+        if(icr.DSH == ICR_DSH::Destination)
+		    *(UINT32*)((UINT64)this + 0x314) = dest.AsUINT32;
+        *(UINT32*)((UINT64)this + 0x300) = icr.AsUINT32;
+        return;
+    }
+    void WriteICR(ICR_LOW icr)
+    {
+        if (icr.DSH == ICR_DSH::Destination)
+            return;
+        *(UINT32*)((UINT64)this + 0x300) = icr.AsUINT32;
+        return;
     }
 };

@@ -80,6 +80,8 @@ struct CPUID_APMI
 class CPUID
 {
 public:
+	static UINT32 current_apic_id();
+
 	static UINT32 current_core_number();
 
 	static CPUID_SVM_REVISION svm_revision();

@@ -93,7 +93,7 @@ void FWA::Initialize()
 	return;
 }
 
-void FWA::Cleanup()
+void FWA::Cleanup(bool zeroMemory)
 {
 	if (!fw_range_count)
 		return;
@@ -111,7 +111,8 @@ void FWA::Cleanup()
 			auto va = MmMapIoSpace(range_base, block_offset << 12, MmNonCached);
 			if (va)
 			{
-				RtlFillMemory((PVOID)va, block_offset << 12, 0);
+				if (zeroMemory)
+					RtlFillMemory((PVOID)va, block_offset << 12, 0);
 				MmUnmapIoSpace((PVOID)va, block_offset << 12);
 
 				page_idx = 0;
@@ -125,7 +126,8 @@ void FWA::Cleanup()
 			auto va = MmMapIoSpace(range_base, range_size, MmNonCached);
 			if (va)
 			{
-				RtlFillMemory((PVOID)va, (SIZE_T)range_size, 0);
+				if (zeroMemory)
+					RtlFillMemory((PVOID)va, (SIZE_T)range_size, 0);
 				MmUnmapIoSpace((PVOID)va, range_size);
 			}
 			idx += (range_size >> 12);

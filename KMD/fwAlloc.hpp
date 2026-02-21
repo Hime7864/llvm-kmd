@@ -11,7 +11,7 @@ private:
 public:
 	static void Initialize();
 
-	static void Cleanup();
+	static void Cleanup(bool zeroMemory = false);
 
 	static UINT32 pages_free();
 
