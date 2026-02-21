@@ -712,14 +712,12 @@ extern "C"
         }
     }
 
-    UINT16 __str()
+    UINT16 NAKED __str()
     {
-        UINT16 tr;
         __asm {
             str ax
-            mov tr, ax
+            ret
         }
-        return tr;
     }
 
     VOID __ltr(_In_ UINT16 selector)

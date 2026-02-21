@@ -15,6 +15,9 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	auto cs = __readcs();
 	printf("CS: %x\n", cs >> 3);
 
+	auto tr = __str();
+	printf("TR: %x\n", tr >> 3);
+
 
 	printf("index 2 access  %x\n", gdtEntry[2].access);
 	printf("index 2 flags %x\n", gdtEntry[2].flags);
