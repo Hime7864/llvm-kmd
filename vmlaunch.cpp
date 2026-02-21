@@ -110,11 +110,12 @@ void SVM::CreateInterruptHandler()
 	RtlCopyMemory(vCore->hGdt, (PVOID)k_gdtr.Base, k_gdtr.Limit + 1);
 
 	//4 is TSS idx
-	vCore->hGdt[4].base((UINT64)&vCore->hIst);
-	vCore->hGdt[4].limit(sizeof(vCore->hIst) - 1);
-	vCore->hGdt[4].flags = k_gdtEntry[4].flags;
-	vCore->hGdt[4].access = k_gdtEntry[4].access;
-	
+	auto tr = __str();
+	vCore->hGdt[(tr >> 3) / 2].base((UINT64)&vCore->hIst);
+	vCore->hGdt[(tr >> 3) / 2].limit(sizeof(vCore->hIst) - 1);
+	vCore->hGdt[(tr >> 3) / 2].flags = k_gdtEntry[(tr >> 3) / 2].flags;
+	vCore->hGdt[(tr >> 3) / 2].access = k_gdtEntry[(tr >> 3) / 2].access;
+
 	//2 is NMI idx
 	vCore->hIdt[2].selector = __readcs();
 	vCore->hIdt[2].ist = k_idtEntry[2].ist;
@@ -124,7 +125,7 @@ void SVM::CreateInterruptHandler()
 	vCore->hIdt[2].offset((UINT64)&SVM::NmiStub);
 
 	vCore->hIst.IOPB = (UINT16)sizeof(vCore->hIst);
-	vCore->hIst.IST[vCore->hIdt[2].ist] = (UINT64)&vCore->hstackIntr[0x1800];
+	vCore->hIst.IST[vCore->hIdt[2].ist] = (UINT64)&vCore->hstackIntr[0x1000];
 
 	SEGMENT_REGISTER idtr{ 0 };
 	idtr.Base = (UINT64)vCore->hIdt;
@@ -135,6 +136,8 @@ void SVM::CreateInterruptHandler()
 	gdtr.Base = (UINT64)vCore->hGdt;
 	gdtr.Limit = sizeof(vCore->hGdt) - 1;
 	__lgdt(&gdtr);
+
+	__ltr(tr);//reloads TSS with new base/limit
 	return;
 }
 

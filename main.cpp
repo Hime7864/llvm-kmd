@@ -302,6 +302,15 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			icr_high.DES = CPUID::current_apic_id() + 1;
 			vaApicBase->WriteICR(icr_low, icr_high);
 
+
+			//auto mhz = (MSR::PSTATE(0).get_frequency_mhz() / 2) + __rdtsc();
+			//__asm { cli }
+			//__asm { stgi }
+			//while (__rdtsc() < mhz) { _mm_pause(); }
+			//__asm { clgi }
+			//__asm { sti }
+
+
 			//NmiHandler();
 			//__sync_lock_test_and_set(&syncRequest, 0);
 			ssa->Rax = ca->TscOffset;
