@@ -694,6 +694,19 @@ union IDT_GATE
         UINT128 : 32;
     };
     UINT128 AsUINT128;
+
+    FORCEINLINE UINT64 offset()
+    {
+        return ((UINT64)offset_high << 32) | ((UINT64)offset_mid << 16) | offset_low;
+    }
+
+    FORCEINLINE VOID offset(UINT64 data)
+    {
+        offset_low = (UINT16)(data & 0xFFFF);
+        offset_mid = (UINT16)((data >> 16) & 0xFFFF);
+		offset_high = (UINT32)((data >> 32) & 0xFFFFFFFF);
+        return;
+    }
 };
 
 
@@ -750,6 +763,7 @@ union SEGMENT_DESCRIPTOR
         baseMid = (UINT8)((base >> 16) & 0xFF);
         baseHigh = (UINT8)((base >> 24) & 0xFF);
 		baseUpper = (UINT32)((base >> 32) & 0xFFFFFFFF);
+        return;
     }
 
     FORCEINLINE UINT32 limit()
@@ -761,6 +775,7 @@ union SEGMENT_DESCRIPTOR
     {
         limitLow = (UINT16)(limit & 0xFFFF);
         limitHigh = (UINT8)((limit >> 16) & 0x0F);
+        return;
 	}
 };
 

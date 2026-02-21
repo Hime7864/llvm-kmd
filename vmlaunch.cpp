@@ -100,9 +100,17 @@ void SVM::CreateInterruptHandler()
 
 	vCore->hGdt[4].base((UINT64)&vCore->hIst);
 	vCore->hGdt[4].limit(sizeof(vCore->hGdt) - 1);
+	vCore->hGdt[4].flags = 0x00;
+	vCore->hGdt[4].access = 0x8B;
 
-	vCore->hIdt[2].ist = 3;
+	vCore->hIdt[2].selector = 0x10;
+	vCore->hIdt[2].ist = 0x03;
+	vCore->hIdt[2].type = 0x0E;
+	vCore->hIdt[2].dpl = 0x00;
+	vCore->hIdt[2].p = 0x01;
+	vCore->hIdt[2].offset((UINT64)&SVM::NmiStub);
 
+	vCore->hIst.IOPB = (UINT16)sizeof(vCore->hIst);
 	vCore->hIst.IST[vCore->hIdt[2].ist] = (UINT64)&vCore->hstackIntr[0x1800];
 
 	SEGMENT_REGISTER idtr{ 0 };
