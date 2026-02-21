@@ -111,7 +111,7 @@ void SVM::CreateInterruptHandler()
 
 	//4 is TSS idx
 	vCore->hGdt[4].base((UINT64)&vCore->hIst);
-	vCore->hGdt[4].limit(sizeof(vCore->hGdt) - 1);
+	vCore->hGdt[4].limit(sizeof(vCore->hIst) - 1);
 	vCore->hGdt[4].flags = k_gdtEntry[4].flags;
 	vCore->hGdt[4].access = k_gdtEntry[4].access;
 	
