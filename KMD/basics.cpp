@@ -664,8 +664,7 @@ extern "C"
     VOID NAKED __sidt(_Out_ SEGMENT_REGISTER* idtr)
     {
         __asm {
-            mov rax, rcx
-            sidt[rax]
+            sidt[rcx]
             ret
         }
     }
@@ -673,8 +672,7 @@ extern "C"
     VOID NAKED __sgdt(_Out_ SEGMENT_REGISTER* gdtr)
     {
         __asm {
-            mov rax, rcx
-            sgdt[rax]
+            sgdt[rcx]
             ret
         }
     }
@@ -682,8 +680,7 @@ extern "C"
     VOID NAKED __lidt(_In_ SEGMENT_REGISTER* idtr)
     {
         __asm {
-            mov rax, rcx
-            lidt[rax]
+            lidt[rcx]
             ret
 		}
     }
@@ -692,8 +689,7 @@ extern "C"
     VOID NAKED __lgdt(_In_ SEGMENT_REGISTER* gdtr)
     {
         __asm {
-            mov rax, rcx
-            lgdt[rax]
+            lgdt[rcx]
             ret
 		}
     }
