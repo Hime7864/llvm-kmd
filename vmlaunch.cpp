@@ -95,7 +95,25 @@ void NAKED SVM::LoadCtx(VCORE* vCore)
 
 void SVM::CreateInterruptHandler()
 {
+	auto core_idx = CPUID::current_core_number();
+	auto vCore = &vCpu[core_idx];
 
+	vCore->hGdt[4].base((UINT64)&vCore->hIst);
+	vCore->hGdt[4].limit(sizeof(vCore->hGdt) - 1);
+
+	vCore->hIdt[2].ist = 3;
+
+	vCore->hIst.IST[vCore->hIdt[2].ist] = (UINT64)&vCore->hstackIntr[0x1800];
+
+	SEGMENT_REGISTER idtr{ 0 };
+	idtr.Base = (UINT64)&vCore->hIdt;
+	idtr.Limit = sizeof(vCore->hIdt) - 1;
+	__lidt(&idtr);
+
+	SEGMENT_REGISTER gdtr{ 0 };
+	gdtr.Base = (UINT64)&vCore->hGdt;
+	gdtr.Limit = sizeof(vCore->hGdt) - 1;
+	__lgdt(&gdtr);
 	return;
 }
 
@@ -169,9 +187,7 @@ void SVM::LaunchCore(int affinity)
 	saveArea->IDTR.base = idtr.Base;
 	saveArea->IDTR.limit = idtr.Limit;
 
-
-
-
+	CreateInterruptHandler();
 
 	__vmsave(storage->vmcb);
 	
