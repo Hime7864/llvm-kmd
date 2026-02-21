@@ -1,20 +1,5 @@
 #include "imports.hpp"
 
-
-static void SetIdtGate(IDT_GATE* gate, PVOID handler, UINT16 selector)
-{
-	auto address = (UINT64)handler;
-	gate->AsUINT128 = 0;
-	gate->offset_low = (UINT16)(address & 0xFFFFUL);
-	gate->selector = selector;
-	gate->ist = 0;
-	gate->p = 1;
-	gate->dpl = 0;
-	gate->type = 0xE; // Interrupt Gate
-	gate->offset_mid = (UINT16)((address >> 16) & 0xFFFFUL);
-	gate->offset_high = (UINT32)((address >> 32) & 0xFFFFFFFFUL);
-}
-
 void NAKED SVM::SaveCtx(VCORE* vCore)
 {
 	__asm {
@@ -108,6 +93,12 @@ void NAKED SVM::LoadCtx(VCORE* vCore)
 	}
 }
 
+void SVM::CreateInterruptHandler()
+{
+
+	return;
+}
+
 void SVM::LaunchCore(int affinity)
 {
 	auto core_idx = CPUID::current_core_number();
@@ -178,13 +169,9 @@ void SVM::LaunchCore(int affinity)
 	saveArea->IDTR.base = idtr.Base;
 	saveArea->IDTR.limit = idtr.Limit;
 
-	// Create host idt
-	auto idt = (IDT_GATE64*)idtBase;
-	// IRETQ nmi handler
-	SetIdtGate(&idt[2], NmiStub, __readcs());
-	idtr.Base = (UINT64)idt;
-	idtr.Limit = 0xFFF;
-	__lidt(&idtr);
+
+
+
 
 	__vmsave(storage->vmcb);
 	

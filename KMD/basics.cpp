@@ -672,8 +672,7 @@ extern "C"
     VOID NAKED __sgdt(_Out_ SEGMENT_REGISTER* gdtr)
     {
         __asm {
-            mov rax, rcx
-            sgdt[rax]
+            sgdt[rcx]
             ret
         }
     }
@@ -690,7 +689,7 @@ extern "C"
     VOID NAKED __lgdt(_In_ SEGMENT_REGISTER* gdtr)
     {
         __asm {
-            lgdt[rax]
+            lgdt[rcx]
             ret
 		}
     }

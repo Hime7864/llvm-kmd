@@ -6,7 +6,6 @@ UINT64 SVM::gCr3 = 0;
 VCORE* SVM::vCpu = 0;
 UINT32 SVM::vCoreCount = 0;
 xAPIC_REGISTERS* SVM::vaApicBase = 0;
-UINT64 SVM::idtBase = 0;
 
 volatile UINT64 syncRequest = 0;
 volatile UINT64 syncArrived = 0;
@@ -111,8 +110,6 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 VOID NAKED SVM::NmiStub()
 {
 	__asm {
-
-
 		//push r15
 		//push r14
 		//push r13

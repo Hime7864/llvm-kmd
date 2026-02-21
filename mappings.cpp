@@ -6,23 +6,8 @@ void SVM::CreateMapping()
 
 	vCoreCount = KeQueryActiveProcessorCount(0);
 	auto vCpuSize = vCoreCount * sizeof(VCORE);
-	auto vCpuPa = FWA::ReservePages(vCpuSize >> 12);
+	auto vCpuPa = FWA::ReservePages((vCpuSize + 0xFFF) >> 12);
 	vCpu = (VCORE*)MmMapIoSpace(vCpuPa, vCpuSize, MmNonCached); 
-
-	if (!idtBase)
-	{
-		auto idtBasePa = FWA::ReservePages(1);
-		idtBase = (UINT64)MmMapIoSpace(idtBasePa, 0x1000, MmNonCached);
-		MMPTE_HARDWARE pte;
-		pte.AsUINT64 = 0;
-		pte.Valid = true;
-		pte.Dirty1 = true;
-		pte.Write = true;
-		pte.NoExecute = true;
-		pte.Global = true;
-		pte.PageFrameNumber = idtBasePa >> 12;
-		HostedCommitMapping(hCr3, idtBase, pte, PAGEMAP_4KB);
-	}
 
 	if (!MSR::APIC_BASE().extd)
 	{
