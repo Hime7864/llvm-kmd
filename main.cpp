@@ -211,6 +211,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 	if (exitCode == VMEXIT_NMI)
 	{
+		nmiCounter++;
 		auto mhz = (MSR::PSTATE(0).get_frequency_mhz() / 2) + __rdtsc();
 		__asm { cli }
 		__asm { stgi }

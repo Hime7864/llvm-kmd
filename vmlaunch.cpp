@@ -98,28 +98,41 @@ void SVM::CreateInterruptHandler()
 	auto core_idx = CPUID::current_core_number();
 	auto vCore = &vCpu[core_idx];
 
+	SEGMENT_REGISTER k_gdtr{ 0 };
+	__sgdt(&k_gdtr);
+	auto k_gdtEntry = (SEGMENT_DESCRIPTOR*)k_gdtr.Base;
+
+	SEGMENT_REGISTER k_idtr{ 0 };
+	__sidt(&k_idtr);
+	auto k_idtEntry = (IDT_GATE*)k_idtr.Base;
+	
+	//copy kernel GDT into host GDT
+	RtlCopyMemory(vCore->hGdt, (PVOID)k_gdtr.Base, k_gdtr.Limit + 1);
+
+	//4 is TSS idx
 	vCore->hGdt[4].base((UINT64)&vCore->hIst);
 	vCore->hGdt[4].limit(sizeof(vCore->hGdt) - 1);
-	vCore->hGdt[4].flags = 0x00;
-	vCore->hGdt[4].access = 0x8B;
-
-	vCore->hIdt[2].selector = 0x10;
-	vCore->hIdt[2].ist = 0x03;
-	vCore->hIdt[2].type = 0x0E;
-	vCore->hIdt[2].dpl = 0x00;
-	vCore->hIdt[2].p = 0x01;
+	vCore->hGdt[4].flags = k_gdtEntry[4].flags;
+	vCore->hGdt[4].access = k_gdtEntry[4].access;
+	
+	//2 is NMI idx
+	vCore->hIdt[2].selector = __readcs();
+	vCore->hIdt[2].ist = k_idtEntry[2].ist;
+	vCore->hIdt[2].type = k_idtEntry[2].type;
+	vCore->hIdt[2].dpl = k_idtEntry[2].dpl;
+	vCore->hIdt[2].p = k_idtEntry[2].p;
 	vCore->hIdt[2].offset((UINT64)&SVM::NmiStub);
 
 	vCore->hIst.IOPB = (UINT16)sizeof(vCore->hIst);
 	vCore->hIst.IST[vCore->hIdt[2].ist] = (UINT64)&vCore->hstackIntr[0x1800];
 
 	SEGMENT_REGISTER idtr{ 0 };
-	idtr.Base = (UINT64)&vCore->hIdt;
+	idtr.Base = (UINT64)vCore->hIdt;
 	idtr.Limit = sizeof(vCore->hIdt) - 1;
 	__lidt(&idtr);
 
 	SEGMENT_REGISTER gdtr{ 0 };
-	gdtr.Base = (UINT64)&vCore->hGdt;
+	gdtr.Base = (UINT64)vCore->hGdt;
 	gdtr.Limit = sizeof(vCore->hGdt) - 1;
 	__lgdt(&gdtr);
 	return;
