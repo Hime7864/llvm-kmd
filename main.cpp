@@ -12,6 +12,14 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	auto gdtEntry = (SEGMENT_DESCRIPTOR*)gdtr.Base;
 	auto idtEntry = (IDT_GATE*)idtr.Base;
 
+	auto cs = __readcs();
+	printf("CS: %x\n", cs >> 3);
+
+
+	printf("index 2 access  %x\n", gdtEntry[2].access);
+	printf("index 2 flags %x\n", gdtEntry[2].flags);
+
+
 	auto ist = (INTERUPT_STACK_TABLE*)gdtEntry[4].base();
 	printf("ist->IOPB: %x\n", ist->IOPB);
 
