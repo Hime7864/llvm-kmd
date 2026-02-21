@@ -738,33 +738,23 @@ union SEGMENT_DESCRIPTOR
         UINT128 baseUpper : 32;
     };
     UINT128 AsUINT128;
+
+    FORCEINLINE UINT64 base()
+    {
+        return ((UINT64)baseUpper << 32) | ((UINT64)baseHigh << 24) | ((UINT64)baseMid << 16) | ((UINT64)baseLow);
+	}
+
+    FORCEINLINE UINT32 limit()
+    {
+        return ((UINT64)limitHigh << 16) | ((UINT64)limitLow);
+    }
 };
 
 struct PACKED INTERUPT_STACK_TABLE
 {
     struct { unsigned : 32; };
-    UINT32 RSP0_low;
-    UINT32 RSP0_high;
-    UINT32 RSP1_low;
-    UINT32 RSP1_high;
-    UINT32 RSP2_low;
-    UINT32 RSP2_high;
-    struct { unsigned : 32; };
-    struct { unsigned : 32; };
-	UINT32 IST1_low;
-	UINT32 IST1_high;
-	UINT32 IST2_low;
-	UINT32 IST2_high;
-	UINT32 IST3_low;
-	UINT32 IST3_high;
-	UINT32 IST4_low;
-	UINT32 IST4_high;
-	UINT32 IST5_low;
-	UINT32 IST5_high;
-	UINT32 IST6_low;
-	UINT32 IST6_high;
-	UINT32 IST7_low;
-	UINT32 IST7_high;
+    UINT64 RSP[3];
+    UINT64 IST[8];
     struct { unsigned : 32; };
     struct { unsigned : 32; };
     struct { UINT16 : 16; };
