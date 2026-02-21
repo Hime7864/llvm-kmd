@@ -18,7 +18,7 @@ struct ALIGN(4096) VCORE
 	BYTE hsave[0x1000]; // 0x5000
 	MSRPM msrpm; // 0x6000
 	VMCB vmcb; // 0x8000
-	SEGMENT_DESCRIPTOR hGdt[8]; // Per-core GDT clone
-	IDT_GATE hIdt[8]; // Per-core IDT clone
-	INTERUPT_STACK_TABLE hIst; // Per-core TSS for IST/NMI stack
+	IDT_GATE hIdt[256];// 0x9000
+	SEGMENT_DESCRIPTOR hGdt[8];// 0xA000
+	INTERUPT_STACK_TABLE hIst;// 0xA080
 };

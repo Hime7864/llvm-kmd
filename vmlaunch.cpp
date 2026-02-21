@@ -109,6 +109,9 @@ void SVM::CreateInterruptHandler()
 	//copy kernel GDT into host GDT
 	RtlCopyMemory(vCore->hGdt, (PVOID)k_gdtr.Base, k_gdtr.Limit + 1);
 
+	//copy kernel IDT into host IDT
+	RtlCopyMemory(vCore->hIdt, (PVOID)k_idtr.Base, k_idtr.Limit + 1);
+
 	//4 is TSS idx
 	auto tr = __str();
 	vCore->hGdt[(tr >> 3) / 2].base((UINT64)&vCore->hIst);
