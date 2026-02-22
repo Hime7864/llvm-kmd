@@ -95,54 +95,48 @@ void NAKED SVM::LoadCtx(VCORE* vCore)
 
 void SVM::CreateInterruptHandler()
 {
-	auto core_idx = CPUID::current_core_number();
-	auto vCore = &vCpu[core_idx];
-
 	SEGMENT_REGISTER k_gdtr{ 0 };
 	__sgdt(&k_gdtr);
-	auto k_gdtEntry = (SEGMENT_DESCRIPTOR*)k_gdtr.Base;
 
 	SEGMENT_REGISTER k_idtr{ 0 };
 	__sidt(&k_idtr);
-	auto k_idtEntry = (IDT_GATE*)k_idtr.Base;
-	
+
+
+	auto core_idx = CPUID::current_core_number();
+	auto vCore = &vCpu[core_idx];
+
 	//copy kernel GDT into host GDT
-	RtlCopyMemory(vCore->hGdt, (PVOID)k_gdtr.Base, 0x120);
+	RtlCopyMemory(vCore->hGdt, (PVOID)k_gdtr.Base, sizeof(vCore->hGdt));
 
 	//copy kernel IDT into host IDT
-	RtlCopyMemory(vCore->hIdt, (PVOID)k_idtr.Base, k_idtr.Limit + 1);
+	RtlCopyMemory(vCore->hIdt, (PVOID)k_idtr.Base, sizeof(vCore->hIdt));
 
+	
 	//4 is TSS idx
 	auto tr = __str();
 	vCore->hGdt[(tr >> 3) / 2].base((UINT64)&vCore->hIst);
-	vCore->hGdt[(tr >> 3) / 2].limit(sizeof(vCore->hIst) - 1);
-	vCore->hGdt[(tr >> 3) / 2].flags = k_gdtEntry[(tr >> 3) / 2].flags;
-	vCore->hGdt[(tr >> 3) / 2].access = k_gdtEntry[(tr >> 3) / 2].access;
 
 	//2 is NMI idx
-	vCore->hIdt[2].selector = __readcs();
-	vCore->hIdt[2].ist = k_idtEntry[2].ist;
-	vCore->hIdt[2].type = k_idtEntry[2].type;
-	vCore->hIdt[2].dpl = k_idtEntry[2].dpl;
-	vCore->hIdt[2].p = k_idtEntry[2].p;
 	vCore->hIdt[2].offset((UINT64)&SVM::NmiStub);
 
 	vCore->hIst.IOPB = (UINT16)sizeof(vCore->hIst);
 	vCore->hIst.IST[vCore->hIdt[2].ist] = (UINT64)&vCore->hstackIntr[0x1000];
-
+	
+	
 	SEGMENT_REGISTER idtr{ 0 };
-	idtr.Base = (UINT64)&vCore->hIdt;
-	idtr.Limit = sizeof(vCore->hIdt) - 1;
+	idtr.Base = (UINT64)vCore->hIdt;
+	idtr.Limit = k_idtr.Limit;
 	__lidt(&idtr);
 
 	SEGMENT_REGISTER gdtr{ 0 };
-	gdtr.Base = (UINT64)&vCore->hGdt;
+	gdtr.Base = (UINT64)vCore->hGdt;
 	gdtr.Limit = k_gdtr.Limit;
 	__lgdt(&gdtr);
 
+	__sgdt(&k_gdtr);
+	tr = __str();
 	vCore->hGdt[(tr >> 3) / 2].access = 0x89;
-	__ltr(tr);//reloads TSS with new base/limit
-
+	__ltr(tr);
 	return;
 }
 
@@ -157,9 +151,17 @@ void SVM::LaunchCore(int affinity)
 
 	ControlArea();
 
+	SEGMENT_REGISTER k_gdtr{ 0 };
+	__sgdt(&k_gdtr);
+
 	auto result = RtlCaptureContext(ctx);
 	if (ctx->Rax == result)
 	{
+		auto tr = __str();
+		auto gdtEntry = (SEGMENT_DESCRIPTOR*)(k_gdtr.Base);
+		gdtEntry[(tr >> 3) / 2].access = 0x89;
+		__ltr(tr);
+
 		printf("Core %i Online\n", core_idx);
 		return;
 	}

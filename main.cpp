@@ -126,7 +126,7 @@ VOID NAKED SVM::NmiStub()
 		//push rcx
 		//push rax
 		//sub rsp, 0x20
-		//call NmiHandler
+		call NmiHandler
 		//add rsp, 0x20
 		//pop rax
 		//pop rcx
@@ -149,16 +149,11 @@ VOID NAKED SVM::NmiStub()
 
 void __attribute__((preserve_most)) SVM::NmiHandler()
 {
-	nmiCounter++;
 	auto vCore = &vCpu[CPUID::current_core_number()];
 	auto vmcb = &vCore->vmcb;
 	auto ca = &vmcb->ControlArea;
+	ca->TscOffset = 0;
 	__sync_fetch_and_add(&syncArrived, 1);
-	
-	while (syncArrived != vCoreCount) { _mm_pause(); };
-	
-	__sync_lock_test_and_set(&ca->TscOffset, 0);
-	__sync_fetch_and_sub(&syncArrived, 1);
 	return;
 }
 
@@ -173,7 +168,7 @@ void SVM::broadcast_nmi()
 		icr.MT = ICR_MT::Nmi;
 		icr.TGM = ICR_TGM::edge;
 		icr.L = ICR_L::assert;
-		icr.DSH = ICR_DSH::Self;
+		icr.DSH = ICR_DSH::AllExcludingSelf;
 		MSR::ICR(icr);
 	}
 	else
@@ -183,13 +178,10 @@ void SVM::broadcast_nmi()
 		icr_low.MT = ICR_MT::Nmi;
 		icr_low.TGM = ICR_TGM::edge;
 		icr_low.L = ICR_L::assert;
-		icr_low.DSH = ICR_DSH::Destination;
-		xAPIC_REGISTERS::ICR_HIGH icr_high;
-		icr_high.AsUINT32 = 0;
-		icr_high.DES = CPUID::current_apic_id();
-		vaApicBase->WriteICR(icr_low, icr_high);
+		icr_low.DSH = ICR_DSH::AllExcludingSelf;
+		vaApicBase->WriteICR(icr_low);
 	}
-	//NmiHandler();
+	NmiHandler();
 	return;
 }
 
@@ -211,32 +203,23 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 	if (exitCode == VMEXIT_NMI)
 	{
-		nmiCounter++;
-		auto mhz = (MSR::PSTATE(0).get_frequency_mhz() / 2) + __rdtsc();
-		__asm { cli }
-		__asm { stgi }
-		while (__rdtsc() < mhz) { _mm_pause(); }
-		__asm { clgi }
-		__asm { sti }
-
-		//NmiHandler();
-		//if (syncRequest)
-		//{
-		//	NmiHandler();
-		//}
-		//else
-		//{
-		//	ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_NMI;
-		//	ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_NMI;
-		//	ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
-		//	ca->EventInjection.V = SVM_EVENTINJ_VALID;
-		//}
-		
-		//	ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_NMI;
-		//	ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_NMI;
-		//	ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
-		//	ca->EventInjection.V = SVM_EVENTINJ_VALID;
-		
+		if (syncRequest)
+		{
+			auto tr = __str();
+			vCore->hGdt[(tr >> 3) / 2].access = 0x89;
+			__ltr(tr);
+			__asm { cli }
+			__asm { stgi }
+			__asm { clgi }
+			__asm { sti }
+		}
+		else
+		{
+			ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_NMI;
+			ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_NMI;
+			ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
+			ca->EventInjection.V = SVM_EVENTINJ_VALID;
+		}
 		ca->NextRip = 0;
 	}
 	else
@@ -288,33 +271,15 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		}break;
 		case VMEXIT_VMMCALL:
 		{
-			//__sync_lock_test_and_set(&syncRequest, 1);
+			__sync_lock_test_and_set(&syncRequest, 1);
 			//__sync_lock_test_and_set(&syncArrived, 0);
 
-			xAPIC_REGISTERS::ICR_LOW icr_low;
-			icr_low.AsUINT32 = 0;
-			icr_low.MT = ICR_MT::Nmi;
-			icr_low.TGM = ICR_TGM::edge;
-			icr_low.L = ICR_L::assert;
-			icr_low.DSH = ICR_DSH::Destination;
-			xAPIC_REGISTERS::ICR_HIGH icr_high;
-			icr_high.AsUINT32 = 0;
-			icr_high.DES = CPUID::current_apic_id() + 1;
-			vaApicBase->WriteICR(icr_low, icr_high);
+			broadcast_nmi();
 
-
-			//auto mhz = (MSR::PSTATE(0).get_frequency_mhz() / 2) + __rdtsc();
-			//__asm { cli }
-			//__asm { stgi }
-			//while (__rdtsc() < mhz) { _mm_pause(); }
-			//__asm { clgi }
-			//__asm { sti }
-
-
-			//NmiHandler();
 			//__sync_lock_test_and_set(&syncRequest, 0);
+
 			ssa->Rax = ca->TscOffset;
-			gCtx->Rbx = nmiCounter;
+			gCtx->Rbx = syncArrived;
 		}break;
 		default:
 
