@@ -723,8 +723,8 @@ extern "C"
     VOID __ltr(_In_ UINT16 selector)
     {
         __asm {
-            mov ax, selector
-            ltr ax
+            ltr cx
+            ret
         }
     }
 
