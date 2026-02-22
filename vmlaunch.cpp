@@ -107,7 +107,7 @@ void SVM::CreateInterruptHandler()
 	auto k_idtEntry = (IDT_GATE*)k_idtr.Base;
 	
 	//copy kernel GDT into host GDT
-	RtlCopyMemory(vCore->hGdt, (PVOID)k_gdtr.Base, k_gdtr.Limit + 1);
+	RtlCopyMemory(vCore->hGdt, (PVOID)k_gdtr.Base, 0x120);
 
 	//copy kernel IDT into host IDT
 	RtlCopyMemory(vCore->hIdt, (PVOID)k_idtr.Base, k_idtr.Limit + 1);
@@ -131,16 +131,18 @@ void SVM::CreateInterruptHandler()
 	vCore->hIst.IST[vCore->hIdt[2].ist] = (UINT64)&vCore->hstackIntr[0x1000];
 
 	SEGMENT_REGISTER idtr{ 0 };
-	idtr.Base = (UINT64)vCore->hIdt;
+	idtr.Base = (UINT64)&vCore->hIdt;
 	idtr.Limit = sizeof(vCore->hIdt) - 1;
 	__lidt(&idtr);
 
 	SEGMENT_REGISTER gdtr{ 0 };
-	gdtr.Base = (UINT64)vCore->hGdt;
-	gdtr.Limit = sizeof(vCore->hGdt) - 1;
+	gdtr.Base = (UINT64)&vCore->hGdt;
+	gdtr.Limit = k_gdtr.Limit;
 	__lgdt(&gdtr);
 
+	vCore->hGdt[(tr >> 3) / 2].access = 0x89;
 	__ltr(tr);//reloads TSS with new base/limit
+
 	return;
 }
 
