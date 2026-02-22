@@ -9,7 +9,8 @@ xAPIC_REGISTERS* SVM::vaApicBase = 0;
 
 volatile UINT64 syncRequest = 0;
 volatile UINT64 syncArrived = 0;
-volatile UINT64 nmiCounter = 0;
+volatile UINT64 Counter = 0;
+volatile UINT64 nmiResyncValid = 0;
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
@@ -110,39 +111,7 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 VOID NAKED SVM::NmiStub()
 {
 	__asm {
-		//push r15
-		//push r14
-		//push r13
-		//push r12
-		//push r11
-		//push r10
-		//push r9
-		//push r8
-		//push rdi
-		//push rsi
-		//push rbp
-		//push rbx
-		//push rdx
-		//push rcx
-		//push rax
-		//sub rsp, 0x20
 		call NmiHandler
-		//add rsp, 0x20
-		//pop rax
-		//pop rcx
-		//pop rdx
-		//pop rbx
-		//pop rbp
-		//pop rsi
-		//pop rdi
-		//pop r8
-		//pop r9
-		//pop r10
-		//pop r11
-		//pop r12
-		//pop r13
-		//pop r14
-		//pop r15
 		iretq
 	}
 }
@@ -152,14 +121,25 @@ void __attribute__((preserve_most)) SVM::NmiHandler()
 	auto vCore = &vCpu[CPUID::current_core_number()];
 	auto vmcb = &vCore->vmcb;
 	auto ca = &vmcb->ControlArea;
-	ca->TscOffset = 0;
+	
+
+	if(__readcr8() > 2)
+		__sync_lock_test_and_set(&nmiResyncValid, 0);
+
 	__sync_fetch_and_add(&syncArrived, 1);
+
+	while (syncArrived != vCoreCount) { _mm_pause(); }
+	if(nmiResyncValid)
+		ca->TscOffset = 0;
 	return;
 }
 
 
 void SVM::broadcast_nmi()
 {
+	__sync_lock_test_and_set(&syncRequest, 1);
+	__sync_lock_test_and_set(&syncArrived, 0);
+	__sync_lock_test_and_set(&nmiResyncValid, 1);
 	auto apic_base = MSR::APIC_BASE();
 	if (apic_base.extd)
 	{
@@ -182,6 +162,7 @@ void SVM::broadcast_nmi()
 		vaApicBase->WriteICR(icr_low);
 	}
 	NmiHandler();
+	__sync_lock_test_and_set(&syncRequest, 0);
 	return;
 }
 
@@ -224,9 +205,13 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	}
 	else
 	{
-		//ca->TscOffset -= 1000ll - (__rdtsc() - storage->tsc);
+		ca->TscOffset -= 1000ll - (__rdtsc() - storage->tsc);
 		switch (exitCode)
 		{
+		case VMEXIT_CR8_WRITE:
+		{
+			
+		}
 		case VMEXIT_MSR:
 		{
 			if (ssa->CPL == 0)
@@ -271,15 +256,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		}break;
 		case VMEXIT_VMMCALL:
 		{
-			__sync_lock_test_and_set(&syncRequest, 1);
-			//__sync_lock_test_and_set(&syncArrived, 0);
-
-			broadcast_nmi();
-
-			//__sync_lock_test_and_set(&syncRequest, 0);
-
 			ssa->Rax = ca->TscOffset;
-			gCtx->Rbx = syncArrived;
+			gCtx->Rbx = Counter;
 		}break;
 		default:
 
