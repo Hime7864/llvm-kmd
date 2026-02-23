@@ -14,6 +14,7 @@ private:
 	static UINT64 hCr3;
 	static UINT64 gCr3;
 	static VCORE* vCpu;
+	static UINT32 cpuMHz;
 	static UINT32 vCoreCount;
 	static xAPIC_REGISTERS* vaApicBase;
 

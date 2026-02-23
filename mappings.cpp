@@ -3,7 +3,7 @@
 void SVM::CreateMapping()
 {
 	hCr3 = FWA::ReservePages(1);
-
+	cpuMHz = MSR::PSTATE(0).get_frequency_mhz();
 	vCoreCount = KeQueryActiveProcessorCount(0);
 	auto vCpuSize = vCoreCount * sizeof(VCORE);
 	auto vCpuPa = FWA::ReservePages((vCpuSize + 0xFFF) >> 12);

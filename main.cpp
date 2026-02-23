@@ -5,6 +5,7 @@ UINT64 SVM::hCr3 = 0;
 UINT64 SVM::gCr3 = 0;
 VCORE* SVM::vCpu = 0;
 UINT32 SVM::vCoreCount = 0;
+UINT32 SVM::cpuMHz = 0;
 xAPIC_REGISTERS* SVM::vaApicBase = 0;
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
@@ -124,7 +125,7 @@ void SVM::ControlArea()
 	controlArea->Intercept.MSR_Prot = true;
 
 	controlArea->Intercept.NMI = true;
-	//controlArea->Intercept.INTR = true;
+	controlArea->Intercept.INTR = true;
 
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
@@ -155,8 +156,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
 
-	//auto tsc = __rdtsc();
-	auto tsc_delta = (long long)(0.212765f * (float)MSR::PSTATE(0).get_frequency_mhz());
+	auto tsc = __rdtsc();
+	auto tsc_delta = 3133 + (long long)(cpuMHz / -3ll);
 
 
 	if (exitCode == VMEXIT_IRET)
@@ -172,8 +173,15 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		tsc_delta = 0;
 		ca->TscOffset = 0;
 	}
+	else if (exitCode == VMEXIT_INTR)
+	{
+		tsc_delta = 0;
+		ca->TscOffset = 0;
+		ca->Intercept.INTR = false;
+	}
 	else
 	{
+		ca->Intercept.INTR = true;
 		//broadcast_nmi();
 		switch (exitCode)
 		{
@@ -232,6 +240,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 	if (tsc_delta)
 	{
+		tsc_delta += __rdtsc() - tsc;
 		ca->TscOffset -= tsc_delta;
 		vaApicBase->AddApicTimer(tsc_delta);
 	}
