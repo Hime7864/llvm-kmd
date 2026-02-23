@@ -9,8 +9,6 @@ xAPIC_REGISTERS* SVM::vaApicBase = 0;
 
 volatile UINT64 syncRequest = 0;
 volatile UINT64 syncArrived = 0;
-volatile UINT64 Counter = 0;
-volatile UINT64 nmiResyncValid = 0;
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
@@ -40,7 +38,7 @@ void SVM::ControlArea()
 	controlArea->Intercept.VMSAVE = true;
 	controlArea->Intercept.NMI = true;
 	controlArea->Intercept.MSR_Prot = true;
-
+	controlArea->Intercept.CPUID = true;
 	//controlArea->VirtualApic.V_NMI_ENABLE = 1;
 
 	// MSR Shadows
@@ -121,15 +119,9 @@ void __attribute__((preserve_most)) SVM::NmiHandler()
 	auto vCore = &vCpu[CPUID::current_core_number()];
 	auto vmcb = &vCore->vmcb;
 	auto ca = &vmcb->ControlArea;
-	
-
-	if(__readcr8() > 2)
-		__sync_lock_test_and_set(&nmiResyncValid, 0);
-
-	__sync_fetch_and_add(&syncArrived, 1);
-
-	while (syncArrived != vCoreCount) { _mm_pause(); }
-	if(nmiResyncValid)
+	auto ssa = &vmcb->SaveStateArea;
+	__sync_fetch_and_sub(&syncRequest, 1);
+	if(ssa->CPL == 3)
 		ca->TscOffset = 0;
 	return;
 }
@@ -137,9 +129,8 @@ void __attribute__((preserve_most)) SVM::NmiHandler()
 
 void SVM::broadcast_nmi()
 {
-	__sync_lock_test_and_set(&syncRequest, 1);
-	__sync_lock_test_and_set(&syncArrived, 0);
-	__sync_lock_test_and_set(&nmiResyncValid, 1);
+	while (syncRequest) { _mm_pause(); }
+	__sync_lock_test_and_set(&syncRequest, vCoreCount);
 	auto apic_base = MSR::APIC_BASE();
 	if (apic_base.extd)
 	{
@@ -162,7 +153,6 @@ void SVM::broadcast_nmi()
 		vaApicBase->WriteICR(icr_low);
 	}
 	NmiHandler();
-	__sync_lock_test_and_set(&syncRequest, 0);
 	return;
 }
 
@@ -193,6 +183,9 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			__asm { stgi }
 			__asm { clgi }
 			__asm { sti }
+
+			if(ca->TscOffset)
+				ca->TscOffset -= 4000ll + (__rdtsc() - storage->tsc);
 		}
 		else
 		{
@@ -208,10 +201,14 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		ca->TscOffset -= 1000ll - (__rdtsc() - storage->tsc);
 		switch (exitCode)
 		{
-		case VMEXIT_CR8_WRITE:
+		case VMEXIT_CPUID:
 		{
-			
-		}
+			_cpuid(ssa->Rax, &ssa->Rax, &gCtx->Rbx, &gCtx->Rcx, &gCtx->Rdx);
+			if (ssa->CPL == 3 && CPUID::current_core_number() == 1)
+			{
+				broadcast_nmi();
+			}
+		}break;
 		case VMEXIT_MSR:
 		{
 			if (ssa->CPL == 0)
@@ -257,7 +254,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		case VMEXIT_VMMCALL:
 		{
 			ssa->Rax = ca->TscOffset;
-			gCtx->Rbx = Counter;
+			gCtx->Rbx = 0;
 		}break;
 		default:
 
