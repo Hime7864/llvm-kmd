@@ -124,7 +124,7 @@ void SVM::ControlArea()
 	controlArea->Intercept.VMMCALL = true;
 	controlArea->Intercept.MSR_Prot = true;
 
-	controlArea->Intercept.NMI = true;
+	//controlArea->Intercept.NMI = true;
 	controlArea->Intercept.INTR = true;
 
 	// MSR Shadows
@@ -157,23 +157,23 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitInfo2 = ca->ExitInfo2;
 
 	auto tsc = __rdtsc();
-	auto tsc_delta = 3133 + (long long)(cpuMHz / -3ll);
+	//auto tsc_delta = 3133 + (long long)(cpuMHz / -3ll);
+	auto tsc_delta = 1500;
 
-
-	if (exitCode == VMEXIT_IRET)
-	{
-		ca->Intercept.NMI = true;
-		ca->Intercept.IRET = false;
-		tsc_delta = 0;
-	}
-	else if (exitCode == VMEXIT_NMI)
-	{
-		ca->Intercept.NMI = false;
-		ca->Intercept.IRET = true;
-		tsc_delta = 0;
-		ca->TscOffset = 0;
-	}
-	else if (exitCode == VMEXIT_INTR)
+	//if (exitCode == VMEXIT_IRET)
+	//{
+	//	ca->Intercept.NMI = true;
+	//	ca->Intercept.IRET = false;
+	//	tsc_delta = 0;
+	//}
+	//else if (exitCode == VMEXIT_NMI)
+	//{
+	//	ca->Intercept.NMI = false;
+	//	ca->Intercept.IRET = true;
+	//	tsc_delta = 0;
+	//	ca->TscOffset = 0;
+	//}
+	if (exitCode == VMEXIT_INTR)
 	{
 		tsc_delta = 0;
 		ca->TscOffset = 0;
