@@ -227,7 +227,7 @@ VOID MSR::TSC_ADJUST(UINT64 adjust)
 
 UINT64 MSR_PSTATE::get_frequency_mhz()
 {
-	return ((CpuFid + 16ll) * 100ll) / (1ll << CpuDfsId) * 2000000ll;
+	return ((CpuFid + 16ll) * 100ll) / (CpuDfsId);
 }
 
 UINT64 MSR_PSTATE::get_performance_mhz()

@@ -80,7 +80,7 @@ void SVM::broadcast_nmi()
 		}
 		else
 		{
-			//while (vCpu[i].storage.resync) { _mm_pause(); }
+			while (vCpu[i].storage.resync) { _mm_pause(); }
 			__sync_lock_test_and_set(&vCpu[i].storage.resync, 1);
 		}
 	}
@@ -121,8 +121,10 @@ void SVM::ControlArea()
 	controlArea->TlbControl.FlushGuestNonGlobalTLB = true;
 	controlArea->Intercept.VMRUN = true;
 	controlArea->Intercept.VMMCALL = true;
-	controlArea->Intercept.NMI = true;
 	controlArea->Intercept.MSR_Prot = true;
+
+	controlArea->Intercept.NMI = true;
+	controlArea->Intercept.INTR = true;
 
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
@@ -154,33 +156,39 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitInfo2 = ca->ExitInfo2;
 
 	auto tsc = __rdtsc();
-	//ca->TscOffset -= 1000ll - (tsc - storage->tsc);
+	ca->TscOffset -= MSR::PSTATE(0).get_frequency_mhz();
 
 	if (exitCode == VMEXIT_NMI)
 	{
-		if (storage->resync)
-		{
-			auto tr = __str();
-			vCore->hGdt[(tr >> 3) / 2].access = 0x89;
-			__ltr(tr);// svm doesn't restore host hidden state
-
-			__asm { stgi }
-			__asm { clgi }
-			__sync_lock_test_and_set(&storage->resync, 0);
-			//ca->TscOffset -= (__rdtsc() - tsc);
-		}
-		else
-		{
-			vmcb->ControlArea.Intercept.NMI = false;
-			vmcb->ControlArea.Intercept.IRET = true;
-		}
+		vmcb->ControlArea.Intercept.NMI = false;
+		vmcb->ControlArea.Intercept.IRET = true;
 		ca->NextRip = 0;
+		ca->TscOffset = 0;
+	}
+	else if (exitCode == VMEXIT_INTR)
+	{
+		// Re-inject intercepted external interrupt into the guest.
+		if (ca->ExitInfoIntercept.Valid)
+		{
+			ca->EventInjection.VECTOR = (EVENTINJ_VECTOR)ca->ExitInfoIntercept.Vector;
+			ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_INTR;
+			ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
+			ca->EventInjection.ERRORCODE = 0;
+			ca->EventInjection.V = SVM_EVENTINJ_VALID;
+		}
+
+		vmcb->ControlArea.Intercept.INTR = false;
+		vmcb->ControlArea.Intercept.IRET = true;
+		ca->NextRip = 0;
+		ca->TscOffset = 0;
 	}
 	else if (exitCode == VMEXIT_IRET)
 	{
 		vmcb->ControlArea.Intercept.NMI = true;
+		vmcb->ControlArea.Intercept.INTR = true;
 		vmcb->ControlArea.Intercept.IRET = false;
 		ca->NextRip = 0;
+		ca->TscOffset = 0;
 	}
 	else
 	{
@@ -231,7 +239,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		}break;
 		case VMEXIT_VMMCALL:
 		{
-			broadcast_nmi();
 			ssa->Rax = ca->TscOffset;
 			gCtx->Rbx = 0;
 		}break;
