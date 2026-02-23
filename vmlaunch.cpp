@@ -151,17 +151,14 @@ void SVM::LaunchCore(int affinity)
 
 	ControlArea();
 
+	__asm { cli }
+
 	SEGMENT_REGISTER k_gdtr{ 0 };
 	__sgdt(&k_gdtr);
-
 	auto result = RtlCaptureContext(ctx);
 	if (ctx->Rax == result)
 	{
-		auto tr = __str();
-		auto gdtEntry = (SEGMENT_DESCRIPTOR*)(k_gdtr.Base);
-		gdtEntry[(tr >> 3) / 2].access = 0x89;
-		__ltr(tr);
-
+		__asm { sti }
 		printf("Core %i Online\n", core_idx);
 		return;
 	}
@@ -193,6 +190,11 @@ void SVM::LaunchCore(int affinity)
 	saveArea->CR3 = __readcr3();
 	saveArea->CR4 = __readcr4();
 
+	SEGMENT_REGISTER idtr{ 0 };
+	__sidt(&idtr);
+	saveArea->IDTR.base = idtr.Base;
+	saveArea->IDTR.limit = idtr.Limit;
+
 	SEGMENT_REGISTER gdtr{ 0 };
 	__sgdt(&gdtr);
 	saveArea->GDTR.base = gdtr.Base;
@@ -213,21 +215,21 @@ void SVM::LaunchCore(int affinity)
 	saveArea->SS.attrib = gdtr.attribute(saveArea->SS.selector);
 	saveArea->DS.attrib = gdtr.attribute(saveArea->DS.selector);
 
-	SEGMENT_REGISTER idtr{ 0 };
-	__sidt(&idtr);
-	saveArea->IDTR.base = idtr.Base;
-	saveArea->IDTR.limit = idtr.Limit;
+	__vmsave(storage->vmcb);
 
 	CreateInterruptHandler();
-
-	__vmsave(storage->vmcb);
 	
 	auto old = __readcr3();
 	__writecr3(hCr3);
 	
+	_mm_lfence();
+	_mm_mfence();
+
 	VmLoop(vCore, storage->vmcb);
 	
 	__writecr3(old);
+
+	__asm { sti }
 
 	return;
 }

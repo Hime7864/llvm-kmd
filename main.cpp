@@ -7,9 +7,6 @@ VCORE* SVM::vCpu = 0;
 UINT32 SVM::vCoreCount = 0;
 xAPIC_REGISTERS* SVM::vaApicBase = 0;
 
-volatile UINT64 syncRequest = 0;
-volatile UINT64 syncArrived = 0;
-
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
 	printf("SVM Hypervisor Driver Loaded\n");
@@ -22,49 +19,13 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	return STATUS_SUCCESS;
 }
 
-void SVM::ControlArea()
-{
-	auto core_idx = CPUID::current_core_number();
-	auto vCore = &vCpu[core_idx];
-	auto controlArea = &vCore->vmcb.ControlArea;
-	auto msrPm = &vCore->msrpm;
-	auto storage = &vCore->storage;
-
-	controlArea->TlbControl.GuestASID = CPUID::current_core_number() + 1;
-	controlArea->TlbControl.FlushGuestNonGlobalTLB = true;
-	controlArea->Intercept.VMRUN = true;
-	controlArea->Intercept.VMMCALL = true;
-	controlArea->Intercept.VMLOAD = true;
-	controlArea->Intercept.VMSAVE = true;
-	controlArea->Intercept.NMI = true;
-	controlArea->Intercept.MSR_Prot = true;
-	controlArea->Intercept.CPUID = true;
-	//controlArea->VirtualApic.V_NMI_ENABLE = 1;
-
-	// MSR Shadows
-	msrPm->read(MSR::_MSR_EFER, true);
-	msrPm->write(MSR::_MSR_EFER, true);
-	storage->efer = MSR::EFER();
-	storage->efer.svme = false;
-
-	msrPm->read(MSR::_MSR_HSAVE_PA, true);
-	msrPm->write(MSR::_MSR_HSAVE_PA, true);
-	storage->hsave = 0x0;
-
-	controlArea->NestedPagingControl.NP_Enable = 1;
-	controlArea->NestedCr3 = gCr3;
-	return;
-}
-
 void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 {
 	__asm {
 		mov rax, rsp
 		lea rsp, [rcx + 0x2800]
 		push rax
-
-		loop:
-
+	loop:
 		lea rcx, [rcx + 0x04D0]
 		call SaveCtx
 		lea rcx, [rcx - 0x04D0]
@@ -106,31 +67,24 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 	}
 }
 
-VOID NAKED SVM::NmiStub()
-{
-	__asm {
-		call NmiHandler
-		iretq
-	}
-}
-
-void __attribute__((preserve_most)) SVM::NmiHandler()
-{
-	auto vCore = &vCpu[CPUID::current_core_number()];
-	auto vmcb = &vCore->vmcb;
-	auto ca = &vmcb->ControlArea;
-	auto ssa = &vmcb->SaveStateArea;
-	__sync_fetch_and_sub(&syncRequest, 1);
-	if(ssa->CPL == 3)
-		ca->TscOffset = 0;
-	return;
-}
-
+VOID NAKED SVM::NmiStub() { __asm { iretq } }
 
 void SVM::broadcast_nmi()
 {
-	while (syncRequest) { _mm_pause(); }
-	__sync_lock_test_and_set(&syncRequest, vCoreCount);
+	auto core_id = CPUID::current_core_number();
+	for (int i = 0; i < vCoreCount; i++)
+	{
+		if (core_id == i)
+		{
+			__sync_lock_test_and_set(&vCpu[i].storage.resync, 0);
+		}
+		else
+		{
+			while (vCpu[i].storage.resync) { _mm_pause(); }
+			__sync_lock_test_and_set(&vCpu[i].storage.resync, 1);
+		}
+	}
+
 	auto apic_base = MSR::APIC_BASE();
 	if (apic_base.extd)
 	{
@@ -152,10 +106,38 @@ void SVM::broadcast_nmi()
 		icr_low.DSH = ICR_DSH::AllExcludingSelf;
 		vaApicBase->WriteICR(icr_low);
 	}
-	NmiHandler();
 	return;
 }
 
+void SVM::ControlArea()
+{
+	auto core_idx = CPUID::current_core_number();
+	auto vCore = &vCpu[core_idx];
+	auto controlArea = &vCore->vmcb.ControlArea;
+	auto msrPm = &vCore->msrpm;
+	auto storage = &vCore->storage;
+
+	controlArea->TlbControl.GuestASID = CPUID::current_core_number() + 1;
+	controlArea->TlbControl.FlushGuestNonGlobalTLB = true;
+	controlArea->Intercept.VMRUN = true;
+	controlArea->Intercept.VMMCALL = true;
+	controlArea->Intercept.NMI = true;
+	controlArea->Intercept.MSR_Prot = true;
+
+	// MSR Shadows
+	msrPm->read(MSR::_MSR_EFER, true);
+	msrPm->write(MSR::_MSR_EFER, true);
+	storage->efer = MSR::EFER();
+	storage->efer.svme = false;
+
+	msrPm->read(MSR::_MSR_HSAVE_PA, true);
+	msrPm->write(MSR::_MSR_HSAVE_PA, true);
+	storage->hsave = 0x0;
+
+	controlArea->NestedPagingControl.NP_Enable = 1;
+	controlArea->NestedCr3 = gCr3;
+	return;
+}
 
 void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 {
@@ -170,22 +152,20 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitCode = ca->ExitCode;
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
-	
+
+	auto tsc = __rdtsc();
+	//ca->TscOffset -= 1000ll - (tsc - storage->tsc);
 
 	if (exitCode == VMEXIT_NMI)
 	{
-		if (syncRequest)
+		if (storage->resync)
 		{
-			auto tr = __str();
-			vCore->hGdt[(tr >> 3) / 2].access = 0x89;
-			__ltr(tr);
 			__asm { cli }
 			__asm { stgi }
 			__asm { clgi }
 			__asm { sti }
-
-			if(ca->TscOffset)
-				ca->TscOffset -= 4000ll + (__rdtsc() - storage->tsc);
+			__sync_lock_test_and_set(&storage->resync, 0);
+			ca->TscOffset -= (__rdtsc() - tsc);
 		}
 		else
 		{
@@ -198,17 +178,9 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	}
 	else
 	{
-		ca->TscOffset -= 1000ll - (__rdtsc() - storage->tsc);
+		//broadcast_nmi();
 		switch (exitCode)
 		{
-		case VMEXIT_CPUID:
-		{
-			_cpuid(ssa->Rax, &ssa->Rax, &gCtx->Rbx, &gCtx->Rcx, &gCtx->Rdx);
-			if (ssa->CPL == 3 && CPUID::current_core_number() == 1)
-			{
-				broadcast_nmi();
-			}
-		}break;
 		case VMEXIT_MSR:
 		{
 			if (ssa->CPL == 0)
