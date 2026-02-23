@@ -171,11 +171,15 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		}
 		else
 		{
-			ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_NMI;
-			ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_NMI;
-			ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_VALID;
-			ca->EventInjection.V = SVM_EVENTINJ_VALID;
+			vmcb->ControlArea.Intercept.NMI = false;
+			vmcb->ControlArea.Intercept.IRET = true;
 		}
+		ca->NextRip = 0;
+	}
+	else if (exitCode == VMEXIT_IRET)
+	{
+		vmcb->ControlArea.Intercept.NMI = true;
+		vmcb->ControlArea.Intercept.IRET = false;
 		ca->NextRip = 0;
 	}
 	else
