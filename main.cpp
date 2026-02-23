@@ -80,7 +80,7 @@ void SVM::broadcast_nmi()
 		}
 		else
 		{
-			while (vCpu[i].storage.resync) { _mm_pause(); }
+			//while (vCpu[i].storage.resync) { _mm_pause(); }
 			__sync_lock_test_and_set(&vCpu[i].storage.resync, 1);
 		}
 	}
@@ -160,18 +160,20 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	{
 		if (storage->resync)
 		{
-			__asm { cli }
+			auto tr = __str();
+			vCore->hGdt[(tr >> 3) / 2].access = 0x89;
+			__ltr(tr);// svm doesn't restore host hidden state
+
 			__asm { stgi }
 			__asm { clgi }
-			__asm { sti }
 			__sync_lock_test_and_set(&storage->resync, 0);
-			ca->TscOffset -= (__rdtsc() - tsc);
+			//ca->TscOffset -= (__rdtsc() - tsc);
 		}
 		else
 		{
 			ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_NMI;
 			ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_NMI;
-			ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
+			ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_VALID;
 			ca->EventInjection.V = SVM_EVENTINJ_VALID;
 		}
 		ca->NextRip = 0;
@@ -225,6 +227,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		}break;
 		case VMEXIT_VMMCALL:
 		{
+			broadcast_nmi();
 			ssa->Rax = ca->TscOffset;
 			gCtx->Rbx = 0;
 		}break;
