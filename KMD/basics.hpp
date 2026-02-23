@@ -967,4 +967,10 @@ struct xAPIC_REGISTERS
         *(UINT32*)((UINT64)this + 0x300) = icr.AsUINT32;
         return;
     }
+    void AddApicTimer(int delta)
+    {
+        UINT32 current = *(UINT32*)((UINT64)this + 0x390);
+        *(UINT32*)((UINT64)this + 0x380) = current + delta;
+        return;
+	}
 };

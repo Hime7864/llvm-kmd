@@ -124,7 +124,7 @@ void SVM::ControlArea()
 	controlArea->Intercept.MSR_Prot = true;
 
 	controlArea->Intercept.NMI = true;
-	controlArea->Intercept.INTR = true;
+	//controlArea->Intercept.INTR = true;
 
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
@@ -155,39 +155,21 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
 
-	auto tsc = __rdtsc();
-	ca->TscOffset -= MSR::PSTATE(0).get_frequency_mhz();
+	//auto tsc = __rdtsc();
+	auto tsc_delta = (long long)(0.212765f * (float)MSR::PSTATE(0).get_frequency_mhz());
 
-	if (exitCode == VMEXIT_NMI)
-	{
-		vmcb->ControlArea.Intercept.NMI = false;
-		vmcb->ControlArea.Intercept.IRET = true;
-		ca->NextRip = 0;
-		ca->TscOffset = 0;
-	}
-	else if (exitCode == VMEXIT_INTR)
-	{
-		// Re-inject intercepted external interrupt into the guest.
-		if (ca->ExitInfoIntercept.Valid)
-		{
-			ca->EventInjection.VECTOR = (EVENTINJ_VECTOR)ca->ExitInfoIntercept.Vector;
-			ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_INTR;
-			ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
-			ca->EventInjection.ERRORCODE = 0;
-			ca->EventInjection.V = SVM_EVENTINJ_VALID;
-		}
 
-		vmcb->ControlArea.Intercept.INTR = false;
-		vmcb->ControlArea.Intercept.IRET = true;
-		ca->NextRip = 0;
-		ca->TscOffset = 0;
-	}
-	else if (exitCode == VMEXIT_IRET)
+	if (exitCode == VMEXIT_IRET)
 	{
-		vmcb->ControlArea.Intercept.NMI = true;
-		vmcb->ControlArea.Intercept.INTR = true;
-		vmcb->ControlArea.Intercept.IRET = false;
-		ca->NextRip = 0;
+		ca->Intercept.NMI = true;
+		ca->Intercept.IRET = false;
+		tsc_delta = 0;
+	}
+	else if (exitCode == VMEXIT_NMI)
+	{
+		ca->Intercept.NMI = false;
+		ca->Intercept.IRET = true;
+		tsc_delta = 0;
 		ca->TscOffset = 0;
 	}
 	else
@@ -246,6 +228,12 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 			break;
 		}
+	}
+
+	if (tsc_delta)
+	{
+		ca->TscOffset -= tsc_delta;
+		vaApicBase->AddApicTimer(tsc_delta);
 	}
 
 	if(ca->NextRip)
