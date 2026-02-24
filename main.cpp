@@ -111,9 +111,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
 
-	_mm_lfence();
-	_mm_mfence();
-
 	if (exitCode == VMEXIT_INTR)
 	{
 		ca->TscOffset = 0;
@@ -147,22 +144,21 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 					{
 						ssa->Rax = storage->efer.data.AsUINT64 & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->efer.data.AsUINT64 >> 32) & 0xFFFFFFFF;
-						ca->TscOffset -= storage->efer.tsc_read;
 					}
+					storage->efer.set_tsc(vCore, exitInfo1.MSR.isWrite);
 				}break;
 				case MSR::_MSR_HSAVE_PA:
 				{
 					if (exitInfo1.MSR.isWrite)
 					{
 						storage->hsave.data = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
-						ca->TscOffset -= storage->hsave.tsc_write;
 					}
 					else
 					{
 						ssa->Rax = storage->hsave.data & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->hsave.data >> 32) & 0xFFFFFFFF;
-						ca->TscOffset -= storage->hsave.tsc_write;
 					}
+					storage->hsave.set_tsc(vCore, exitInfo1.MSR.isWrite);
 				}break;
 				default:
 					break;

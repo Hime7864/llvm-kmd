@@ -1,11 +1,34 @@
 #pragma once
 
+struct VCORE;
+
 template <typename TypeDelc>
 struct VMEXIT_SHADOW
 {
 	TypeDelc data;
 	UINT64 tsc_write;
 	UINT64 tsc_read;
+
+	void set_tsc(VCORE* vCore, bool is_write)
+	{
+		auto ca = &vCore->vmcb.ControlArea;
+		auto storage = &vCore->storage;
+		auto gCtx = &storage->gCtx;
+
+		if (is_write)
+		{
+			ca->TscOffset -= storage->efer.tsc_write;
+			if (gCtx->Rcx == 0xC0FFEEull && !tsc_write)
+				tsc_write = gCtx->Rdx;
+		}
+		else
+		{
+			ca->TscOffset -= storage->efer.tsc_read;
+			if (gCtx->Rcx == 0xC0FFEEull && !tsc_read)
+				tsc_read = gCtx->Rdx;
+		}
+		return;
+	}
 };
 
 struct ALIGN(4096) STORAGE
