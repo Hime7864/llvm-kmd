@@ -161,15 +161,17 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
 
+	_mm_lfence();
+	_mm_mfence();
 	auto tsc = __rdtsc();
-;
-	auto tsc_delta = (long long)((double)cpuMHz / 2.8);
+	auto tsc_delta = (long long)((double)cpuMHz / 3);
 
 	if (exitCode == VMEXIT_INTR)
 	{
 		tsc_delta = 0;
 		ca->TscOffset = 0;
 		ca->Intercept.INTR = false;
+		ca->NextRip = 0;
 	}
 	else
 	{
@@ -231,14 +233,13 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	}
 	if (tsc_delta)
 	{
+		_mm_lfence();
+		_mm_mfence();
+		tsc_delta += __rdtsc() - tsc;
 		ca->TscOffset -= tsc_delta;
-		vaApicBase->AddApicTimer(tsc_delta - (__rdtsc() - tsc));
-	}
-	else
-	{
-		vaApicBase->AddApicTimer(cpuMHz);
 	}
 
+	vaApicBase->AddApicTimer(cpuMHz);
 	if(ca->NextRip)
 		ssa->Rip = ca->NextRip;
 	return;
