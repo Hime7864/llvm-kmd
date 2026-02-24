@@ -176,7 +176,9 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		default:
 			break;
 		}
+		ca->TscOffset -= (__rdtsc() - storage->tsc_first_sight);
 	}
+
 	if(ca->NextRip)
 		ssa->Rip = ca->NextRip;
 	return;

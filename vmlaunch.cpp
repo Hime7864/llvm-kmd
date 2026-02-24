@@ -205,7 +205,7 @@ void SVM::LaunchVm()
 		tsc = __rdtsc() - tsc;
 		if (tsc < sync->efer.read)
 			sync->efer.read = tsc;
-	} sync->efer.read -= 100;
+	}
 
 	auto efer = MSR::EFER();
 	sync->efer.write = 0xFFFFFFFF;
@@ -216,7 +216,7 @@ void SVM::LaunchVm()
 		tsc = __rdtsc() - tsc;
 		if (tsc < sync->efer.write)
 			sync->efer.write = tsc;
-	} sync->efer.write -= 100;
+	}
 
 	sync->hsave.read = 0xFFFFFFFF;
 	for (int i = 0; i < interval; i++)
@@ -226,7 +226,7 @@ void SVM::LaunchVm()
 		tsc = __rdtsc() - tsc;
 		if (tsc < sync->hsave.read)
 			sync->hsave.read = tsc;
-	} sync->hsave.read -= 100;
+	}
 	
 	auto hsave = MSR::HSAVE_PA();
 	sync->hsave.write = 0xFFFFFFFF;
@@ -237,7 +237,7 @@ void SVM::LaunchVm()
 		tsc = __rdtsc() - tsc;
 		if (tsc < sync->hsave.write)
 			sync->hsave.write = tsc;
-	} sync->hsave.write -= 100;
+	}
 
 	__writecr8(irql);
 	printf("TSC EFER Read: %llu\n", sync->efer.read);
