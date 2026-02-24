@@ -165,7 +165,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	_mm_mfence();
 
 	//auto tsc = __rdtsc();
-	auto tsc_delta = 3133 - (long long)((double)cpuMHz / 3) + 120;
+	auto tsc_delta = 1500;
 
 	if (exitCode == VMEXIT_INTR)
 	{
@@ -238,7 +238,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		ca->TscOffset -= tsc_delta;
 	}
 
-	vaApicBase->AddApicTimer(cpuMHz);
+	vaApicBase->AddApicTimer(cpuMHz / 2);
 	if(ca->NextRip)
 		ssa->Rip = ca->NextRip;
 	return;
