@@ -165,7 +165,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	_mm_mfence();
 
 	//auto tsc = __rdtsc();
-	auto tsc_delta = 1575;
+	auto tsc_delta = 3133 - (long long)((double)cpuMHz / 3);
 
 	if (exitCode == VMEXIT_INTR)
 	{
