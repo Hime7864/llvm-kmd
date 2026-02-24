@@ -46,8 +46,8 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		push rdx
 
 		rdtsc
-		mov[rcx + 0x9B8], eax
-		mov[rcx + 0x9BC], edx
+		mov[rcx + 0x9A8], eax
+		mov[rcx + 0x9AC], edx
 
 		pop rdx
 		call SaveCtx
@@ -68,48 +68,6 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 	}
 }
 
-VOID NAKED SVM::NmiStub() { __asm { iretq } }
-
-void SVM::broadcast_nmi()
-{
-	auto core_id = CPUID::current_core_number();
-	for (int i = 0; i < vCoreCount; i++)
-	{
-		if (core_id == i)
-		{
-			__sync_lock_test_and_set(&vCpu[i].storage.resync, 0);
-		}
-		else
-		{
-			while (vCpu[i].storage.resync) { _mm_pause(); }
-			__sync_lock_test_and_set(&vCpu[i].storage.resync, 1);
-		}
-	}
-
-	auto apic_base = MSR::APIC_BASE();
-	if (apic_base.extd)
-	{
-		MSR_ICR icr;
-		icr.AsUINT64 = 0;
-		icr.MT = ICR_MT::Nmi;
-		icr.TGM = ICR_TGM::edge;
-		icr.L = ICR_L::assert;
-		icr.DSH = ICR_DSH::AllExcludingSelf;
-		MSR::ICR(icr);
-	}
-	else
-	{
-		xAPIC_REGISTERS::ICR_LOW icr_low;
-		icr_low.AsUINT32 = 0;
-		icr_low.MT = ICR_MT::Nmi;
-		icr_low.TGM = ICR_TGM::edge;
-		icr_low.L = ICR_L::assert;
-		icr_low.DSH = ICR_DSH::AllExcludingSelf;
-		vaApicBase->WriteICR(icr_low);
-	}
-	return;
-}
-
 void SVM::ControlArea()
 {
 	auto core_idx = CPUID::current_core_number();
@@ -124,13 +82,6 @@ void SVM::ControlArea()
 
 	controlArea->Intercept.VMRUN = true;
 	controlArea->Intercept.VMMCALL = true;
-	//controlArea->Intercept.VMLOAD = true;
-	//controlArea->Intercept.VMSAVE = true;
-	
-	//controlArea->Intercept.CLGI = true;
-	//controlArea->Intercept.STGI = true;
-
-	controlArea->Intercept.INTR = true;
 
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
@@ -149,7 +100,6 @@ void SVM::ControlArea()
 
 void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 {
-	
 	auto vmcb = &vCore->vmcb;
 	auto ssa = &vmcb->SaveStateArea;
 	auto ca = &vmcb->ControlArea;
@@ -164,26 +114,24 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	_mm_lfence();
 	_mm_mfence();
 
-	//auto tsc = __rdtsc();
-	auto tsc_delta = 1500;
-
 	if (exitCode == VMEXIT_INTR)
 	{
-		tsc_delta = 0;
 		ca->TscOffset = 0;
 		ca->Intercept.INTR = false;
 		ca->NextRip = 0;
+		vaApicBase->AddApicTimer(cpuMHz / 2);
 	}
 	else
 	{
 		ca->Intercept.INTR = true;
-		//broadcast_nmi();
+		ca->TscOffset -= storage->base_delta;
 		switch (exitCode)
 		{
 		case VMEXIT_VMMCALL:
 		{
 			ssa->Rax = ca->TscOffset;
-			gCtx->Rbx = 0;
+			gCtx->R10 = __rdtsc();
+
 		}break;
 		case VMEXIT_MSR:
 		{
@@ -195,16 +143,19 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				{
 					if (exitInfo1.MSR.isWrite)
 					{
+						ca->TscOffset -= storage->efer_delta;
 						storage->efer.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					}
 					else
 					{
+						ca->TscOffset -= storage->efer_delta;
 						ssa->Rax = storage->efer.AsUINT64 & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->efer.AsUINT64 >> 32) & 0xFFFFFFFF;
 					}
 				}break;
 				case MSR::_MSR_HSAVE_PA:
 				{
+					ca->TscOffset -= storage->hsave_delta;
 					if (exitInfo1.MSR.isWrite)
 					{
 						storage->hsave = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
@@ -228,17 +179,9 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			}
 		}break;
 		default:
-
 			break;
 		}
 	}
-	if (tsc_delta)
-	{
-		tsc_delta += (__rdtsc() - storage->tsc);
-		ca->TscOffset -= tsc_delta;
-	}
-
-	vaApicBase->AddApicTimer(cpuMHz / 2);
 	if(ca->NextRip)
 		ssa->Rip = ca->NextRip;
 	return;

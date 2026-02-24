@@ -93,53 +93,6 @@ void NAKED SVM::LoadCtx(VCORE* vCore)
 	}
 }
 
-void SVM::CreateInterruptHandler()
-{
-	SEGMENT_REGISTER k_gdtr{ 0 };
-	__sgdt(&k_gdtr);
-
-	SEGMENT_REGISTER k_idtr{ 0 };
-	__sidt(&k_idtr);
-
-
-	auto core_idx = CPUID::current_core_number();
-	auto vCore = &vCpu[core_idx];
-
-	//copy kernel GDT into host GDT
-	RtlCopyMemory(vCore->hGdt, (PVOID)k_gdtr.Base, sizeof(vCore->hGdt));
-
-	//copy kernel IDT into host IDT
-	RtlCopyMemory(vCore->hIdt, (PVOID)k_idtr.Base, sizeof(vCore->hIdt));
-
-	
-	//4 is TSS idx
-	auto tr = __str();
-	vCore->hGdt[(tr >> 3) / 2].base((UINT64)&vCore->hIst);
-
-	//2 is NMI idx
-	vCore->hIdt[2].offset((UINT64)&SVM::NmiStub);
-
-	vCore->hIst.IOPB = (UINT16)sizeof(vCore->hIst);
-	vCore->hIst.IST[vCore->hIdt[2].ist] = (UINT64)&vCore->hstackIntr[0x1000];
-	
-	
-	SEGMENT_REGISTER idtr{ 0 };
-	idtr.Base = (UINT64)vCore->hIdt;
-	idtr.Limit = k_idtr.Limit;
-	__lidt(&idtr);
-
-	SEGMENT_REGISTER gdtr{ 0 };
-	gdtr.Base = (UINT64)vCore->hGdt;
-	gdtr.Limit = k_gdtr.Limit;
-	__lgdt(&gdtr);
-
-	__sgdt(&k_gdtr);
-	tr = __str();
-	vCore->hGdt[(tr >> 3) / 2].access = 0x89;
-	__ltr(tr);
-	return;
-}
-
 void SVM::LaunchCore(int affinity)
 {
 	auto core_idx = CPUID::current_core_number();
@@ -151,14 +104,9 @@ void SVM::LaunchCore(int affinity)
 
 	ControlArea();
 
-	__asm { cli }
-
-	SEGMENT_REGISTER k_gdtr{ 0 };
-	__sgdt(&k_gdtr);
 	auto result = RtlCaptureContext(ctx);
 	if (ctx->Rax == result)
 	{
-		__asm { sti }
 		printf("Core %i Online\n", core_idx);
 		return;
 	}
@@ -217,26 +165,18 @@ void SVM::LaunchCore(int affinity)
 
 	__vmsave(storage->vmcb);
 
-	CreateInterruptHandler();
-	
 	auto old = __readcr3();
 	__writecr3(hCr3);
-	
-	_mm_lfence();
-	_mm_mfence();
 
 	VmLoop(vCore, storage->vmcb);
 	
 	__writecr3(old);
-
-	__asm { sti }
 
 	return;
 }
 
 void SVM::LaunchVm()
 {
-	//LaunchCore(0);
 	KeIpiGenericCall(LaunchCore, nullptr);
 	return;
 }

@@ -16,32 +16,45 @@ LPSTR CPUID::vendor_string()
     return results;
 }
 
-UINT32 CPUID::current_apic_id()
+UINT32 NAKED CPUID::current_apic_id()
 {
-    DWORD leaf = 0x00000001UL;
-    UINT32 results = 0;
     __asm
     {
-        mov eax, leaf
-        CPUID
-        lea r10, results
-        mov[r10], ebx
+        push rbx
+        push rcx
+        push rdx
+
+        xor eax, eax
+        mov eax, 0x1UL
+        cpuid
+        mov eax, ebx
+		ror eax, 24
+
+        pop rdx
+        pop rcx
+        pop rbx
+        ret
     }
-    return results >> 24;
 }
 
-UINT32 CPUID::current_core_number()
+UINT32 NAKED CPUID::current_core_number()
 {
-    DWORD leaf = 0x0000000BU;
-    UINT32 results = 0;
     __asm
     {
-        mov eax, leaf
-        CPUID
-        lea r10, results
-        mov[r10], edx
+        push rbx
+        push rcx
+        push rdx
+
+        xor eax, eax
+        mov eax, 0xBUL
+        cpuid
+        mov eax, edx
+
+		pop rdx
+		pop rcx
+        pop rbx
+		ret
     }
-    return results;
 }
 
 

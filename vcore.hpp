@@ -1,14 +1,21 @@
 #pragma once
 
+template <typename TypeDelc>
+struct MSR_SHADOW
+{
+	TypeDelc data;
+	UINT64 tsc_write;
+	UINT64 tsc_read;
+};
+
 struct ALIGN(4096) STORAGE
 {
 	CONTEXT gCtx; // 0x0000
 	CONTEXT hCtx; // 0x04D0
 	PHYSICAL_ADDRESS vmcb; // 0x09A0
-	MSR_EFER efer; // 0x09A8
-	PHYSICAL_ADDRESS hsave; // 0x09B0
-	UINT64 tsc; // 0x09B8
-	UINT64 resync; // 0x09C0
+	UINT64 tsc_first_sight; // 0x09A8
+	MSR_SHADOW<MSR_EFER> efer;
+	MSR_SHADOW<PHYSICAL_ADDRESS> hsave;
 };
 
 struct ALIGN(4096) VCORE
