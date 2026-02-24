@@ -120,11 +120,16 @@ void SVM::ControlArea()
 
 	controlArea->TlbControl.GuestASID = CPUID::current_core_number() + 1;
 	controlArea->TlbControl.FlushGuestNonGlobalTLB = true;
-	controlArea->Intercept.VMRUN = true;
-	controlArea->Intercept.VMMCALL = true;
 	controlArea->Intercept.MSR_Prot = true;
 
-	//controlArea->Intercept.NMI = true;
+	controlArea->Intercept.VMRUN = true;
+	controlArea->Intercept.VMMCALL = true;
+	//controlArea->Intercept.VMLOAD = true;
+	//controlArea->Intercept.VMSAVE = true;
+	
+	//controlArea->Intercept.CLGI = true;
+	//controlArea->Intercept.STGI = true;
+
 	controlArea->Intercept.INTR = true;
 
 	// MSR Shadows
@@ -156,23 +161,12 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
 
+	auto mperf_init = MSR::MPERF();
+	auto aperf_init = MSR::APERF();
 	auto tsc = __rdtsc();
-	//auto tsc_delta = 3133 + (long long)(cpuMHz / -3ll);
-	auto tsc_delta = 1650;
 
-	//if (exitCode == VMEXIT_IRET)
-	//{
-	//	ca->Intercept.NMI = true;
-	//	ca->Intercept.IRET = false;
-	//	tsc_delta = 0;
-	//}
-	//else if (exitCode == VMEXIT_NMI)
-	//{
-	//	ca->Intercept.NMI = false;
-	//	ca->Intercept.IRET = true;
-	//	tsc_delta = 0;
-	//	ca->TscOffset = 0;
-	//}
+	auto tsc_delta = 2000;
+
 	if (exitCode == VMEXIT_INTR)
 	{
 		tsc_delta = 0;
@@ -185,6 +179,11 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		//broadcast_nmi();
 		switch (exitCode)
 		{
+		case VMEXIT_VMMCALL:
+		{
+			ssa->Rax = ca->TscOffset;
+			gCtx->Rbx = 0;
+		}break;
 		case VMEXIT_MSR:
 		{
 			if (ssa->CPL == 0)
@@ -227,27 +226,22 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				ca->EventInjection.V = SVM_EVENTINJ_VALID;
 			}
 		}break;
-		case VMEXIT_VMMCALL:
-		{
-			ssa->Rax = ca->TscOffset;
-			gCtx->Rbx = 0;
-		}break;
 		default:
 
 			break;
 		}
 	}
-
+	auto perf = (double)(MSR::APERF() - aperf_init) / ((double)(MSR::MPERF() - mperf_init));
 	if (tsc_delta)
 	{
-		tsc_delta += __rdtsc() - tsc;
+		tsc_delta += (long long)((double)(__rdtsc() - tsc) * perf);
 		ca->TscOffset -= tsc_delta;
 		vaApicBase->AddApicTimer(tsc_delta);
 	}
 	else
 	{
-		tsc_delta = 1500;
-		tsc_delta += __rdtsc() - tsc;
+		tsc_delta = 2000;
+		tsc_delta += (long long)((double)(__rdtsc() - tsc) * perf);
 		vaApicBase->AddApicTimer(tsc_delta);
 	}
 
