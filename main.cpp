@@ -42,25 +42,6 @@ void ipi(CORE_TSC* tsc)
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
-	auto tsc = (CORE_TSC*)ExAllocatePool(NonPagedPool, 0x1000);
-	for (int i = 0; i < 100; i++)
-	{
-		KeIpiGenericCall(ipi, tsc);
-		INT64 _min, _max;
-		_min = -1ll;
-		_max = 0ll;
-		for (int i = 0; i < KeQueryActiveProcessorCount(0); i++)
-		{
-			auto MHz = (long long)((double)tsc[i].MHz * tsc[i].mutipler);
-			printf("(%i, %.i)", MHz / 100, tsc[i].avg_latency);
-			//printf("%lli[%02d | %i MHz], Avg: %i, Init: %i \n", tsc[i].tsc, i + 1, MHz, tsc[i].avg_latency, tsc[i].init_latency);
-			if (tsc[i].tsc < _min)
-				_min = tsc[i].tsc;
-			if (tsc[i].tsc > _max)
-				_max = tsc[i].tsc;
-		}
-		Sleep(10);
-	}
-	ExFreePool(tsc);
+
 	return STATUS_SUCCESS;
 }
