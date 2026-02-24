@@ -192,7 +192,7 @@ void SVM::CoreSynchronization(TSC_SYNC* sync)
 void SVM::LaunchVm()
 {
 	KeIpiGenericCall(LaunchCore, nullptr);
-	Sleep(200);
+	Sleep(500);
 	auto sync = (TSC_SYNC*)ExAllocatePool(NonPagedPool, 0x1000);
 	auto irql = __readcr8();
 	__writecr8(15);

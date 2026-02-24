@@ -110,6 +110,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitCode = ca->ExitCode;
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
+	auto exitInfoIntercept = ca->ExitInfoIntercept;
 
 	if (exitCode == VMEXIT_INTR)
 	{
