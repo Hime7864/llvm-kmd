@@ -7,6 +7,12 @@ enum PAGEMAP_SIZE
 	PAGEMAP_4KB = 3,
 };
 
+struct TSC_SYNC
+{
+	struct { UINT64 read, write; }efer;
+	struct { UINT64 read, write; }hsave;
+};
+
 class SVM
 {
 private:
@@ -28,7 +34,7 @@ private:
 
 	static void ControlArea();
 
-	static void CoreSynchronization();
+	static void __attribute__((preserve_most)) CoreSynchronization(TSC_SYNC* sync);
 
 	static void NAKED VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb);
 

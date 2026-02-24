@@ -175,8 +175,77 @@ void SVM::LaunchCore(int affinity)
 	return;
 }
 
+void SVM::CoreSynchronization(TSC_SYNC* sync)
+{
+	auto efer = MSR::EFER();
+	MSR::EFER({ (0xDEAD01ULL << 32) | (sync->efer.read & 0xFFFFFFFF) });
+	MSR::EFER({ (0xDEAD02ULL << 32) | (sync->efer.write & 0xFFFFFFFF) });
+	MSR::EFER(efer);
+
+	auto hsave = MSR::HSAVE_PA();
+	MSR::HSAVE_PA({ (0xDEAD01ULL << 32) | (sync->hsave.read & 0xFFFFFFFF) });
+	MSR::HSAVE_PA({ (0xDEAD02ULL << 32) | (sync->hsave.write & 0xFFFFFFFF) });
+	MSR::HSAVE_PA(hsave);
+	return;
+}
+
 void SVM::LaunchVm()
 {
 	KeIpiGenericCall(LaunchCore, nullptr);
+	Sleep(200);
+	auto sync = (TSC_SYNC*)ExAllocatePool(NonPagedPool, 0x1000);
+	auto irql = __readcr8();
+	__writecr8(15);
+	int interval = 12500;
+	sync->efer.read = 0xFFFFFFFF;
+	for (int i = 0; i < interval; i++)
+	{
+		auto tsc = __rdtsc();
+		MSR::EFER();
+		tsc = __rdtsc() - tsc;
+		if (tsc < sync->efer.read)
+			sync->efer.read = tsc;
+	} sync->efer.read -= 100;
+
+	auto efer = MSR::EFER();
+	sync->efer.write = 0xFFFFFFFF;
+	for (int i = 0; i < interval; i++)
+	{
+		auto tsc = __rdtsc();
+		MSR::EFER(efer);
+		tsc = __rdtsc() - tsc;
+		if (tsc < sync->efer.write)
+			sync->efer.write = tsc;
+	} sync->efer.write -= 100;
+
+	sync->hsave.read = 0xFFFFFFFF;
+	for (int i = 0; i < interval; i++)
+	{
+		auto tsc = __rdtsc();
+		MSR::HSAVE_PA();
+		tsc = __rdtsc() - tsc;
+		if (tsc < sync->hsave.read)
+			sync->hsave.read = tsc;
+	} sync->hsave.read -= 100;
+	
+	auto hsave = MSR::HSAVE_PA();
+	sync->hsave.write = 0xFFFFFFFF;
+	for (int i = 0; i < interval; i++)
+	{
+		auto tsc = __rdtsc();
+		MSR::HSAVE_PA(hsave);
+		tsc = __rdtsc() - tsc;
+		if (tsc < sync->hsave.write)
+			sync->hsave.write = tsc;
+	} sync->hsave.write -= 100;
+
+	__writecr8(irql);
+	printf("TSC EFER Read: %llu\n", sync->efer.read);
+	printf("TSC EFER Write: %llu\n", sync->efer.write);
+	printf("TSC HSAVE Read: %llu\n", sync->hsave.read);
+	printf("TSC HSAVE Write: %llu\n", sync->hsave.write);
+	KeIpiGenericCall(CoreSynchronization, sync);
+	RtlFillMemory(sync, 0x1000, 0x0);
+	ExFreePool(sync);
 	return;
 }

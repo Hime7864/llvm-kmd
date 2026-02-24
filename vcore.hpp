@@ -11,22 +11,21 @@ struct VMEXIT_SHADOW
 
 	void set_tsc(VCORE* vCore, bool is_write)
 	{
-		auto ca = &vCore->vmcb.ControlArea;
+		auto vmcb = &vCore->vmcb;
+		auto ca = &vmcb->ControlArea;
 		auto storage = &vCore->storage;
 		auto gCtx = &storage->gCtx;
-
+		auto ssa = &vmcb->SaveStateArea;
 		if (is_write)
-		{
-			ca->TscOffset -= storage->efer.tsc_write;
-			if (gCtx->Rcx == 0xC0FFEEull && !tsc_write)
-				tsc_write = gCtx->Rdx;
-		}
+			ca->TscOffset -= tsc_write;
 		else
-		{
-			ca->TscOffset -= storage->efer.tsc_read;
-			if (gCtx->Rcx == 0xC0FFEEull && !tsc_read)
-				tsc_read = gCtx->Rdx;
-		}
+			ca->TscOffset -= tsc_read;
+
+		if (gCtx->Rdx == 0xDEAD01)
+			tsc_read = ssa->Rax;
+
+		if (gCtx->Rdx == 0xDEAD02)
+			tsc_write = ssa->Rax;
 		return;
 	}
 };
