@@ -921,13 +921,13 @@ struct xAPIC_REGISTERS
 
     bool isPending()
     {
-		return ((ICR_LOW*)((UINT64)this + 0x300))->DS == ICR_DS::SendPending;
-	}
+        return ((ICR_LOW*)((UINT64)this + 0x300))->DS == ICR_DS::SendPending;
+    }
 
     void WriteICR(ICR_LOW icr, ICR_HIGH dest)
     {
-        if(icr.DSH == ICR_DSH::Destination)
-		    *(UINT32*)((UINT64)this + 0x314) = dest.AsUINT32;
+        if (icr.DSH == ICR_DSH::Destination)
+            *(UINT32*)((UINT64)this + 0x314) = dest.AsUINT32;
         *(UINT32*)((UINT64)this + 0x300) = icr.AsUINT32;
         return;
     }
@@ -937,5 +937,21 @@ struct xAPIC_REGISTERS
             return;
         *(UINT32*)((UINT64)this + 0x300) = icr.AsUINT32;
         return;
+    }
+    void AddApicTimer(int delta)
+    {
+        UINT32 current = *(UINT32*)((UINT64)this + 0x390);
+        *(UINT32*)((UINT64)this + 0x380) = current + delta;
+        return;
+    }
+
+    UINT64 ApicTimerDivide()
+    {
+        return *(UINT32*)((UINT64)this + 0x3E0);
+    }
+
+    UINT64 ApicTimerCurrent()
+    {
+        return *(UINT32*)((UINT64)this + 0x390);
     }
 };
