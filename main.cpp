@@ -141,11 +141,13 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 					if (exitInfo1.MSR.isWrite)
 					{
 						storage->efer.data.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
+						ca->TscOffset -= storage->efer.tsc_write;
 					}
 					else
 					{
 						ssa->Rax = storage->efer.data.AsUINT64 & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->efer.data.AsUINT64 >> 32) & 0xFFFFFFFF;
+						ca->TscOffset -= storage->efer.tsc_read;
 					}
 				}break;
 				case MSR::_MSR_HSAVE_PA:
@@ -153,11 +155,13 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 					if (exitInfo1.MSR.isWrite)
 					{
 						storage->hsave.data = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
+						ca->TscOffset -= storage->hsave.tsc_write;
 					}
 					else
 					{
 						ssa->Rax = storage->hsave.data & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->hsave.data >> 32) & 0xFFFFFFFF;
+						ca->TscOffset -= storage->hsave.tsc_write;
 					}
 				}break;
 				default:

@@ -973,4 +973,8 @@ struct xAPIC_REGISTERS
         *(UINT32*)((UINT64)this + 0x380) = current + delta;
         return;
 	}
+    UINT64 ApicTimerCurrent()
+    {
+        return *(UINT32*)((UINT64)this + 0x390);
+	}
 };

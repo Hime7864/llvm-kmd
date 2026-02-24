@@ -28,19 +28,13 @@ private:
 
 	static void ControlArea();
 
-	static void broadcast_nmi();
+	static void CoreSynchronization();
 
 	static void NAKED VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb);
 
 	static void __attribute__((preserve_most)) VmExit(VCORE* vCore);
 
-	static void __attribute__((preserve_most)) NmiHandler();
-
-	static void NAKED NmiStub();
-
 	static void NAKED SaveCtx(VCORE* vCore);
-
-	static void CreateInterruptHandler();
 
 	static void NAKED LoadCtx(VCORE* vCore);
 

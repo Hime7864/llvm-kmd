@@ -4,12 +4,8 @@ template <typename TypeDelc>
 struct VMEXIT_SHADOW
 {
 	TypeDelc data;
-	UINT64 hw_tsc_write;
-	UINT64 hw_tsc_read;
-	UINT64 hv_tsc_write;
-	UINT64 hv_tsc_read;
-	DWORD cb_write;
-	DWORD cb_read;
+	UINT64 tsc_write;
+	UINT64 tsc_read;
 };
 
 struct ALIGN(4096) STORAGE
