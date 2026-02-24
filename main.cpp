@@ -163,7 +163,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 	_mm_lfence();
 	_mm_mfence();
-	auto tsc = __rdtsc();
+
+	//auto tsc = __rdtsc();
 	auto tsc_delta = (long long)((double)cpuMHz / 3);
 
 	if (exitCode == VMEXIT_INTR)
@@ -233,9 +234,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	}
 	if (tsc_delta)
 	{
-		_mm_lfence();
-		_mm_mfence();
-		tsc_delta += __rdtsc() - tsc;
+		tsc_delta += (__rdtsc() - storage->tsc);
 		ca->TscOffset -= tsc_delta;
 	}
 
