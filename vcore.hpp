@@ -1,11 +1,15 @@
 #pragma once
 
 template <typename TypeDelc>
-struct MSR_SHADOW
+struct VMEXIT_SHADOW
 {
 	TypeDelc data;
-	UINT64 tsc_write;
-	UINT64 tsc_read;
+	UINT64 hw_tsc_write;
+	UINT64 hw_tsc_read;
+	UINT64 hv_tsc_write;
+	UINT64 hv_tsc_read;
+	DWORD cb_write;
+	DWORD cb_read;
 };
 
 struct ALIGN(4096) STORAGE
@@ -14,8 +18,8 @@ struct ALIGN(4096) STORAGE
 	CONTEXT hCtx; // 0x04D0
 	PHYSICAL_ADDRESS vmcb; // 0x09A0
 	UINT64 tsc_first_sight; // 0x09A8
-	MSR_SHADOW<MSR_EFER> efer;
-	MSR_SHADOW<PHYSICAL_ADDRESS> hsave;
+	VMEXIT_SHADOW<MSR_EFER> efer;
+	VMEXIT_SHADOW<PHYSICAL_ADDRESS> hsave;
 };
 
 struct ALIGN(4096) VCORE

@@ -86,12 +86,12 @@ void SVM::ControlArea()
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
 	msrPm->write(MSR::_MSR_EFER, true);
-	storage->efer = MSR::EFER();
-	storage->efer.svme = false;
+	storage->efer.data = MSR::EFER();
+	storage->efer.data.svme = false;
 
 	msrPm->read(MSR::_MSR_HSAVE_PA, true);
 	msrPm->write(MSR::_MSR_HSAVE_PA, true);
-	storage->hsave = 0x0;
+	storage->hsave.data = 0x0;
 
 	controlArea->NestedPagingControl.NP_Enable = 1;
 	controlArea->NestedCr3 = gCr3;
@@ -124,13 +124,10 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	else
 	{
 		ca->Intercept.INTR = true;
-		ca->TscOffset -= storage->base_delta;
 		switch (exitCode)
 		{
 		case VMEXIT_VMMCALL:
 		{
-			ssa->Rax = ca->TscOffset;
-			gCtx->R10 = __rdtsc();
 
 		}break;
 		case VMEXIT_MSR:
@@ -143,27 +140,24 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				{
 					if (exitInfo1.MSR.isWrite)
 					{
-						ca->TscOffset -= storage->efer_delta;
-						storage->efer.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
+						storage->efer.data.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					}
 					else
 					{
-						ca->TscOffset -= storage->efer_delta;
-						ssa->Rax = storage->efer.AsUINT64 & 0xFFFFFFFF;
-						gCtx->Rdx = (storage->efer.AsUINT64 >> 32) & 0xFFFFFFFF;
+						ssa->Rax = storage->efer.data.AsUINT64 & 0xFFFFFFFF;
+						gCtx->Rdx = (storage->efer.data.AsUINT64 >> 32) & 0xFFFFFFFF;
 					}
 				}break;
 				case MSR::_MSR_HSAVE_PA:
 				{
-					ca->TscOffset -= storage->hsave_delta;
 					if (exitInfo1.MSR.isWrite)
 					{
-						storage->hsave = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
+						storage->hsave.data = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					}
 					else
 					{
-						ssa->Rax = storage->hsave & 0xFFFFFFFF;
-						gCtx->Rdx = (storage->hsave >> 32) & 0xFFFFFFFF;
+						ssa->Rax = storage->hsave.data & 0xFFFFFFFF;
+						gCtx->Rdx = (storage->hsave.data >> 32) & 0xFFFFFFFF;
 					}
 				}break;
 				default:
