@@ -165,7 +165,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto aperf_init = MSR::APERF();
 	auto tsc = __rdtsc();
 
-	auto tsc_delta = 2000;
+	auto base_freq = MSR::PSTATE(MSR::PSTATE_STATUS().CurPstate).get_frequency_mhz();
+	auto tsc_delta = (long long)((double)base_freq / 2.23);
 
 	if (exitCode == VMEXIT_INTR)
 	{
@@ -240,7 +241,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	}
 	else
 	{
-		tsc_delta = 2000;
+		tsc_delta = (long long)((double)base_freq / 2.23);
 		tsc_delta += (long long)((double)(__rdtsc() - tsc) * perf);
 		vaApicBase->AddApicTimer(tsc_delta);
 	}
