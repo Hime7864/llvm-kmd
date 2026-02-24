@@ -161,12 +161,9 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
 
-	auto mperf_init = MSR::MPERF();
-	auto aperf_init = MSR::APERF();
 	auto tsc = __rdtsc();
-
-	auto base_freq = MSR::PSTATE(MSR::PSTATE_STATUS().CurPstate).get_frequency_mhz();
-	auto tsc_delta = (long long)((double)base_freq / 2.23);
+;
+	auto tsc_delta = (long long)((double)cpuMHz / 2.8);
 
 	if (exitCode == VMEXIT_INTR)
 	{
@@ -232,18 +229,14 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			break;
 		}
 	}
-	auto perf = (double)(MSR::APERF() - aperf_init) / ((double)(MSR::MPERF() - mperf_init));
 	if (tsc_delta)
 	{
-		tsc_delta += (long long)((double)(__rdtsc() - tsc) * perf);
 		ca->TscOffset -= tsc_delta;
-		vaApicBase->AddApicTimer(tsc_delta);
+		vaApicBase->AddApicTimer(tsc_delta - (__rdtsc() - tsc));
 	}
 	else
 	{
-		tsc_delta = (long long)((double)base_freq / 2.23);
-		tsc_delta += (long long)((double)(__rdtsc() - tsc) * perf);
-		vaApicBase->AddApicTimer(tsc_delta);
+		vaApicBase->AddApicTimer(cpuMHz);
 	}
 
 	if(ca->NextRip)
