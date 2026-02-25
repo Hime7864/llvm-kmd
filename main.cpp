@@ -38,9 +38,9 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 
 		pop rax
 
-		vmload
+		//vmload
 		vmrun
-		vmsave
+		//vmsave
 
 		push rcx
 		mov rcx, [rsp + 0x08]
@@ -102,7 +102,6 @@ void SVM::ControlArea()
 
 	controlArea->Intercept.VMRUN = true;
 	controlArea->Intercept.VMMCALL = true;
-	controlArea->Intercept.RDTSC = true;
 
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
@@ -139,15 +138,24 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 	if (exitCode == VMEXIT_INTR)
 	{
+		storage->tsc_step = 0;
 		storage->tsc_first_sight = __rdtsc();
 		ca->TscOffset = 0;
 		ca->Intercept.INTR = false;
+		ca->Intercept.RDTSC = false;
 		ca->NextRip = 0;
 	}
 	else
 	{
 		auto init_tsc = ca->TscOffset;
 		ca->Intercept.INTR = true;
+		if (!ca->Intercept.RDTSC)
+		{
+			storage->tsc_step = 0;
+			storage->tsc_first_sight = __rdtsc();
+		}
+		ca->Intercept.RDTSC = true;
+		
 		switch (exitCode)
 		{
 		case VMEXIT_VMMCALL:
@@ -156,23 +164,12 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		}break;
 		case VMEXIT_RDTSC:
 		{
-			//auto mperf = storage->mperf_init - storage->mperf_last;
-			//auto aperf = storage->aperf_init - storage->aperf_last;
-			//double ratio = (double)aperf / (double)mperf;
-
-			//INT64 delta = 0;// (((INT64)((double)cpuMHz * ratio)) - cpuMHz) / 50ll;
-			if (!storage->tsc_step)
-			{
-				storage->tsc_step = __rdtsc() - __rdtsc() + 16;
-			}
-				
+			auto start = __rdtsc();
+			auto delta = __rdtsc() - start;
+			storage->tsc_step += delta;
 			storage->tsc_first_sight += storage->tsc_step;
-
-			
-
-			auto tsc = storage->tsc_first_sight;
-			ssa->Rax = tsc & 0xFFFFFFFFull;
-			gCtx->Rdx = (tsc >> 32) & 0xFFFFFFFFull;
+			ssa->Rax = storage->tsc_first_sight & 0xFFFFFFFFull;
+			gCtx->Rdx = (storage->tsc_first_sight >> 32) & 0xFFFFFFFFull;
 
 		}break;
 		case VMEXIT_MSR:
@@ -186,22 +183,23 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 					if (exitInfo1.MSR.isWrite)
 					{
 						auto efer = MSR::EFER();
-						_mm_mfence();
-						_mm_lfence();
 						auto tsc = __rdtsc();
 						MSR::EFER(efer);
-						storage->tsc_step = __rdtsc() - tsc;
+						storage->tsc_step = (__rdtsc() - tsc);
+						auto start = __rdtsc();
+						auto delta = __rdtsc() - start;
+						storage->tsc_step -= delta;
 
 						storage->efer.data.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					}
 					else
 					{
-						_mm_mfence();
-						_mm_lfence();
 						auto tsc = __rdtsc();
 						MSR::EFER();
-						storage->tsc_step = __rdtsc() - tsc;
-
+						storage->tsc_step = (__rdtsc() - tsc);
+						auto start = __rdtsc();
+						auto delta = __rdtsc() - start;
+						storage->tsc_step -= delta;
 						ssa->Rax = storage->efer.data.AsUINT64 & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->efer.data.AsUINT64 >> 32) & 0xFFFFFFFF;
 					}
@@ -212,22 +210,22 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 					if (exitInfo1.MSR.isWrite)
 					{
 						auto hsave_pa = MSR::HSAVE_PA();
-						_mm_mfence();
-						_mm_lfence();
 						auto tsc = __rdtsc();
 						MSR::HSAVE_PA(hsave_pa);
-						storage->tsc_step = __rdtsc() - tsc;
-
+						storage->tsc_step = (__rdtsc() - tsc);
+						auto start = __rdtsc();
+						auto delta = __rdtsc() - start;
+						storage->tsc_step -= delta;
 						storage->hsave.data = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					}
 					else
 					{
-						_mm_mfence();
-						_mm_lfence();
 						auto tsc = __rdtsc();
 						MSR::HSAVE_PA();
-						storage->tsc_step = __rdtsc() - tsc;
-
+						storage->tsc_step = (__rdtsc() - tsc);
+						auto start = __rdtsc();
+						auto delta = __rdtsc() - start;
+						storage->tsc_step -= delta;
 						ssa->Rax = storage->hsave.data & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->hsave.data >> 32) & 0xFFFFFFFF;
 					}
