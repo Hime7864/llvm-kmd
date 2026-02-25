@@ -324,11 +324,15 @@ void SVM::LaunchVm()
 {
 	KeIpiGenericCall(LaunchCore, nullptr);
 	auto sync = (TSC_SYNC*)ExAllocatePool(NonPagedPool, 0x1000);
-
+	Sleep(100);
 	sync->efer.read = efer_read() - 80;
+	Sleep(100);
 	sync->efer.write = efer_write() - 80;
+	Sleep(100);
 	sync->hsave.read = hsave_read() - 80;
+	Sleep(100);
 	sync->hsave.write = hsave_write() - 80;
+	Sleep(100);
 	
 	printf("TSC EFER Read: %llu\n", sync->efer.read);
 	printf("TSC EFER Write: %llu\n", sync->efer.write);
