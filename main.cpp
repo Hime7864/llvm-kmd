@@ -247,6 +247,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 					auto start = __rdtsc();
 					auto delta = __rdtsc() - start;
 					storage->tsc_step -= delta;
+					storage->tsc_first_sight += storage->tsc_step;
 					ssa->Rax = storage->tsc_first_sight & 0xFFFFFFFFull;
 					gCtx->Rdx = (storage->tsc_first_sight >> 32) & 0xFFFFFFFFull;
 				}break;
