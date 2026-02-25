@@ -37,9 +37,9 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		call LoadCtx
 
 		pop rax
-		//vmload
+		vmload
 		vmrun
-		//vmsave
+		vmsave
 
 		push rcx
 		mov rcx, [rsp + 0x08]
