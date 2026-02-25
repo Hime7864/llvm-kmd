@@ -37,9 +37,9 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		call LoadCtx
 
 		pop rax
-		vmload
+		//vmload
 		vmrun
-		vmsave
+		//vmsave
 
 		push rcx
 		mov rcx, [rsp + 0x08]
@@ -207,10 +207,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		auto step_delta = (INT64)step - (INT64)cpuMHz;
 		ca->TscOffset += (step_delta / 5);
 
-		if (!init_tsc && ca->TscOffset)
-			ca->TscOffset -= (INT64)((tsc - storage->tsc_first_sight + step_delta) * mutiplier);
-		else
-			ca->TscOffset -= (INT64)(tsc - storage->tsc_first_sight);
+		ca->TscOffset -= (INT64)(tsc - storage->tsc_first_sight);
 		
 
 	}

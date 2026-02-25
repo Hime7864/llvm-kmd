@@ -11,12 +11,12 @@ void NAKED SVM::SaveCtx(VCORE* vCore)
 		mov[rcx + 0xC0], r9
 		mov[rcx + 0xC8], r10
 		mov[rcx + 0xD0], r11
-		movaps xmmword ptr[rcx + 0x1A0], xmm0
-		movaps xmmword ptr[rcx + 0x1B0], xmm1
-		movaps xmmword ptr[rcx + 0x1C0], xmm2
-		movaps xmmword ptr[rcx + 0x1D0], xmm3
-		movaps xmmword ptr[rcx + 0x1E0], xmm4
-		movaps xmmword ptr[rcx + 0x1F0], xmm5
+		//movaps xmmword ptr[rcx + 0x1A0], xmm0
+		//movaps xmmword ptr[rcx + 0x1B0], xmm1
+		//movaps xmmword ptr[rcx + 0x1C0], xmm2
+		//movaps xmmword ptr[rcx + 0x1D0], xmm3
+		//movaps xmmword ptr[rcx + 0x1E0], xmm4
+		//movaps xmmword ptr[rcx + 0x1F0], xmm5
 		mov[rcx + 0x90], rbx
 		mov[rcx + 0xA0], rbp
 		mov[rcx + 0xA8], rsi
@@ -26,16 +26,16 @@ void NAKED SVM::SaveCtx(VCORE* vCore)
 		mov[rcx + 0xE8], r14
 		mov[rcx + 0xF0], r15
 		fnstcw word ptr[rcx + 0x100]
-		movaps xmmword ptr[rcx + 0x200], xmm6
-		movaps xmmword ptr[rcx + 0x210], xmm7
-		movaps xmmword ptr[rcx + 0x220], xmm8
-		movaps xmmword ptr[rcx + 0x230], xmm9
-		movaps xmmword ptr[rcx + 0x240], xmm10
-		movaps xmmword ptr[rcx + 0x250], xmm11
-		movaps xmmword ptr[rcx + 0x260], xmm12
-		movaps xmmword ptr[rcx + 0x270], xmm13
-		movaps xmmword ptr[rcx + 0x280], xmm14
-		movaps xmmword ptr[rcx + 0x290], xmm15
+		//movaps xmmword ptr[rcx + 0x200], xmm6
+		//movaps xmmword ptr[rcx + 0x210], xmm7
+		//movaps xmmword ptr[rcx + 0x220], xmm8
+		//movaps xmmword ptr[rcx + 0x230], xmm9
+		//movaps xmmword ptr[rcx + 0x240], xmm10
+		//movaps xmmword ptr[rcx + 0x250], xmm11
+		//movaps xmmword ptr[rcx + 0x260], xmm12
+		//movaps xmmword ptr[rcx + 0x270], xmm13
+		//movaps xmmword ptr[rcx + 0x280], xmm14
+		//movaps xmmword ptr[rcx + 0x290], xmm15
 		stmxcsr dword ptr[rcx + 0x118]
 		stmxcsr dword ptr[rcx + 0x34]
 		lea rax, [rsp + 0x10]
@@ -57,12 +57,12 @@ void NAKED SVM::LoadCtx(VCORE* vCore)
 		mov r9, [rcx + 0xC0]
 		mov r10, [rcx + 0xC8]
 		mov r11, [rcx + 0xD0]
-		movaps xmm0, xmmword ptr[rcx + 0x1A0]
-		movaps xmm1, xmmword ptr[rcx + 0x1B0]
-		movaps xmm2, xmmword ptr[rcx + 0x1C0]
-		movaps xmm3, xmmword ptr[rcx + 0x1D0]
-		movaps xmm4, xmmword ptr[rcx + 0x1E0]
-		movaps xmm5, xmmword ptr[rcx + 0x1F0]
+		//movaps xmm0, xmmword ptr[rcx + 0x1A0]
+		//movaps xmm1, xmmword ptr[rcx + 0x1B0]
+		//movaps xmm2, xmmword ptr[rcx + 0x1C0]
+		//movaps xmm3, xmmword ptr[rcx + 0x1D0]
+		//movaps xmm4, xmmword ptr[rcx + 0x1E0]
+		//movaps xmm5, xmmword ptr[rcx + 0x1F0]
 		mov rbx, [rcx + 0x90]
 		mov rbp, [rcx + 0xA0]
 		mov rsi, [rcx + 0xA8]
@@ -72,16 +72,16 @@ void NAKED SVM::LoadCtx(VCORE* vCore)
 		mov r14, [rcx + 0xE8]
 		mov r15, [rcx + 0xF0]
 		fldcw word ptr[rcx + 0x100]
-		movaps xmm6, xmmword ptr[rcx + 0x200]
-		movaps xmm7, xmmword ptr[rcx + 0x210]
-		movaps xmm8, xmmword ptr[rcx + 0x220]
-		movaps xmm9, xmmword ptr[rcx + 0x230]
-		movaps xmm10, xmmword ptr[rcx + 0x240]
-		movaps xmm11, xmmword ptr[rcx + 0x250]
-		movaps xmm12, xmmword ptr[rcx + 0x260]
-		movaps xmm13, xmmword ptr[rcx + 0x270]
-		movaps xmm14, xmmword ptr[rcx + 0x280]
-		movaps xmm15, xmmword ptr[rcx + 0x290]
+		//movaps xmm6, xmmword ptr[rcx + 0x200]
+		//movaps xmm7, xmmword ptr[rcx + 0x210]
+		//movaps xmm8, xmmword ptr[rcx + 0x220]
+		//movaps xmm9, xmmword ptr[rcx + 0x230]
+		//movaps xmm10, xmmword ptr[rcx + 0x240]
+		//movaps xmm11, xmmword ptr[rcx + 0x250]
+		//movaps xmm12, xmmword ptr[rcx + 0x260]
+		//movaps xmm13, xmmword ptr[rcx + 0x270]
+		//movaps xmm14, xmmword ptr[rcx + 0x280]
+		//movaps xmm15, xmmword ptr[rcx + 0x290]
 		ldmxcsr dword ptr[rcx + 0x118]
 		ldmxcsr dword ptr[rcx + 0x34]
 		mov eax, [rcx + 0x44]
