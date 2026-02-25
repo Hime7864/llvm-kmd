@@ -189,63 +189,155 @@ void SVM::CoreSynchronization(TSC_SYNC* sync)
 	return;
 }
 
+
+void efer_read_ipi(UINT64* min)
+{
+	auto id = CPUID::current_core_number();
+	min[id] = 0xFFFFFFFF;
+	for (int i = 0; i < 10000; i++)
+	{
+		auto count = __rdtsc();
+		MSR::EFER();
+		count = __rdtsc() - count;
+		if (min[id] > count)
+			min[id] = count;
+	}
+	return;
+}
+
+UINT64 efer_read()
+{
+	auto efer_tsc = (UINT64*)ExAllocatePool(NonPagedPool, 0x1000);
+
+	KeIpiGenericCall(efer_read_ipi, efer_tsc);
+
+	UINT64 min = 0xFFFFFFFF;
+	for (int i = 0; i < KeQueryActiveProcessorCount(0); i++)
+	{
+		if (min > efer_tsc[i])
+			min = efer_tsc[i];
+	}
+
+	ExFreePool(efer_tsc);
+	return min - 50;
+}
+
+void efer_write_ipi(UINT64* min)
+{
+	auto id = CPUID::current_core_number();
+	const auto efer = MSR::EFER();
+	min[id] = 0xFFFFFFFF;
+	for (int i = 0; i < 10000; i++)
+	{
+		auto count = __rdtsc();
+		MSR::EFER(efer);
+		count = __rdtsc() - count;
+		if (min[id] > count)
+			min[id] = count;
+	}
+	return;
+}
+
+UINT64 efer_write()
+{
+	auto efer_tsc = (UINT64*)ExAllocatePool(NonPagedPool, 0x1000);
+
+	KeIpiGenericCall(efer_write_ipi, efer_tsc);
+
+	UINT64 min = 0xFFFFFFFF;
+	for (int i = 0; i < KeQueryActiveProcessorCount(0); i++)
+	{
+		if (min > efer_tsc[i])
+			min = efer_tsc[i];
+	}
+
+	ExFreePool(efer_tsc);
+	return min - 50;
+}
+
+void hsave_read_ipi(UINT64* min)
+{
+	auto id = CPUID::current_core_number();
+	min[id] = 0xFFFFFFFF;
+	for (int i = 0; i < 10000; i++)
+	{
+		auto count = __rdtsc();
+		MSR::HSAVE_PA();
+		count = __rdtsc() - count;
+		if (min[id] > count)
+			min[id] = count;
+	}
+	return;
+}
+
+UINT64 hsave_read()
+{
+	auto hsave_tsc = (UINT64*)ExAllocatePool(NonPagedPool, 0x1000);
+
+	KeIpiGenericCall(hsave_read_ipi, hsave_tsc);
+
+	UINT64 min = 0xFFFFFFFF;
+	for (int i = 0; i < KeQueryActiveProcessorCount(0); i++)
+	{
+		if (min > hsave_tsc[i])
+			min = hsave_tsc[i];
+	}
+
+	ExFreePool(hsave_tsc);
+	return min - 50;
+}
+
+void hsave_write_ipi(UINT64* min)
+{
+	auto id = CPUID::current_core_number();
+	const auto hsave = MSR::HSAVE_PA();
+	min[id] = 0xFFFFFFFF;
+	for (int i = 0; i < 10000; i++)
+	{
+		auto count = __rdtsc();
+		MSR::HSAVE_PA(hsave);
+		count = __rdtsc() - count;
+		if (min[id] > count)
+			min[id] = count;
+	}
+	return;
+}
+
+UINT64 hsave_write()
+{
+	auto hsave_tsc = (UINT64*)ExAllocatePool(NonPagedPool, 0x1000);
+
+	KeIpiGenericCall(hsave_write_ipi, hsave_tsc);
+
+	UINT64 min = 0xFFFFFFFF;
+	for (int i = 0; i < KeQueryActiveProcessorCount(0); i++)
+	{
+		if (min > hsave_tsc[i])
+			min = hsave_tsc[i];
+	}
+
+	ExFreePool(hsave_tsc);
+	return min - 50;
+}
+
 void SVM::LaunchVm()
 {
 	KeIpiGenericCall(LaunchCore, nullptr);
 	Sleep(500);
-	//auto sync = (TSC_SYNC*)ExAllocatePool(NonPagedPool, 0x1000);
-	//auto irql = __readcr8();
-	//__writecr8(15);
-	//int interval = 12500;
-	//sync->efer.read = 0xFFFFFFFF;
-	//for (int i = 0; i < interval; i++)
-	//{
-	//	auto tsc = __rdtsc();
-	//	MSR::EFER();
-	//	tsc = __rdtsc() - tsc;
-	//	if (tsc < sync->efer.read)
-	//		sync->efer.read = tsc;
-	//}
-	//
-	//auto efer = MSR::EFER();
-	//sync->efer.write = 0xFFFFFFFF;
-	//for (int i = 0; i < interval; i++)
-	//{
-	//	auto tsc = __rdtsc();
-	//	MSR::EFER(efer);
-	//	tsc = __rdtsc() - tsc;
-	//	if (tsc < sync->efer.write)
-	//		sync->efer.write = tsc;
-	//}
-	//
-	//sync->hsave.read = 0xFFFFFFFF;
-	//for (int i = 0; i < interval; i++)
-	//{
-	//	auto tsc = __rdtsc();
-	//	MSR::HSAVE_PA();
-	//	tsc = __rdtsc() - tsc;
-	//	if (tsc < sync->hsave.read)
-	//		sync->hsave.read = tsc;
-	//}
-	//
-	//auto hsave = MSR::HSAVE_PA();
-	//sync->hsave.write = 0xFFFFFFFF;
-	//for (int i = 0; i < interval; i++)
-	//{
-	//	auto tsc = __rdtsc();
-	//	MSR::HSAVE_PA(hsave);
-	//	tsc = __rdtsc() - tsc;
-	//	if (tsc < sync->hsave.write)
-	//		sync->hsave.write = tsc;
-	//}
-	//
-	//__writecr8(irql);
-	//printf("TSC EFER Read: %llu\n", sync->efer.read);
-	//printf("TSC EFER Write: %llu\n", sync->efer.write);
-	//printf("TSC HSAVE Read: %llu\n", sync->hsave.read);
-	//printf("TSC HSAVE Write: %llu\n", sync->hsave.write);
-	//KeIpiGenericCall(CoreSynchronization, sync);
-	//RtlFillMemory(sync, 0x1000, 0x0);
-	//ExFreePool(sync);
+	auto sync = (TSC_SYNC*)ExAllocatePool(NonPagedPool, 0x1000);
+
+	sync->efer.read = efer_read();
+	sync->efer.write = efer_write();
+	sync->hsave.read = hsave_read();
+	sync->hsave.write = hsave_write();
+	
+	printf("TSC EFER Read: %llu\n", sync->efer.read);
+	printf("TSC EFER Write: %llu\n", sync->efer.write);
+	printf("TSC HSAVE Read: %llu\n", sync->hsave.read);
+	printf("TSC HSAVE Write: %llu\n", sync->hsave.write);
+
+	KeIpiGenericCall(CoreSynchronization, sync);
+	RtlFillMemory(sync, 0x1000, 0x0);
+	ExFreePool(sync);
 	return;
 }
