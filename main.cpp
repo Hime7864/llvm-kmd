@@ -208,7 +208,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		ca->TscOffset += (step_delta / 5);
 
 		if (!init_tsc && ca->TscOffset)
-			ca->TscOffset -= (INT64)((tsc - storage->tsc_first_sight + step_delta) * mutiplier) + (cpuMHz / 3);
+			ca->TscOffset -= (INT64)((tsc - storage->tsc_first_sight + step_delta) * mutiplier);
 		else
 			ca->TscOffset -= (INT64)(tsc - storage->tsc_first_sight);
 		
