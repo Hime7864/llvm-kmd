@@ -24,7 +24,7 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 {
 	__asm {
 		mov rax, rsp
-		lea rsp, [rcx + 0x2800]
+		lea rsp, [rcx + 0x3800]
 		push rax
 	loop:
 		lea rcx, [rcx + 0x04D0]
