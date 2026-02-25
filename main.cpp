@@ -37,18 +37,35 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		call LoadCtx
 
 		pop rax
-		vmload
+		//vmload
 		vmrun
-		vmsave
+		//vmsave
 
 		push rcx
 		mov rcx, [rsp + 0x08]
 		push rdx
+		push rax
 
 		rdtsc
 		mov[rcx + 0x9A8], eax
 		mov[rcx + 0x9AC], edx
+		//// aperf
+		//push rcx
+		//mov ecx, 0xE8ul
+		//rdmsr
+		//pop rcx
+		//mov[rcx + 0x9B0], eax
+		//mov[rcx + 0x9B4], edx
+		//// mperf
+		//push rcx
+		//mov ecx, 0xE7ul
+		//rdmsr
+		//pop rcx
+		//mov[rcx + 0x9B8], eax
+		//mov[rcx + 0x9BC], edx
 
+
+		pop rax
 		pop rdx
 		call SaveCtx
 		pop rax
@@ -120,13 +137,13 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	}
 	else
 	{
+		auto init_tsc = ca->TscOffset;
 		ca->Intercept.INTR = true;
 		switch (exitCode)
 		{
 		case VMEXIT_VMMCALL:
 		{
-			ssa->Rax = storage->efer.tsc_read;
-			gCtx->Rbx = (__rdtsc() - storage->tsc_first_sight);
+			ssa->Rax = storage->mperf_init;
 		}break;
 		case VMEXIT_MSR:
 		{
