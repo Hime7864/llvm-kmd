@@ -634,6 +634,7 @@ extern "C"
             mov edx, high
             wrmsr
         }
+        return;
     }
 
     UINT64 __rdtscp(_Out_ UINT32* aux)
