@@ -143,7 +143,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		{
 		case VMEXIT_VMMCALL:
 		{
-			ssa->Rax = storage->mperf_init;
+
 		}break;
 		case VMEXIT_MSR:
 		{
