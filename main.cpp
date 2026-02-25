@@ -50,6 +50,7 @@ void measure_efer()
 	KeIpiGenericCall(efer_ipi, efer_tsc);
 
 	UINT64 delta = 0;
+	int count = 0;
 	for (int i = 0; i < KeQueryActiveProcessorCount(0); i++)
 	{
 		if (((CORE_TSC*)efer_tsc)[i].pstate == 0 && ((CORE_TSC*)efer_tsc)[i].mutipler > 1.0)
@@ -64,8 +65,11 @@ void measure_efer()
 				((CORE_TSC*)efer_tsc)[i].mutipler
 			);
 			delta += ((CORE_TSC*)efer_tsc)[i].min_latency;
+			count++;
 		}
 	}
+	delta /= count;
+	printf("Average EFER latency: %llu\n", delta);
 
 	ExFreePool(efer_tsc);
 }
