@@ -46,8 +46,8 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		push rdx
 		push rax
 
-		lfence
-		mfence
+		//lfence
+		//mfence
 		rdtsc
 		mov[rcx + 0x9A8], eax
 		mov[rcx + 0x9AC], edx
@@ -197,8 +197,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			break;
 		}
 
-		_mm_mfence();
-		_mm_lfence();
+		//_mm_mfence();
+		//_mm_lfence();
 		auto tsc = __rdtsc();
 		auto aperf = MSR::APERF() - storage->aperf_init;
 		auto mperf = MSR::MPERF() - storage->mperf_init;
