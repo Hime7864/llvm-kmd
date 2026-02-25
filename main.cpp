@@ -15,7 +15,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	
 	SVM::LaunchVm();
 	
-	SVM::Cleanup();
+	//SVM::Cleanup();
 	printf("SVM Hypervisor Driver Unloaded\n");
 	return STATUS_SUCCESS;
 }
@@ -176,7 +176,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		default:
 			break;
 		}
-		ca->TscOffset -= (__rdtsc() - storage->tsc_first_sight);
+		printf("(%i) %i", CPUID::current_core_number(), (__rdtsc() - storage->tsc_first_sight));
+		//ca->TscOffset -= (__rdtsc() - storage->tsc_first_sight);
 	}
 
 	if(ca->NextRip)

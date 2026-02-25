@@ -165,12 +165,12 @@ void SVM::LaunchCore(int affinity)
 
 	__vmsave(storage->vmcb);
 
-	auto old = __readcr3();
-	__writecr3(hCr3);
+	//auto old = __readcr3();
+	//__writecr3(hCr3);
 
 	VmLoop(vCore, storage->vmcb);
 	
-	__writecr3(old);
+	//__writecr3(old);
 
 	return;
 }
@@ -192,60 +192,60 @@ void SVM::CoreSynchronization(TSC_SYNC* sync)
 void SVM::LaunchVm()
 {
 	KeIpiGenericCall(LaunchCore, nullptr);
-	Sleep(500);
-	auto sync = (TSC_SYNC*)ExAllocatePool(NonPagedPool, 0x1000);
-	auto irql = __readcr8();
-	__writecr8(15);
-	int interval = 12500;
-	sync->efer.read = 0xFFFFFFFF;
-	for (int i = 0; i < interval; i++)
-	{
-		auto tsc = __rdtsc();
-		MSR::EFER();
-		tsc = __rdtsc() - tsc;
-		if (tsc < sync->efer.read)
-			sync->efer.read = tsc;
-	}
-
-	auto efer = MSR::EFER();
-	sync->efer.write = 0xFFFFFFFF;
-	for (int i = 0; i < interval; i++)
-	{
-		auto tsc = __rdtsc();
-		MSR::EFER(efer);
-		tsc = __rdtsc() - tsc;
-		if (tsc < sync->efer.write)
-			sync->efer.write = tsc;
-	}
-
-	sync->hsave.read = 0xFFFFFFFF;
-	for (int i = 0; i < interval; i++)
-	{
-		auto tsc = __rdtsc();
-		MSR::HSAVE_PA();
-		tsc = __rdtsc() - tsc;
-		if (tsc < sync->hsave.read)
-			sync->hsave.read = tsc;
-	}
-	
-	auto hsave = MSR::HSAVE_PA();
-	sync->hsave.write = 0xFFFFFFFF;
-	for (int i = 0; i < interval; i++)
-	{
-		auto tsc = __rdtsc();
-		MSR::HSAVE_PA(hsave);
-		tsc = __rdtsc() - tsc;
-		if (tsc < sync->hsave.write)
-			sync->hsave.write = tsc;
-	}
-
-	__writecr8(irql);
-	printf("TSC EFER Read: %llu\n", sync->efer.read);
-	printf("TSC EFER Write: %llu\n", sync->efer.write);
-	printf("TSC HSAVE Read: %llu\n", sync->hsave.read);
-	printf("TSC HSAVE Write: %llu\n", sync->hsave.write);
-	KeIpiGenericCall(CoreSynchronization, sync);
-	RtlFillMemory(sync, 0x1000, 0x0);
-	ExFreePool(sync);
+	//Sleep(500);
+	//auto sync = (TSC_SYNC*)ExAllocatePool(NonPagedPool, 0x1000);
+	//auto irql = __readcr8();
+	//__writecr8(15);
+	//int interval = 12500;
+	//sync->efer.read = 0xFFFFFFFF;
+	//for (int i = 0; i < interval; i++)
+	//{
+	//	auto tsc = __rdtsc();
+	//	MSR::EFER();
+	//	tsc = __rdtsc() - tsc;
+	//	if (tsc < sync->efer.read)
+	//		sync->efer.read = tsc;
+	//}
+	//
+	//auto efer = MSR::EFER();
+	//sync->efer.write = 0xFFFFFFFF;
+	//for (int i = 0; i < interval; i++)
+	//{
+	//	auto tsc = __rdtsc();
+	//	MSR::EFER(efer);
+	//	tsc = __rdtsc() - tsc;
+	//	if (tsc < sync->efer.write)
+	//		sync->efer.write = tsc;
+	//}
+	//
+	//sync->hsave.read = 0xFFFFFFFF;
+	//for (int i = 0; i < interval; i++)
+	//{
+	//	auto tsc = __rdtsc();
+	//	MSR::HSAVE_PA();
+	//	tsc = __rdtsc() - tsc;
+	//	if (tsc < sync->hsave.read)
+	//		sync->hsave.read = tsc;
+	//}
+	//
+	//auto hsave = MSR::HSAVE_PA();
+	//sync->hsave.write = 0xFFFFFFFF;
+	//for (int i = 0; i < interval; i++)
+	//{
+	//	auto tsc = __rdtsc();
+	//	MSR::HSAVE_PA(hsave);
+	//	tsc = __rdtsc() - tsc;
+	//	if (tsc < sync->hsave.write)
+	//		sync->hsave.write = tsc;
+	//}
+	//
+	//__writecr8(irql);
+	//printf("TSC EFER Read: %llu\n", sync->efer.read);
+	//printf("TSC EFER Write: %llu\n", sync->efer.write);
+	//printf("TSC HSAVE Read: %llu\n", sync->hsave.read);
+	//printf("TSC HSAVE Write: %llu\n", sync->hsave.write);
+	//KeIpiGenericCall(CoreSynchronization, sync);
+	//RtlFillMemory(sync, 0x1000, 0x0);
+	//ExFreePool(sync);
 	return;
 }
