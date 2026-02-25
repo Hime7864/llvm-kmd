@@ -134,14 +134,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		ca->TscOffset = 0;
 		ca->Intercept.INTR = false;
 		ca->NextRip = 0;
-		ca->Intercept.RDTSC = true;
-	}
-	else if (exitCode == VMEXIT_RDTSC)
-	{
-		UINT64 tsc = storage->tsc_first_sight - cpuMHz;
-		ssa->Rax = tsc & 0xFFFFFFFF;
-		gCtx->Rdx = (tsc >> 32) & 0xFFFFFFFF;
-		ca->Intercept.RDTSC = false;
 	}
 	else
 	{
@@ -202,6 +194,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		default:
 			break;
 		}
+		if (!init_tsc && ca->TscOffset)
+			ca->TscOffset -= (cpuMHz * 2) / 3;
 		ca->TscOffset -= (__rdtsc() - storage->tsc_first_sight);
 	}
 
