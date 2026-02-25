@@ -103,6 +103,8 @@ void SVM::ControlArea()
 	controlArea->Intercept.VMRUN = true;
 	controlArea->Intercept.VMMCALL = true;
 
+	msrPm->read(MSR::_MSR_TSC, true);
+
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
 	msrPm->write(MSR::_MSR_EFER, true);
@@ -143,6 +145,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		ca->TscOffset = 0;
 		ca->Intercept.INTR = false;
 		ca->Intercept.RDTSC = false;
+		ca->Intercept.RDTSCP = false;
 		ca->NextRip = 0;
 	}
 	else
@@ -155,6 +158,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			storage->tsc_first_sight = __rdtsc();
 		}
 		ca->Intercept.RDTSC = true;
+		ca->Intercept.RDTSCP = true;
 		
 		switch (exitCode)
 		{
@@ -163,6 +167,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 		}break;
 		case VMEXIT_RDTSC:
+		case VMEXIT_RDTSCP:
 		{
 			auto start = __rdtsc();
 			auto delta = __rdtsc() - start;
@@ -170,6 +175,10 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			storage->tsc_first_sight += storage->tsc_step;
 			ssa->Rax = storage->tsc_first_sight & 0xFFFFFFFFull;
 			gCtx->Rdx = (storage->tsc_first_sight >> 32) & 0xFFFFFFFFull;
+			if (exitCode == VMEXIT_RDTSCP)
+			{
+				gCtx->Rcx = CPUID::current_core_number() & 0xFFFFFFFFull;
+			}
 
 		}break;
 		case VMEXIT_MSR:
@@ -229,6 +238,17 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 						ssa->Rax = storage->hsave.data & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->hsave.data >> 32) & 0xFFFFFFFF;
 					}
+				}break;
+				case MSR::_MSR_TSC:
+				{
+					auto tsc_probe = __rdtsc();
+					MSR::TSC();
+					storage->tsc_step = (__rdtsc() - tsc_probe);
+					auto start = __rdtsc();
+					auto delta = __rdtsc() - start;
+					storage->tsc_step -= delta;
+					ssa->Rax = storage->tsc_first_sight & 0xFFFFFFFFull;
+					gCtx->Rdx = (storage->tsc_first_sight >> 32) & 0xFFFFFFFFull;
 				}break;
 				default:
 					break;
