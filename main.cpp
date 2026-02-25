@@ -126,6 +126,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		case VMEXIT_VMMCALL:
 		{
 			ssa->Rax = storage->efer.tsc_read;
+			gCtx->Rbx = (__rdtsc() - storage->tsc_first_sight);
 		}break;
 		case VMEXIT_MSR:
 		{
@@ -176,7 +177,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		default:
 			break;
 		}
-		printf("(%i) %i", CPUID::current_core_number(), (__rdtsc() - storage->tsc_first_sight));
 		//ca->TscOffset -= (__rdtsc() - storage->tsc_first_sight);
 	}
 

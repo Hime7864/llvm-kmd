@@ -129,7 +129,7 @@ NTSTATUS volatile start()
 		status = resolve_sigged_imports();
 		if (NT_SUCCESS(status))
 			status = DriverEntry(nullptr, nullptr);
-		//CleanupDriver();
+		CleanupDriver();
 		KeUnstackDetachProcess(&apc);
 	}
 	return status;
