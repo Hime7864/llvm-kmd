@@ -194,7 +194,7 @@ void efer_read_ipi(UINT64* min)
 {
 	auto id = CPUID::current_core_number();
 	min[id] = 0xFFFFFFFF;
-	for (int i = 0; i < 10000; i++)
+	for (int i = 0; i < 20000; i++)
 	{
 		auto count = __rdtsc();
 		MSR::EFER();
@@ -219,7 +219,7 @@ UINT64 efer_read()
 	}
 
 	ExFreePool(efer_tsc);
-	return min - 50;
+	return min;
 }
 
 void efer_write_ipi(UINT64* min)
@@ -227,7 +227,7 @@ void efer_write_ipi(UINT64* min)
 	auto id = CPUID::current_core_number();
 	const auto efer = MSR::EFER();
 	min[id] = 0xFFFFFFFF;
-	for (int i = 0; i < 10000; i++)
+	for (int i = 0; i < 20000; i++)
 	{
 		auto count = __rdtsc();
 		MSR::EFER(efer);
@@ -252,14 +252,14 @@ UINT64 efer_write()
 	}
 
 	ExFreePool(efer_tsc);
-	return min - 50;
+	return min;
 }
 
 void hsave_read_ipi(UINT64* min)
 {
 	auto id = CPUID::current_core_number();
 	min[id] = 0xFFFFFFFF;
-	for (int i = 0; i < 10000; i++)
+	for (int i = 0; i < 20000; i++)
 	{
 		auto count = __rdtsc();
 		MSR::HSAVE_PA();
@@ -284,7 +284,7 @@ UINT64 hsave_read()
 	}
 
 	ExFreePool(hsave_tsc);
-	return min - 50;
+	return min;
 }
 
 void hsave_write_ipi(UINT64* min)
@@ -292,7 +292,7 @@ void hsave_write_ipi(UINT64* min)
 	auto id = CPUID::current_core_number();
 	const auto hsave = MSR::HSAVE_PA();
 	min[id] = 0xFFFFFFFF;
-	for (int i = 0; i < 10000; i++)
+	for (int i = 0; i < 20000; i++)
 	{
 		auto count = __rdtsc();
 		MSR::HSAVE_PA(hsave);
@@ -317,19 +317,18 @@ UINT64 hsave_write()
 	}
 
 	ExFreePool(hsave_tsc);
-	return min - 50;
+	return min;
 }
 
 void SVM::LaunchVm()
 {
 	KeIpiGenericCall(LaunchCore, nullptr);
-	Sleep(500);
 	auto sync = (TSC_SYNC*)ExAllocatePool(NonPagedPool, 0x1000);
 
-	sync->efer.read = efer_read();
-	sync->efer.write = efer_write();
-	sync->hsave.read = hsave_read();
-	sync->hsave.write = hsave_write();
+	sync->efer.read = efer_read() - 80;
+	sync->efer.write = efer_write() - 80;
+	sync->hsave.read = hsave_read() - 80;
+	sync->hsave.write = hsave_write() - 80;
 	
 	printf("TSC EFER Read: %llu\n", sync->efer.read);
 	printf("TSC EFER Write: %llu\n", sync->efer.write);
