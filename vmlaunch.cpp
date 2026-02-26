@@ -179,5 +179,7 @@ void SVM::LaunchCore(int affinity)
 void SVM::LaunchVm()
 {
 	KeIpiGenericCall(LaunchCore, nullptr);
+	_mm_mfence();
+	_mm_lfence();
 	return;
 }
