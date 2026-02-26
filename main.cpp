@@ -60,31 +60,10 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		call LoadCtx
 		pop rax
 
-		vmload
 		vmrun
-		vmsave
 
 		push rcx
 		mov rcx, [rsp + 0x08]
-		//push rdx
-		//push rax
-		//
-		//push rcx
-		//mov ecx, 0xE8ul// aperf
-		//rdmsr
-		//pop rcx
-		//mov[rcx + 0x9B8], eax
-		//mov[rcx + 0x9BC], edx
-		//
-		//push rcx
-		//mov ecx, 0xE7ul// mperf
-		//rdmsr
-		//pop rcx
-		//mov[rcx + 0x9C0], eax
-		//mov[rcx + 0x9C4], edx
-		//
-		//pop rax
-		//pop rdx
 		call SaveCtx
 		pop rax
 		mov[rcx + 0x80], rax
@@ -209,13 +188,13 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				{
 				case MSR::_MSR_APERF:
 				{
-					auto aperf = storage->aperf_init - (storage->tsc_first_sight - storage->tsc_init) * 12;
+					auto aperf = storage->aperf_init - (INT64)((double)(storage->tsc_first_sight - storage->tsc_init) * 7.73);
 					ssa->Rax = aperf & 0xFFFFFFFFull;
 					gCtx->Rdx = (aperf >> 32) & 0xFFFFFFFFull;
 				}break;
 				case MSR::_MSR_MPERF:
 				{
-					auto mperf = storage->mperf_init - (storage->tsc_first_sight - storage->tsc_init) * 10;
+					auto mperf = storage->mperf_init - (INT64)((double)(storage->tsc_first_sight - storage->tsc_init) * 6.3);
 					ssa->Rax = mperf & 0xFFFFFFFFull;
 					gCtx->Rdx = (mperf >> 32) & 0xFFFFFFFFull;
 				}break;
@@ -226,14 +205,30 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 						auto efer = MSR::EFER();
 						auto tsc = __rdtsc();
 						MSR::EFER(efer);
-						storage->tsc_step = (__rdtsc() - tsc);
+						tsc = (__rdtsc() - tsc);
+						auto tsc2 = __rdtsc();
+						MSR::EFER(efer);
+						tsc2 = (__rdtsc() - tsc2);
+						auto delta = (tsc - tsc2) * 3;
+
+						if (tsc - 40 < delta)
+							delta = tsc - 40;
+						storage->tsc_step = tsc + delta;
 						storage->efer.data.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					}
 					else
 					{
 						auto tsc = __rdtsc();
 						MSR::EFER();
-						storage->tsc_step = (__rdtsc() - tsc);
+						tsc = (__rdtsc() - tsc);
+						auto tsc2 = __rdtsc();
+						MSR::EFER();
+						tsc2 = (__rdtsc() - tsc2);
+						auto delta = (tsc - tsc2) * 3;
+
+						if (tsc - 40 < delta)
+							delta = tsc - 40;
+						storage->tsc_step = tsc + delta;
 						ssa->Rax = storage->efer.data.AsUINT64 & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->efer.data.AsUINT64 >> 32) & 0xFFFFFFFF;
 					}
@@ -245,14 +240,30 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 						auto hsave_pa = MSR::HSAVE_PA();
 						auto tsc = __rdtsc();
 						MSR::HSAVE_PA(hsave_pa);
-						storage->tsc_step = (__rdtsc() - tsc);
+						tsc = (__rdtsc() - tsc);
+						auto tsc2 = __rdtsc();
+						MSR::HSAVE_PA(hsave_pa);
+						tsc2 = (__rdtsc() - tsc2);
+						auto delta = (tsc - tsc2) * 3;
+
+						if (tsc - 40 < delta)
+							delta = tsc - 40;
+						storage->tsc_step = tsc + delta;
 						storage->hsave.data = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					}
 					else
 					{
 						auto tsc = __rdtsc();
 						MSR::HSAVE_PA();
-						storage->tsc_step = (__rdtsc() - tsc);
+						tsc = (__rdtsc() - tsc);
+						auto tsc2 = __rdtsc();
+						MSR::HSAVE_PA();
+						tsc2 = (__rdtsc() - tsc2);
+						auto delta = (tsc - tsc2) * 3;
+
+						if (tsc - 40 < delta)
+							delta = tsc - 40;
+						storage->tsc_step = tsc + delta;
 						ssa->Rax = storage->hsave.data & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->hsave.data >> 32) & 0xFFFFFFFF;
 					}
