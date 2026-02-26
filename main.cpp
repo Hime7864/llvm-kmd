@@ -37,7 +37,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	
 	SVM::Cleanup();
 
-	Sleep(650);
+	//Sleep(650);
 
 	KeIpiGenericCall(VmSync, 0);
 	printf("SVM Hypervisor Driver Unloaded\n");
@@ -50,48 +50,41 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		mov rax, rsp
 		lea rsp, [rcx + 0x3A00]
 		push rax
+
 	loop:
 		lea rcx, [rcx + 0x04D0]
 		call SaveCtx
 		lea rcx, [rcx - 0x04D0]
 		push rcx
-
 		push rdx
-
 		call LoadCtx
-
 		pop rax
 
-		//vmload
+		vmload
 		vmrun
-		//vmsave
+		vmsave
 
 		push rcx
 		mov rcx, [rsp + 0x08]
-		push rdx
-		push rax
-
-		//rdtsc
-		//mov[rcx + 0x9A8], eax
-		//mov[rcx + 0x9AC], edx
-		// aperf
-		push rcx
-		mov ecx, 0xE8ul
-		rdmsr
-		pop rcx
-		mov[rcx + 0x9B8], eax
-		mov[rcx + 0x9BC], edx
-		// mperf
-		push rcx
-		mov ecx, 0xE7ul
-		rdmsr
-		pop rcx
-		mov[rcx + 0x9C0], eax
-		mov[rcx + 0x9C4], edx
-
-
-		pop rax
-		pop rdx
+		//push rdx
+		//push rax
+		//
+		//push rcx
+		//mov ecx, 0xE8ul// aperf
+		//rdmsr
+		//pop rcx
+		//mov[rcx + 0x9B8], eax
+		//mov[rcx + 0x9BC], edx
+		//
+		//push rcx
+		//mov ecx, 0xE7ul// mperf
+		//rdmsr
+		//pop rcx
+		//mov[rcx + 0x9C0], eax
+		//mov[rcx + 0x9C4], edx
+		//
+		//pop rax
+		//pop rdx
 		call SaveCtx
 		pop rax
 		mov[rcx + 0x80], rax
@@ -125,6 +118,16 @@ void SVM::ControlArea()
 	controlArea->Intercept.VMRUN = true;
 	controlArea->Intercept.VMMCALL = true;
 
+	// MSR Shadows
+	msrPm->read(MSR::_MSR_EFER, true);
+	msrPm->write(MSR::_MSR_EFER, true);
+	storage->efer.data = MSR::EFER();
+	storage->efer.data.svme = false;
+
+	msrPm->read(MSR::_MSR_HSAVE_PA, true);
+	msrPm->write(MSR::_MSR_HSAVE_PA, true);
+	storage->hsave.data = 0x0;
+
 	controlArea->NestedPagingControl.NP_Enable = 1;
 	controlArea->NestedCr3 = gCr3;
 	return;
@@ -152,45 +155,36 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	{
 		storage->tsc_step = 0;
 		storage->tsc_first_sight = __rdtsc();
-		ca->TscOffset = 0;
+		storage->tsc_init = storage->tsc_first_sight;
 		ca->Intercept.INTR = false;
 		ca->Intercept.RDTSC = false;
 		ca->Intercept.RDTSCP = false;
+		msrPm->read(MSR::_MSR_TSC, false);
+		msrPm->read(MSR::_MSR_APERF, false);
+		msrPm->read(MSR::_MSR_MPERF, false);
 		ca->NextRip = 0;
-		msrPm->read(MSR::_MSR_APERF, true);
-		msrPm->read(MSR::_MSR_MPERF, true);
 	}
 	else
 	{
-		auto init_tsc = ca->TscOffset;
-		ca->Intercept.INTR = true;
 		if (!ca->Intercept.RDTSC)
 		{
 			storage->tsc_step = 0;
 			storage->tsc_first_sight = __rdtsc();
+			storage->tsc_init = storage->tsc_first_sight;
 		}
+		storage->aperf_init = MSR::APERF();
+		storage->mperf_init = MSR::MPERF();
+		ca->Intercept.INTR = true;
 		ca->Intercept.RDTSC = true;
 		ca->Intercept.RDTSCP = true;
+		msrPm->read(MSR::_MSR_TSC, true);
+		msrPm->read(MSR::_MSR_APERF, true);
+		msrPm->read(MSR::_MSR_MPERF, true);
 		switch (exitCode)
 		{
 		case VMEXIT_VMMCALL:
 		{
-			if (!storage->loaded)
-			{
-				msrPm->read(MSR::_MSR_TSC, true);
 
-				// MSR Shadows
-				msrPm->read(MSR::_MSR_EFER, true);
-				msrPm->write(MSR::_MSR_EFER, true);
-				storage->efer.data = MSR::EFER();
-				storage->efer.data.svme = false;
-
-				msrPm->read(MSR::_MSR_HSAVE_PA, true);
-				msrPm->write(MSR::_MSR_HSAVE_PA, true);
-				storage->hsave.data = 0x0;
-
-				storage->loaded = true;
-			}
 		}break;
 		case VMEXIT_RDTSC:
 		case VMEXIT_RDTSCP:
@@ -215,23 +209,13 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				{
 				case MSR::_MSR_APERF:
 				{
-					auto aperf = storage->aperf_init;
-					if (storage->aperf_last)
-					{
-						aperf = storage->aperf_last;
-						storage->aperf_last = 0;
-					}
+					auto aperf = storage->aperf_init - (storage->tsc_first_sight - storage->tsc_init) * 12;
 					ssa->Rax = aperf & 0xFFFFFFFFull;
 					gCtx->Rdx = (aperf >> 32) & 0xFFFFFFFFull;
 				}break;
 				case MSR::_MSR_MPERF:
 				{
-					auto mperf = storage->mperf_init;
-					if (storage->mperf_last)
-					{
-						mperf = storage->mperf_last;
-						storage->mperf_last = 0;
-					}
+					auto mperf = storage->mperf_init - (storage->tsc_first_sight - storage->tsc_init) * 10;
 					ssa->Rax = mperf & 0xFFFFFFFFull;
 					gCtx->Rdx = (mperf >> 32) & 0xFFFFFFFFull;
 				}break;
@@ -253,8 +237,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 						ssa->Rax = storage->efer.data.AsUINT64 & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->efer.data.AsUINT64 >> 32) & 0xFFFFFFFF;
 					}
-					storage->aperf_last = storage->aperf_init;
-					storage->mperf_last = storage->mperf_init;
 				}break;
 				case MSR::_MSR_HSAVE_PA:
 				{
@@ -274,8 +256,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 						ssa->Rax = storage->hsave.data & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->hsave.data >> 32) & 0xFFFFFFFF;
 					}
-					storage->aperf_last = storage->aperf_init;
-					storage->mperf_last = storage->mperf_init;
 				}break;
 				case MSR::_MSR_TSC:
 				{

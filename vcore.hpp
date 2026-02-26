@@ -41,9 +41,9 @@ struct ALIGN(4096) STORAGE
 	UINT64 mperf_init; // 0x09C0
 	UINT64 aperf_last; // 0x09C8
 	UINT64 mperf_last; // 0x09D0
+	UINT64 tsc_init; // 0x09D8
 	VMEXIT_SHADOW<MSR_EFER> efer;
 	VMEXIT_SHADOW<PHYSICAL_ADDRESS> hsave;
-	BOOLEAN loaded;
 };
 
 struct ALIGN(4096) VCORE
