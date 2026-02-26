@@ -37,7 +37,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	
 	SVM::Cleanup();
 
-	Sleep(500);
+	Sleep(650);
 
 	KeIpiGenericCall(VmSync, 0);
 	printf("SVM Hypervisor Driver Unloaded\n");
