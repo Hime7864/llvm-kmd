@@ -156,14 +156,14 @@ void efer_read_ipi(UINT64* min)
 {
 	auto id = CPUID::current_core_number();
 	min[id] = 0;
-	for (int i = 0; i < 12500; i++)
+	for (int i = 0; i < 6000; i++)
 	{
 		auto count = __rdtsc();
 		MSR::EFER();
 		count = __rdtsc() - count;
 		min[id] += count;
 	}
-	min[id] /= 12500;
+	min[id] /= 6000;
 	return;
 }
 
@@ -189,14 +189,14 @@ void efer_write_ipi(UINT64* min)
 	auto id = CPUID::current_core_number();
 	const auto efer = MSR::EFER();
 	min[id] = 0;
-	for (int i = 0; i < 12500; i++)
+	for (int i = 0; i < 6000; i++)
 	{
 		auto count = __rdtsc();
 		MSR::EFER(efer);
 		count = __rdtsc() - count;
 		min[id] += count;
 	}
-	min[id] /= 12500;
+	min[id] /= 6000;
 
 	return;
 }
@@ -222,14 +222,14 @@ void hsave_read_ipi(UINT64* min)
 {
 	auto id = CPUID::current_core_number();
 	min[id] = 0;
-	for (int i = 0; i < 12500; i++)
+	for (int i = 0; i < 6000; i++)
 	{
 		auto count = __rdtsc();
 		MSR::HSAVE_PA();
 		count = __rdtsc() - count;
 		min[id] += count;
 	}
-	min[id] /= 12500;
+	min[id] /= 6000;
 	return;
 }
 
@@ -255,14 +255,14 @@ void hsave_write_ipi(UINT64* min)
 	auto id = CPUID::current_core_number();
 	const auto hsave = MSR::HSAVE_PA();
 	min[id] = 0;
-	for (int i = 0; i < 12500; i++)
+	for (int i = 0; i < 6000; i++)
 	{
 		auto count = __rdtsc();
 		MSR::HSAVE_PA(hsave);
 		count = __rdtsc() - count;
 		min[id] += count;
 	}
-	min[id] /= 12500;
+	min[id] /= 6000;
 	return;
 }
 
