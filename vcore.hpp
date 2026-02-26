@@ -36,6 +36,8 @@ struct ALIGN(4096) STORAGE
 	CONTEXT hCtx; // 0x04D0
 	PHYSICAL_ADDRESS vmcb; // 0x09A0
 	UINT64 tsc_first_sight; // 0x09A8
+	UINT64 aperf_init; // 0x09B0
+	UINT64 mperf_init; // 0x09B8
 	VMEXIT_SHADOW<MSR_EFER> efer;
 	VMEXIT_SHADOW<PHYSICAL_ADDRESS> hsave;
 };

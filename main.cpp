@@ -49,20 +49,20 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		rdtsc
 		mov[rcx + 0x9A8], eax
 		mov[rcx + 0x9AC], edx
-		//// aperf
-		//push rcx
-		//mov ecx, 0xE8ul
-		//rdmsr
-		//pop rcx
-		//mov[rcx + 0x9B0], eax
-		//mov[rcx + 0x9B4], edx
-		//// mperf
-		//push rcx
-		//mov ecx, 0xE7ul
-		//rdmsr
-		//pop rcx
-		//mov[rcx + 0x9B8], eax
-		//mov[rcx + 0x9BC], edx
+		// aperf
+		push rcx
+		mov ecx, 0xE8ul
+		rdmsr
+		pop rcx
+		mov[rcx + 0x9B0], eax
+		mov[rcx + 0x9B4], edx
+		// mperf
+		push rcx
+		mov ecx, 0xE7ul
+		rdmsr
+		pop rcx
+		mov[rcx + 0x9B8], eax
+		mov[rcx + 0x9BC], edx
 
 
 		pop rax
@@ -194,9 +194,22 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		default:
 			break;
 		}
+
+		_mm_mfence();
+		_mm_lfence();
+		auto aperf = MSR::APERF() - storage->aperf_init;
+		auto mperf = MSR::MPERF() - storage->mperf_init;
+		double mutiplier = (double)aperf / (double)mperf;
+		auto step = (UINT64)((double)cpuMHz * mutiplier);
+		auto step_delta = (INT64)step - (INT64)cpuMHz;
+		ca->TscOffset += (step_delta / 5) + 150;
+
 		if (!init_tsc && ca->TscOffset)
-			ca->TscOffset -= (cpuMHz * 2) / 3;
-		ca->TscOffset -= (__rdtsc() - storage->tsc_first_sight);
+			ca->TscOffset -= (INT64)((__rdtsc() - storage->tsc_first_sight + step_delta) * mutiplier) + (cpuMHz / 3);
+		else
+			ca->TscOffset -= (INT64)(__rdtsc() - storage->tsc_first_sight);
+		
+
 	}
 
 	if(ca->NextRip)

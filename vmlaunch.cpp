@@ -155,15 +155,15 @@ void SVM::CoreSynchronization(TSC_SYNC* sync)
 void efer_read_ipi(UINT64* min)
 {
 	auto id = CPUID::current_core_number();
-	min[id] = 0xFFFFFFFF;
+	min[id] = 0;
 	for (int i = 0; i < 12500; i++)
 	{
 		auto count = __rdtsc();
 		MSR::EFER();
 		count = __rdtsc() - count;
-		if (min[id] > count)
-			min[id] = count;
+		min[id] += count;
 	}
+	min[id] /= 12500;
 	return;
 }
 
@@ -188,15 +188,16 @@ void efer_write_ipi(UINT64* min)
 {
 	auto id = CPUID::current_core_number();
 	const auto efer = MSR::EFER();
-	min[id] = 0xFFFFFFFF;
+	min[id] = 0;
 	for (int i = 0; i < 12500; i++)
 	{
 		auto count = __rdtsc();
 		MSR::EFER(efer);
 		count = __rdtsc() - count;
-		if (min[id] > count)
-			min[id] = count;
+		min[id] += count;
 	}
+	min[id] /= 12500;
+
 	return;
 }
 
@@ -220,15 +221,15 @@ UINT64 efer_write()
 void hsave_read_ipi(UINT64* min)
 {
 	auto id = CPUID::current_core_number();
-	min[id] = 0xFFFFFFFF;
+	min[id] = 0;
 	for (int i = 0; i < 12500; i++)
 	{
 		auto count = __rdtsc();
 		MSR::HSAVE_PA();
 		count = __rdtsc() - count;
-		if (min[id] > count)
-			min[id] = count;
+		min[id] += count;
 	}
+	min[id] /= 12500;
 	return;
 }
 
@@ -253,15 +254,15 @@ void hsave_write_ipi(UINT64* min)
 {
 	auto id = CPUID::current_core_number();
 	const auto hsave = MSR::HSAVE_PA();
-	min[id] = 0xFFFFFFFF;
+	min[id] = 0;
 	for (int i = 0; i < 12500; i++)
 	{
 		auto count = __rdtsc();
 		MSR::HSAVE_PA(hsave);
 		count = __rdtsc() - count;
-		if (min[id] > count)
-			min[id] = count;
+		min[id] += count;
 	}
+	min[id] /= 12500;
 	return;
 }
 
@@ -287,20 +288,20 @@ void SVM::LaunchVm()
 	KeIpiGenericCall(LaunchCore, nullptr);
 	auto sync = (TSC_SYNC*)ExAllocatePool(NonPagedPool, 0x1000);
 	Sleep(100);
-	sync->efer.read = efer_read() - 80;
+	sync->efer.read = efer_read() - 150;
 	Sleep(100);
-	sync->efer.write = efer_write() - 80;
+	sync->efer.write = efer_write() - 150;
 	Sleep(100);
-	sync->hsave.read = hsave_read() - 80;
+	sync->hsave.read = hsave_read() - 150;
 	Sleep(100);
-	sync->hsave.write = hsave_write() - 80;
+	sync->hsave.write = hsave_write() - 150;
 	Sleep(100);
 	
 	printf("TSC EFER Read: %llu\n", sync->efer.read);
 	printf("TSC EFER Write: %llu\n", sync->efer.write);
 	printf("TSC HSAVE Read: %llu\n", sync->hsave.read);
 	printf("TSC HSAVE Write: %llu\n", sync->hsave.write);
-
+	
 	KeIpiGenericCall(CoreSynchronization, sync);
 	RtlFillMemory(sync, 0x1000, 0x0);
 	ExFreePool(sync);
