@@ -8,6 +8,26 @@ UINT32 SVM::vCoreCount = 0;
 UINT32 SVM::cpuMHz = 0;
 xAPIC_REGISTERS* SVM::vaApicBase = 0;
 
+void VmSync()
+{
+	for (int i = 0; i < 10; i++)
+	{
+		_mm_lfence();
+		_mm_mfence();
+		auto start = __rdtsc();
+		__asm {
+			push rax
+			push rbx
+			vmmcall
+			pop rbx
+			pop rax
+		}
+		auto end = __rdtsc();
+		auto delta = end - start;
+	}
+	return;
+}
+
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
 	printf("SVM Hypervisor Driver Loaded\n");
@@ -16,6 +36,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	SVM::LaunchVm();
 	
 	SVM::Cleanup();
+
+	Sleep(500);
+
+	KeIpiGenericCall(VmSync, 0);
 	printf("SVM Hypervisor Driver Unloaded\n");
 	return STATUS_SUCCESS;
 }
@@ -47,25 +71,23 @@ void NAKED SVM::VmLoop(VCORE* vCore, PHYSICAL_ADDRESS vmcb)
 		push rdx
 		push rax
 
-		//lfence
-		//mfence
 		//rdtsc
 		//mov[rcx + 0x9A8], eax
 		//mov[rcx + 0x9AC], edx
-		//// aperf
-		//push rcx
-		//mov ecx, 0xE8ul
-		//rdmsr
-		//pop rcx
-		//mov[rcx + 0x9B0], eax
-		//mov[rcx + 0x9B4], edx
-		//// mperf
-		//push rcx
-		//mov ecx, 0xE7ul
-		//rdmsr
-		//pop rcx
-		//mov[rcx + 0x9B8], eax
-		//mov[rcx + 0x9BC], edx
+		// aperf
+		push rcx
+		mov ecx, 0xE8ul
+		rdmsr
+		pop rcx
+		mov[rcx + 0x9B8], eax
+		mov[rcx + 0x9BC], edx
+		// mperf
+		push rcx
+		mov ecx, 0xE7ul
+		rdmsr
+		pop rcx
+		mov[rcx + 0x9C0], eax
+		mov[rcx + 0x9C4], edx
 
 
 		pop rax
@@ -191,13 +213,23 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				{
 				case MSR::_MSR_APERF:
 				{
-					auto aperf = MSR::APERF();
+					auto aperf = storage->aperf_init;
+					if (storage->aperf_last)
+					{
+						aperf = storage->aperf_last;
+						storage->aperf_last = 0;
+					}
 					ssa->Rax = aperf & 0xFFFFFFFFull;
 					gCtx->Rdx = (aperf >> 32) & 0xFFFFFFFFull;
 				}break;
 				case MSR::_MSR_MPERF:
 				{
-					auto mperf = MSR::MPERF();
+					auto mperf = storage->mperf_init;
+					if (storage->mperf_last)
+					{
+						mperf = storage->mperf_last;
+						storage->mperf_last = 0;
+					}
 					ssa->Rax = mperf & 0xFFFFFFFFull;
 					gCtx->Rdx = (mperf >> 32) & 0xFFFFFFFFull;
 				}break;
@@ -209,10 +241,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 						auto tsc = __rdtsc();
 						MSR::EFER(efer);
 						storage->tsc_step = (__rdtsc() - tsc);
-						auto start = __rdtsc();
-						auto delta = __rdtsc() - start;
-						storage->tsc_step -= delta;
-
 						storage->efer.data.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					}
 					else
@@ -220,25 +248,20 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 						auto tsc = __rdtsc();
 						MSR::EFER();
 						storage->tsc_step = (__rdtsc() - tsc);
-						auto start = __rdtsc();
-						auto delta = __rdtsc() - start;
-						storage->tsc_step -= delta;
 						ssa->Rax = storage->efer.data.AsUINT64 & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->efer.data.AsUINT64 >> 32) & 0xFFFFFFFF;
 					}
+					storage->aperf_last = storage->aperf_init;
+					storage->mperf_last = storage->mperf_init;
 				}break;
 				case MSR::_MSR_HSAVE_PA:
 				{
-					
 					if (exitInfo1.MSR.isWrite)
 					{
 						auto hsave_pa = MSR::HSAVE_PA();
 						auto tsc = __rdtsc();
 						MSR::HSAVE_PA(hsave_pa);
 						storage->tsc_step = (__rdtsc() - tsc);
-						auto start = __rdtsc();
-						auto delta = __rdtsc() - start;
-						storage->tsc_step -= delta;
 						storage->hsave.data = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 					}
 					else
@@ -246,21 +269,17 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 						auto tsc = __rdtsc();
 						MSR::HSAVE_PA();
 						storage->tsc_step = (__rdtsc() - tsc);
-						auto start = __rdtsc();
-						auto delta = __rdtsc() - start;
-						storage->tsc_step -= delta;
 						ssa->Rax = storage->hsave.data & 0xFFFFFFFF;
 						gCtx->Rdx = (storage->hsave.data >> 32) & 0xFFFFFFFF;
 					}
+					storage->aperf_last = storage->aperf_init;
+					storage->mperf_last = storage->mperf_init;
 				}break;
 				case MSR::_MSR_TSC:
 				{
 					auto tsc_probe = __rdtsc();
 					MSR::TSC();
 					storage->tsc_step = (__rdtsc() - tsc_probe);
-					auto start = __rdtsc();
-					auto delta = __rdtsc() - start;
-					storage->tsc_step -= delta;
 					storage->tsc_first_sight += storage->tsc_step;
 					ssa->Rax = storage->tsc_first_sight & 0xFFFFFFFFull;
 					gCtx->Rdx = (storage->tsc_first_sight >> 32) & 0xFFFFFFFFull;
