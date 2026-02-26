@@ -125,18 +125,6 @@ void SVM::ControlArea()
 	controlArea->Intercept.VMRUN = true;
 	controlArea->Intercept.VMMCALL = true;
 
-	msrPm->read(MSR::_MSR_TSC, true);
-
-	// MSR Shadows
-	msrPm->read(MSR::_MSR_EFER, true);
-	msrPm->write(MSR::_MSR_EFER, true);
-	storage->efer.data = MSR::EFER();
-	storage->efer.data.svme = false;
-
-	msrPm->read(MSR::_MSR_HSAVE_PA, true);
-	msrPm->write(MSR::_MSR_HSAVE_PA, true);
-	storage->hsave.data = 0x0;
-
 	controlArea->NestedPagingControl.NP_Enable = 1;
 	controlArea->NestedCr3 = gCr3;
 	return;
@@ -154,7 +142,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 	if(!storage->tsc_first_sight)
 		storage->tsc_first_sight = __rdtsc();
-
 
 	auto exitCode = ca->ExitCode;
 	auto exitInfo1 = ca->ExitInfo1;
@@ -188,7 +175,22 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		{
 		case VMEXIT_VMMCALL:
 		{
+			if (!storage->loaded)
+			{
+				msrPm->read(MSR::_MSR_TSC, true);
 
+				// MSR Shadows
+				msrPm->read(MSR::_MSR_EFER, true);
+				msrPm->write(MSR::_MSR_EFER, true);
+				storage->efer.data = MSR::EFER();
+				storage->efer.data.svme = false;
+
+				msrPm->read(MSR::_MSR_HSAVE_PA, true);
+				msrPm->write(MSR::_MSR_HSAVE_PA, true);
+				storage->hsave.data = 0x0;
+
+				storage->loaded = true;
+			}
 		}break;
 		case VMEXIT_RDTSC:
 		case VMEXIT_RDTSCP:
