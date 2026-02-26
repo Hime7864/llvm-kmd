@@ -614,12 +614,14 @@ extern "C"
 
     UINT64 __readmsr(_In_ UINT32 msr)
     {
-        UINT32 low, high;
+        UINT32 low=0, high=0;
         __asm {
+            push rdx
             mov ecx, msr
             rdmsr
             mov low, eax
             mov high, edx
+            pop rdx
         }
         return ((UINT64)high << 32) | low;
     }

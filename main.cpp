@@ -125,6 +125,7 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto vmcb = &vCore->vmcb;
 	auto ssa = &vmcb->SaveStateArea;
 	auto ca = &vmcb->ControlArea;
+	auto msrPm = &vCore->msrpm;
 
 	auto storage = &vCore->storage;
 	auto gCtx = &storage->gCtx;
@@ -147,6 +148,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		ca->Intercept.RDTSC = false;
 		ca->Intercept.RDTSCP = false;
 		ca->NextRip = 0;
+		msrPm->read(MSR::_MSR_APERF, true);
+		msrPm->read(MSR::_MSR_MPERF, true);
 	}
 	else
 	{
@@ -159,7 +162,6 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 		}
 		ca->Intercept.RDTSC = true;
 		ca->Intercept.RDTSCP = true;
-		
 		switch (exitCode)
 		{
 		case VMEXIT_VMMCALL:
@@ -187,6 +189,18 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			{
 				switch ((UINT32)gCtx->Rcx)
 				{
+				case MSR::_MSR_APERF:
+				{
+					auto aperf = MSR::APERF();
+					ssa->Rax = aperf & 0xFFFFFFFFull;
+					gCtx->Rdx = (aperf >> 32) & 0xFFFFFFFFull;
+				}break;
+				case MSR::_MSR_MPERF:
+				{
+					auto mperf = MSR::MPERF();
+					ssa->Rax = mperf & 0xFFFFFFFFull;
+					gCtx->Rdx = (mperf >> 32) & 0xFFFFFFFFull;
+				}break;
 				case MSR::_MSR_EFER:
 				{
 					if (exitInfo1.MSR.isWrite)
