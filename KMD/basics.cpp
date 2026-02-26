@@ -614,12 +614,14 @@ extern "C"
 
     UINT64 __readmsr(_In_ UINT32 msr)
     {
-        UINT32 low, high;
+        UINT32 low=0, high=0;
         __asm {
+            push rdx
             mov ecx, msr
             rdmsr
             mov low, eax
             mov high, edx
+            pop rdx
         }
         return ((UINT64)high << 32) | low;
     }
@@ -634,6 +636,7 @@ extern "C"
             mov edx, high
             wrmsr
         }
+        return;
     }
 
     UINT64 __rdtscp(_Out_ UINT32* aux)
@@ -720,7 +723,7 @@ extern "C"
         }
     }
 
-    VOID __ltr(_In_ UINT16 selector)
+    VOID NAKED __ltr(_In_ UINT16 selector)
     {
         __asm {
             ltr cx

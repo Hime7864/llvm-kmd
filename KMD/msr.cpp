@@ -125,12 +125,12 @@ MSR_PSTATE_STATUS MSR::PSTATE_STATUS()
 	return { .AsUINT64 = __readmsr(_MSR_PSTATE_STATUS) };
 }
 
-UINT64 MSR::APERF()
+UINT64 NOINLINE MSR::APERF()
 {
 	return __readmsr(_MSR_APERF);
 }
 
-UINT64 MSR::MPERF()
+UINT64 NOINLINE MSR::MPERF()
 {
 	return __readmsr(_MSR_MPERF);
 }
