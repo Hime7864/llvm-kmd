@@ -188,17 +188,47 @@ void FORCEINLINE HIGH_PERCISION_TIMER::Stop<tmMPERF>()
 	return;
 }
 
-void ipi_read_efer_rdtsc(UINT64 buffer)
+void ipi_read_efer_rdtsc(LOG_TIME* buffer)
 {
 	HIGH_PERCISION_TIMER clock;
+	auto core_count = KeQueryActiveProcessorCount(0);
 	auto cpu_id = CPUID::current_core_number();
-	auto logs = (LOG_TIME*)(buffer + cpu_id * 0x1000);
-	for (int i = 0; i < 512; i++)
+	int idx = 3333;
+	for (int i = 0; i < 10; i++)
 	{
 		clock.Start<tmRDTSC>();
-		MSR::EFER();
+		for (int x = 0; x < idx; x++)
+			MSR::EFER();
 		clock.Stop<tmRDTSC>();
-		logs[i] = clock.Log();
+		buffer[cpu_id + (core_count * i)] = clock.Log();
+		buffer[cpu_id + (core_count * i)].TSC /= idx;
+	}
+	for (int i = 10; i < 20; i++)
+	{
+		clock.Start<tmRDTSCP>();
+		for (int x = 0; x < idx; x++)
+			MSR::EFER();
+		clock.Stop<tmRDTSCP>();
+		buffer[cpu_id + (core_count * i)] = clock.Log();
+		buffer[cpu_id + (core_count * i)].TSC /= idx;
+	}
+	for (int i = 20; i < 30; i++)
+	{
+		clock.Start<tmMPERF>();
+		for (int x = 0; x < idx; x++)
+			MSR::EFER();
+		clock.Stop<tmMPERF>();
+		buffer[cpu_id + (core_count * i)] = clock.Log();
+		buffer[cpu_id + (core_count * i)].TSC /= idx;
+	}
+	for (int i = 30; i < 40; i++)
+	{
+		clock.Start<tmAPERF>();
+		for (int x = 0; x < idx; x++)
+			MSR::EFER();
+		clock.Stop<tmAPERF>();
+		buffer[cpu_id + (core_count * i)] = clock.Log();
+		buffer[cpu_id + (core_count * i)].TSC /= idx;
 	}
 	return;
 }
@@ -207,20 +237,24 @@ void ipi_read_efer_rdtsc(UINT64 buffer)
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
 	auto core_count = CPUID::current_core_number();
-	auto tsc_buffer = ExAllocatePool(NonPagedPool, 0x1000 * core_count);
-	KeIpiGenericCall(ipi_read_efer_rdtsc, tsc_buffer);
-	
-
-	for (int j = 0; j < 512; j++)
+	auto buffer = (LOG_TIME*)ExAllocatePool(NonPagedPool, 0x20000);
+	RtlFillMemory(buffer, 0x20000, 0);
+	for (int x = 0; x < 10; x++)
 	{
-		for (int i = 0; i < core_count; i++)
-		{
-			auto logs = (LOG_TIME*)((UINT64)tsc_buffer + i * 0x1000);
-			auto log = logs[j];
-			printf("Core %i: Mode %i, Rate %iMHz, TSC %i\n", i, log.Mode, log.Rate, log.TSC);
+		KeIpiGenericCall(ipi_read_efer_rdtsc, buffer);
 
+		for (int i = 0; i < 40; i++)
+		{
+			for (int j = 0; j < core_count; j++)
+			{
+				auto log = buffer[j + (core_count * i)];
+				printf("(%i, %i)", log.Rate / 100, log.TSC);
+				//printf("Core %i: Mode %i, Rate %iMHz, TSC %i\n", j, log.Mode, log.Rate, log.TSC);
+			}
 		}
 	}
-	ExFreePool(tsc_buffer);
+	
+
+	ExFreePool(buffer);
 	return STATUS_SUCCESS;
 }
