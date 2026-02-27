@@ -1,202 +1,226 @@
 #include <intrinsics.hpp>
 
-constexpr UINT32 BENCHMARK_ITERATIONS = 10000;
-
-enum class TscSource : UINT32
+enum TIMER_MODE
 {
-	Rdtsc = 0,
-	Rdtscp,
-	MsrTsc
+	tmNone,
+	tmRDTSC,
+	tmRDTSCP,
+	tmTSC,
+	tmAPERF,
+	tmMPERF
 };
 
-enum class BenchTarget : UINT32
+struct LOG_TIME
 {
-	EferRead = 0,
-	EferWrite,
-	HsaveRead,
-	HsaveWrite
+	WORD Mode;
+	WORD Rate;
+	DWORD TSC;
 };
 
-struct TimingStats
+class HIGH_PERCISION_TIMER
 {
-	UINT64 init;
-	UINT64 min;
-	UINT64 max;
-	UINT64 avg;
-};
+private:
+	INT64 aperf_init;
+	INT64 tsc_init;
 
-struct CoreTimingStats
-{
-	UINT64 init;
-	UINT64 min;
-	UINT64 max;
-	UINT64 sum;
-	UINT32 samples;
-};
+	INT64 sync_time;
+	INT64 start_time;
+	double ratio;
+	UINT32 MHz;
+	INT32 pstate;
+	TIMER_MODE mode;
+public:
+	template<TIMER_MODE Mode>
+	void Start();
 
-struct BenchmarkContext
-{
-	TscSource source;
-	BenchTarget target;
-	CoreTimingStats* per_core;
-};
+	template<TIMER_MODE Mode>
+	void Stop();
 
-UINT64 read_tsc_source(TscSource source)
-{
-	switch (source)
+	LOG_TIME Log(bool dbg = false)
 	{
-	case TscSource::Rdtsc:
-		return __rdtsc();
-	case TscSource::Rdtscp:
-	{
-		return __rdtsc();
+		LOG_TIME log_time;
+		log_time.Mode = (WORD)mode;
+		log_time.Rate = (WORD)((double)MHz * ratio);
+		log_time.TSC = (DWORD)start_time;
+		if (dbg)
+		{
+			switch (mode)
+			{
+			case tmRDTSC:
+				printf("RDTSC [%lli] @ %iMHz\n", start_time, (INT32)((double)MHz * ratio));
+				break;
+			case tmRDTSCP:
+				printf("RDTSCP [%lli] @ %iMHz\n", start_time, (INT32)((double)MHz * ratio));
+				break;
+			case tmAPERF:
+				printf("APERF [%lli] @ %iMHz\n", start_time, (INT32)((double)MHz * ratio));
+				break;
+			case tmMPERF:
+				printf("MPERF [%lli] @ %iMHz\n", start_time, (INT32)((double)MHz * ratio));
+				break;
+			default:
+				break;
+			}
+		}
+		return log_time;
 	}
-	case TscSource::MsrTsc:
-		return MSR::TSC();
-	default:
-		return 0;
-	}
+};
+
+template<>
+void FORCEINLINE HIGH_PERCISION_TIMER::Start<tmRDTSC>()
+{
+	mode = tmNone;
+	aperf_init = MSR::APERF();
+	_mm_pause();
+	aperf_init = MSR::APERF() - aperf_init;
+	tsc_init = MSR::TSC();
+	_mm_pause();
+	tsc_init = MSR::TSC() - tsc_init;
+	sync_time = __rdtsc();
+	_mm_pause();
+	sync_time = __rdtsc() - sync_time;
+	_mm_pause();
+	start_time = __rdtsc() + sync_time;
+	_mm_pause();
+	return;
 }
 
-VOID run_benchmark_target(BenchTarget target, UINT64 efer, UINT64 hsave)
+template<>
+void FORCEINLINE HIGH_PERCISION_TIMER::Stop<tmRDTSC>()
 {
-	switch (target)
+	start_time = __rdtsc() - start_time;
+	ratio = (double)aperf_init / (double)tsc_init;
+	pstate = MSR::PSTATE_STATUS().CurPstate;
+	MHz = (UINT32)MSR::PSTATE(0).get_frequency_mhz();
+	mode = tmRDTSC;
+	return;
+}
+
+template<>
+void FORCEINLINE HIGH_PERCISION_TIMER::Start<tmRDTSCP>()
+{
+	mode = tmNone;
+	aperf_init = MSR::APERF();
+	_mm_pause();
+	aperf_init = MSR::APERF() - aperf_init;
+	tsc_init = MSR::TSC();
+	_mm_pause();
+	tsc_init = MSR::TSC() - tsc_init;
+	DWORD aux;
+	sync_time = __rdtscp(&aux);
+	_mm_pause();
+	sync_time = __rdtscp(&aux) - sync_time;
+	_mm_pause();
+	start_time = __rdtscp(&aux) + sync_time;
+	_mm_pause();
+	return;
+}
+
+template<>
+void FORCEINLINE HIGH_PERCISION_TIMER::Stop<tmRDTSCP>()
+{
+	DWORD aux;
+	start_time = __rdtscp(&aux) - start_time;
+	ratio = (double)aperf_init / (double)tsc_init;
+	pstate = MSR::PSTATE_STATUS().CurPstate;
+	MHz = (UINT32)MSR::PSTATE(0).get_frequency_mhz();
+	mode = tmRDTSCP;
+	return;
+}
+
+template<>
+void FORCEINLINE HIGH_PERCISION_TIMER::Start<tmAPERF>()
+{
+	mode = tmNone;
+	aperf_init = MSR::APERF();
+	_mm_pause();
+	aperf_init = MSR::APERF() - aperf_init;
+	tsc_init = MSR::TSC();
+	_mm_pause();
+	tsc_init = MSR::TSC() - tsc_init;
+	sync_time = MSR::APERF();
+	_mm_pause();
+	sync_time = MSR::APERF() - sync_time;
+	_mm_pause();
+	start_time = MSR::APERF() + sync_time;
+	_mm_pause();
+	return;
+}
+
+template<>
+void FORCEINLINE HIGH_PERCISION_TIMER::Stop<tmAPERF>()
+{
+	start_time = MSR::APERF() - start_time;
+	ratio = (double)aperf_init / (double)tsc_init;
+	pstate = MSR::PSTATE_STATUS().CurPstate;
+	MHz = (UINT32)MSR::PSTATE(0).get_frequency_mhz();
+	mode = tmAPERF;
+	return;
+}
+
+template<>
+void FORCEINLINE HIGH_PERCISION_TIMER::Start<tmMPERF>()
+{
+	mode = tmNone;
+	aperf_init = MSR::APERF();
+	_mm_pause();
+	aperf_init = MSR::APERF() - aperf_init;
+	tsc_init = MSR::TSC();
+	_mm_pause();
+	tsc_init = MSR::TSC() - tsc_init;
+	sync_time = MSR::MPERF();
+	_mm_pause();
+	sync_time = MSR::MPERF() - sync_time;
+	_mm_pause();
+	start_time = MSR::MPERF() + sync_time;
+	_mm_pause();
+	return;
+}
+
+template<>
+void FORCEINLINE HIGH_PERCISION_TIMER::Stop<tmMPERF>()
+{
+	start_time = MSR::MPERF() - start_time;
+	ratio = (double)aperf_init / (double)tsc_init;
+	pstate = MSR::PSTATE_STATUS().CurPstate;
+	MHz = (UINT32)MSR::PSTATE(0).get_frequency_mhz();
+	mode = tmMPERF;
+	return;
+}
+
+void ipi_read_efer_rdtsc(UINT64 buffer)
+{
+	HIGH_PERCISION_TIMER clock;
+	auto cpu_id = CPUID::current_core_number();
+	auto logs = (LOG_TIME*)(buffer + cpu_id * 0x1000);
+	for (int i = 0; i < 512; i++)
 	{
-	case BenchTarget::EferRead:
+		clock.Start<tmRDTSC>();
 		MSR::EFER();
-		break;
-	case BenchTarget::EferWrite:
-		MSR::EFER({ .AsUINT64 = efer });
-		break;
-	case BenchTarget::HsaveRead:
-		MSR::HSAVE_PA();
-		break;
-	case BenchTarget::HsaveWrite:
-		MSR::HSAVE_PA(hsave);
-		break;
-	default:
-		break;
+		clock.Stop<tmRDTSC>();
+		logs[i] = clock.Log();
 	}
+	return;
 }
 
-ULONG_PTR benchmark_ipi_callback(ULONG_PTR context_ptr)
-{
-	auto* context = (BenchmarkContext*)context_ptr;
-	const auto id = CPUID::current_core_number();
-	auto& stats = context->per_core[id];
-	const auto efer = MSR::EFER().AsUINT64;
-	const auto hsave = MSR::HSAVE_PA();
-
-	stats.init = 0;
-	stats.min = ~0ull;
-	stats.max = 0;
-	stats.sum = 0;
-	stats.samples = BENCHMARK_ITERATIONS;
-
-	for (UINT32 i = 0; i < BENCHMARK_ITERATIONS; i++)
-	{
-		const auto start = read_tsc_source(context->source);
-		run_benchmark_target(context->target, efer, hsave);
-		const auto end = read_tsc_source(context->source);
-		const auto delta = end - start;
-
-		if (i == 0)
-			stats.init = delta;
-		if (delta < stats.min)
-			stats.min = delta;
-		if (delta > stats.max)
-			stats.max = delta;
-		stats.sum += delta;
-	}
-
-	return 0;
-}
-
-TimingStats run_benchmark(TscSource source, BenchTarget target)
-{
-	TimingStats result = {};
-	const auto cpu_count = KeQueryActiveProcessorCount(0);
-	if (cpu_count == 0)
-		return result;
-
-	const auto alloc_size = sizeof(CoreTimingStats) * cpu_count;
-	auto* per_core = (CoreTimingStats*)ExAllocatePool(NonPagedPool, alloc_size);
-	if (!per_core)
-		return result;
-
-	memset(per_core, 0, alloc_size);
-	BenchmarkContext context = { source, target, per_core };
-	KeIpiGenericCall(benchmark_ipi_callback, &context);
-
-	UINT64 init_sum = 0;
-	UINT64 global_min = ~0ull;
-	UINT64 global_max = 0;
-	UINT64 total_sum = 0;
-	UINT64 total_samples = 0;
-
-	for (UINT32 i = 0; i < cpu_count; i++)
-	{
-		const auto& stats = per_core[i];
-		init_sum += stats.init;
-		if (stats.min < global_min)
-			global_min = stats.min;
-		if (stats.max > global_max)
-			global_max = stats.max;
-		total_sum += stats.sum;
-		total_samples += stats.samples;
-	}
-
-	result.init = init_sum / cpu_count;
-	result.min = global_min;
-	result.max = global_max;
-	result.avg = total_samples ? (total_sum / total_samples) : 0;
-
-	ExFreePool(per_core);
-	return result;
-}
-
-const char* tsc_source_name(TscSource source)
-{
-	switch (source)
-	{
-	case TscSource::Rdtsc:
-		return "rdtsc";
-	case TscSource::Rdtscp:
-		return "rdtscp";
-	case TscSource::MsrTsc:
-		return "msr::tsc";
-	default:
-		return "unknown";
-	}
-}
-
-VOID print_stats(const char* operation, TscSource source, const TimingStats& stats)
-{
-	printf("%s [%s] init:%llu min:%llu max:%llu avg:%llu\n",
-		operation,
-		tsc_source_name(source),
-		stats.init,
-		stats.min,
-		stats.max,
-		stats.avg);
-}
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
-	constexpr TscSource sources[] =
-	{
-		TscSource::Rdtsc,
-		TscSource::Rdtscp,
-		TscSource::MsrTsc
-	};
+	auto core_count = CPUID::current_core_number();
+	auto tsc_buffer = ExAllocatePool(NonPagedPool, 0x1000 * core_count);
+	KeIpiGenericCall(ipi_read_efer_rdtsc, tsc_buffer);
+	
 
-	for (const auto source : sources)
+	for (int j = 0; j < 512; j++)
 	{
-		print_stats("EFER read ", source, run_benchmark(source, BenchTarget::EferRead));
-		print_stats("EFER write", source, run_benchmark(source, BenchTarget::EferWrite));
-		print_stats("HSAVE read", source, run_benchmark(source, BenchTarget::HsaveRead));
-		print_stats("HSAVE write", source, run_benchmark(source, BenchTarget::HsaveWrite));
+		for (int i = 0; i < core_count; i++)
+		{
+			auto logs = (LOG_TIME*)((UINT64)tsc_buffer + i * 0x1000);
+			auto log = logs[j];
+			printf("Core %i: Mode %i, Rate %iMHz, TSC %i\n", i, log.Mode, log.Rate, log.TSC);
+
+		}
 	}
-
+	ExFreePool(tsc_buffer);
 	return STATUS_SUCCESS;
 }
