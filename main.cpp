@@ -8,10 +8,10 @@ UINT32 SVM::vCoreCount = 0;
 UINT32 SVM::cpuMHz = 0;
 xAPIC_REGISTERS* SVM::vaApicBase = 0;
 
-void IpiVmmcall()
+UINT64 IpiVmmcall(UINT64 ctx)
 {
 	__asm {vmmcall}
-	return;
+	return 0;
 }
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
@@ -22,13 +22,13 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	
 	SVM::LaunchVm();
 	
-	SVM::Cleanup();
-
-	NtImports::fn_DbgPrintEx(0, 0, "Online\n");
-
 	Sleep(1000);
 
 	KeIpiGenericCall(IpiVmmcall, 0);
+
+	NtImports::fn_DbgPrintEx(0, 0, "Online\n");
+	
+	SVM::Cleanup();
 
 	NtImports::fn_DbgPrintEx(0, 0, "Cleanup\n");
 	return STATUS_SUCCESS;
@@ -107,6 +107,9 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 
 	auto storage = &vCore->storage;
 	auto gCtx = &storage->gCtx;
+
+	_mm_mfence();
+	_mm_lfence();
 
 	ca->Intercept.INTR = true;
 	if (__rdtsc() - storage->tsc_exit > 100000ull)
