@@ -86,29 +86,45 @@ void SVM::ControlArea()
 {
 	auto core_idx = CPUID::current_core_number();
 	auto vCore = &vCpu[core_idx];
-	auto controlArea = &vCore->vmcb.ControlArea;
+	auto ca = &vCore->vmcb.ControlArea;
 	auto msrPm = &vCore->msrpm;
 	auto storage = &vCore->storage;
 
-	controlArea->TlbControl.GuestASID = CPUID::current_core_number() + 1;
-	controlArea->TlbControl.FlushGuestNonGlobalTLB = true;
-	controlArea->Intercept.MSR_Prot = true;
+	ca->TlbControl.GuestASID = CPUID::current_core_number() + 1;
+	ca->TlbControl.FlushEntireTLB = true;
+	ca->Intercept.MSR_Prot = true;
 
-	controlArea->Intercept.VMRUN = true;
-	controlArea->Intercept.VMMCALL = true;
+	ca->NestedPagingControl.NP_Enable = 1;
+	ca->NestedCr3 = gCr3;
+
+	ca->Intercept.VMRUN = true;
+	ca->Intercept.VMMCALL = true;
+
+	//tsc spoof
+	ca->Intercept.RDTSC = true;
+	ca->Intercept.RDTSCP = true;
+	msrPm->read(MSR::_MSR_TSC, true);
+	msrPm->read(MSR::_MSR_MPERF_READ_ONLY, true);
+	msrPm->read(MSR::_MSR_MPERF, true);
+	msrPm->write(MSR::_MSR_MPERF, true);
+	msrPm->read(MSR::_MSR_APERF_READ_ONLY, true);
+	msrPm->read(MSR::_MSR_APERF, true);
+	msrPm->write(MSR::_MSR_APERF, true);
+
+	storage->tsc = __rdtsc();
+	storage->aperf = MSR::APERF();
+	storage->mperf = MSR::MPERF();
+	storage->tsc_exit = __rdtsc();
 
 	// MSR Shadows
 	msrPm->read(MSR::_MSR_EFER, true);
 	msrPm->write(MSR::_MSR_EFER, true);
-	storage->efer.data = MSR::EFER();
-	storage->efer.data.svme = false;
+	storage->efer = MSR::EFER();
+	storage->efer.svme = false;
 
 	msrPm->read(MSR::_MSR_HSAVE_PA, true);
 	msrPm->write(MSR::_MSR_HSAVE_PA, true);
-	storage->hsave.data = 0x0;
-
-	controlArea->NestedPagingControl.NP_Enable = 1;
-	controlArea->NestedCr3 = gCr3;
+	storage->hsave = 0x0;
 	return;
 }
 
@@ -119,180 +135,412 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	auto ca = &vmcb->ControlArea;
 	auto msrPm = &vCore->msrpm;
 
-	auto storage = &vCore->storage;
-	auto gCtx = &storage->gCtx;
-
-	if(!storage->tsc_first_sight)
-		storage->tsc_first_sight = __rdtsc();
-
 	auto exitCode = ca->ExitCode;
 	auto exitInfo1 = ca->ExitInfo1;
 	auto exitInfo2 = ca->ExitInfo2;
 	auto exitInfoIntercept = ca->ExitInfoIntercept;
 
-	if (exitCode == VMEXIT_INTR)
+	auto storage = &vCore->storage;
+	auto gCtx = &storage->gCtx;
+
+	ca->Intercept.INTR = true;
+	if (__rdtsc() - storage->tsc_exit > 100000ull)
 	{
-		storage->tsc_step = 0;
-		storage->tsc_first_sight = __rdtsc();
-		storage->tsc_init = storage->tsc_first_sight;
+		storage->tsc = __rdtsc();
+		storage->aperf = MSR::APERF();
+		storage->mperf = MSR::MPERF();
+	}
+
+
+	switch (exitCode)
+	{
+	case VMEXIT_VMMCALL:
+	{
+
+	}break;
+	case VMEXIT_INTR:
+	{
+		storage->tsc = __rdtsc();
+		storage->aperf = MSR::APERF();
+		storage->mperf = MSR::MPERF();
 		ca->Intercept.INTR = false;
-		ca->Intercept.RDTSC = false;
-		ca->Intercept.RDTSCP = false;
-		msrPm->read(MSR::_MSR_TSC, false);
-		msrPm->read(MSR::_MSR_APERF, false);
-		msrPm->read(MSR::_MSR_MPERF, false);
-		ca->NextRip = 0;
-	}
-	else
+	}break;
+	case VMEXIT_RDTSC:
 	{
-		if (!ca->Intercept.RDTSC)
-		{
-			storage->tsc_step = 0;
-			storage->tsc_first_sight = __rdtsc();
-			storage->tsc_init = storage->tsc_first_sight;
-		}
-		storage->aperf_init = MSR::APERF();
-		storage->mperf_init = MSR::MPERF();
-		ca->Intercept.INTR = true;
-		ca->Intercept.RDTSC = true;
-		ca->Intercept.RDTSCP = true;
-		msrPm->read(MSR::_MSR_TSC, true);
-		msrPm->read(MSR::_MSR_APERF, true);
-		msrPm->read(MSR::_MSR_MPERF, true);
-		switch (exitCode)
-		{
-		case VMEXIT_VMMCALL:
-		{
+		_mm_mfence();
+		_mm_lfence();
 
-		}break;
-		case VMEXIT_RDTSC:
-		case VMEXIT_RDTSCP:
+		auto tsc = __rdtsc();
+		__rdtsc();
+		tsc = (__rdtsc() - tsc);
+
+		auto aperf = MSR::APERF();
+		__rdtsc();
+		aperf = (MSR::APERF() - aperf);
+
+		auto mperf = MSR::MPERF();
+		__rdtsc();
+		mperf = (MSR::MPERF() - mperf);
+
+		storage->tsc += tsc;
+		storage->aperf += aperf;
+		storage->mperf += mperf;
+
+		ssa->Rax = storage->tsc & 0xFFFFFFFF;
+		gCtx->Rdx = (storage->tsc >> 32) & 0xFFFFFFFF;
+	}break;
+	case VMEXIT_RDTSCP:
+	{
+		_mm_mfence();
+		_mm_lfence();
+
+		auto tsc = __rdtsc();
+		__rdtsc();
+		tsc = (__rdtsc() - tsc);
+
+		auto aperf = MSR::APERF();
+		__rdtsc();
+		aperf = (MSR::APERF() - aperf);
+
+		auto mperf = MSR::MPERF();
+		__rdtsc();
+		mperf = (MSR::MPERF() - mperf);
+
+		storage->tsc += tsc;
+		storage->aperf += aperf;
+		storage->mperf += mperf;
+
+		ssa->Rax = storage->tsc & 0xFFFFFFFF;
+		gCtx->Rdx = (storage->tsc >> 32) & 0xFFFFFFFF;
+		gCtx->Rcx = 0;
+	}break;
+	case VMEXIT_MSR:
+	{
+		if (ssa->CPL == 0)
 		{
-			auto start = __rdtsc();
-			auto delta = __rdtsc() - start;
-			storage->tsc_step += delta;
-			storage->tsc_first_sight += storage->tsc_step;
-			ssa->Rax = storage->tsc_first_sight & 0xFFFFFFFFull;
-			gCtx->Rdx = (storage->tsc_first_sight >> 32) & 0xFFFFFFFFull;
-			if (exitCode == VMEXIT_RDTSCP)
+			auto msr = gCtx->Rcx;
+			switch (msr)
 			{
-				gCtx->Rcx = CPUID::current_core_number() & 0xFFFFFFFFull;
-			}
-
-		}break;
-		case VMEXIT_MSR:
-		{
-			if (ssa->CPL == 0)
+			case MSR::_MSR_EFER:
 			{
-				switch ((UINT32)gCtx->Rcx)
+				if (exitInfo1.MSR.isWrite)
 				{
-				case MSR::_MSR_APERF:
-				{
-					auto aperf = storage->aperf_init - (INT64)((double)(storage->tsc_first_sight - storage->tsc_init) * 7.73);
-					ssa->Rax = aperf & 0xFFFFFFFFull;
-					gCtx->Rdx = (aperf >> 32) & 0xFFFFFFFFull;
-				}break;
-				case MSR::_MSR_MPERF:
-				{
-					auto mperf = storage->mperf_init - (INT64)((double)(storage->tsc_first_sight - storage->tsc_init) * 6.3);
-					ssa->Rax = mperf & 0xFFFFFFFFull;
-					gCtx->Rdx = (mperf >> 32) & 0xFFFFFFFFull;
-				}break;
-				case MSR::_MSR_EFER:
-				{
-					if (exitInfo1.MSR.isWrite)
-					{
-						auto efer = MSR::EFER();
-						auto tsc = __rdtsc();
-						MSR::EFER(efer);
-						tsc = (__rdtsc() - tsc);
-						auto tsc2 = __rdtsc();
-						MSR::EFER(efer);
-						tsc2 = (__rdtsc() - tsc2);
-						auto delta = (tsc - tsc2) * 3;
+					auto data = MSR::EFER();
+					_mm_mfence();
+					_mm_lfence();
 
-						if (tsc - 40 < delta)
-							delta = tsc - 40;
-						storage->tsc_step = tsc + delta;
-						storage->efer.data.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
-					}
-					else
-					{
-						auto tsc = __rdtsc();
-						MSR::EFER();
-						tsc = (__rdtsc() - tsc);
-						auto tsc2 = __rdtsc();
-						MSR::EFER();
-						tsc2 = (__rdtsc() - tsc2);
-						auto delta = (tsc - tsc2) * 3;
+					auto tsc = __rdtsc();
+					MSR::EFER(data);
+					tsc = (__rdtsc() - tsc);
 
-						if (tsc - 40 < delta)
-							delta = tsc - 40;
-						storage->tsc_step = tsc + delta;
-						ssa->Rax = storage->efer.data.AsUINT64 & 0xFFFFFFFF;
-						gCtx->Rdx = (storage->efer.data.AsUINT64 >> 32) & 0xFFFFFFFF;
-					}
-				}break;
-				case MSR::_MSR_HSAVE_PA:
-				{
-					if (exitInfo1.MSR.isWrite)
-					{
-						auto hsave_pa = MSR::HSAVE_PA();
-						auto tsc = __rdtsc();
-						MSR::HSAVE_PA(hsave_pa);
-						tsc = (__rdtsc() - tsc);
-						auto tsc2 = __rdtsc();
-						MSR::HSAVE_PA(hsave_pa);
-						tsc2 = (__rdtsc() - tsc2);
-						auto delta = (tsc - tsc2) * 3;
+					auto aperf = MSR::APERF();
+					MSR::EFER(data);
+					aperf = (MSR::APERF() - aperf);
 
-						if (tsc - 40 < delta)
-							delta = tsc - 40;
-						storage->tsc_step = tsc + delta;
-						storage->hsave.data = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
-					}
-					else
-					{
-						auto tsc = __rdtsc();
-						MSR::HSAVE_PA();
-						tsc = (__rdtsc() - tsc);
-						auto tsc2 = __rdtsc();
-						MSR::HSAVE_PA();
-						tsc2 = (__rdtsc() - tsc2);
-						auto delta = (tsc - tsc2) * 3;
+					auto mperf = MSR::MPERF();
+					MSR::EFER(data);
+					mperf = (MSR::MPERF() - mperf);
 
-						if (tsc - 40 < delta)
-							delta = tsc - 40;
-						storage->tsc_step = tsc + delta;
-						ssa->Rax = storage->hsave.data & 0xFFFFFFFF;
-						gCtx->Rdx = (storage->hsave.data >> 32) & 0xFFFFFFFF;
-					}
-				}break;
-				case MSR::_MSR_TSC:
-				{
-					auto tsc_probe = __rdtsc();
-					MSR::TSC();
-					storage->tsc_step = (__rdtsc() - tsc_probe);
-					storage->tsc_first_sight += storage->tsc_step;
-					ssa->Rax = storage->tsc_first_sight & 0xFFFFFFFFull;
-					gCtx->Rdx = (storage->tsc_first_sight >> 32) & 0xFFFFFFFFull;
-				}break;
-				default:
-					break;
+					storage->tsc += tsc;
+					storage->aperf += aperf;
+					storage->mperf += mperf;
+
+					storage->efer.AsUINT64 = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
 				}
-			}
-			else
+				else
+				{
+					_mm_mfence();
+					_mm_lfence();
+
+					auto tsc = __rdtsc();
+					MSR::EFER();
+					tsc = (__rdtsc() - tsc);
+
+					auto aperf = MSR::APERF();
+					MSR::EFER();
+					aperf = (MSR::APERF() - aperf);
+
+					auto mperf = MSR::MPERF();
+					MSR::EFER();
+					mperf = (MSR::MPERF() - mperf);
+
+					storage->tsc += tsc;
+					storage->aperf += aperf;
+					storage->mperf += mperf;
+
+					ssa->Rax = storage->efer.AsUINT64 & 0xFFFFFFFF;
+					gCtx->Rdx = (storage->efer.AsUINT64 >> 32) & 0xFFFFFFFF;
+				}
+			}break;
+			case MSR::_MSR_HSAVE_PA:
 			{
-				ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_GP;
-				ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_EXCEPTION;
-				ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
-				ca->EventInjection.V = SVM_EVENTINJ_VALID;
+				if (exitInfo1.MSR.isWrite)
+				{
+					auto data = MSR::HSAVE_PA();
+					_mm_mfence();
+					_mm_lfence();
+
+					auto tsc = __rdtsc();
+					MSR::HSAVE_PA(data);
+					tsc = (__rdtsc() - tsc);
+
+					auto aperf = MSR::APERF();
+					MSR::HSAVE_PA(data);
+					aperf = (MSR::APERF() - aperf);
+
+					auto mperf = MSR::MPERF();
+					MSR::HSAVE_PA(data);
+					mperf = (MSR::MPERF() - mperf);
+
+					storage->tsc += tsc;
+					storage->aperf += aperf;
+					storage->mperf += mperf;
+
+					storage->hsave = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
+				}
+				else
+				{
+					_mm_mfence();
+					_mm_lfence();
+
+					auto tsc = __rdtsc();
+					MSR::HSAVE_PA();
+					tsc = (__rdtsc() - tsc);
+
+					auto aperf = MSR::APERF();
+					MSR::HSAVE_PA();
+					aperf = (MSR::APERF() - aperf);
+
+					auto mperf = MSR::MPERF();
+					MSR::HSAVE_PA();
+					mperf = (MSR::MPERF() - mperf);
+
+					storage->tsc += tsc;
+					storage->aperf += aperf;
+					storage->mperf += mperf;
+
+					ssa->Rax = storage->hsave & 0xFFFFFFFF;
+					gCtx->Rdx = (storage->hsave >> 32) & 0xFFFFFFFF;
+				}
+			}break;
+			case MSR::_MSR_TSC:
+			{
+				if (exitInfo1.MSR.isWrite)
+				{
+					auto data = MSR::TSC();
+					_mm_mfence();
+					_mm_lfence();
+
+					auto tsc = __rdtsc();
+					MSR::TSC(data);
+					tsc = (__rdtsc() - tsc);
+
+					auto aperf = MSR::APERF();
+					MSR::TSC(data);
+					aperf = (MSR::APERF() - aperf);
+
+					auto mperf = MSR::MPERF();
+					MSR::TSC(data);
+					mperf = (MSR::MPERF() - mperf);
+
+					storage->tsc = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
+
+					storage->tsc += tsc;
+					storage->aperf += aperf;
+					storage->mperf += mperf;
+				}
+				else
+				{
+					_mm_mfence();
+					_mm_lfence();
+
+					auto tsc = __rdtsc();
+					MSR::TSC();
+					tsc = (__rdtsc() - tsc);
+
+					auto aperf = MSR::APERF();
+					MSR::TSC();
+					aperf = (MSR::APERF() - aperf);
+
+					auto mperf = MSR::MPERF();
+					MSR::TSC();
+					mperf = (MSR::MPERF() - mperf);
+
+					storage->tsc += tsc;
+					storage->aperf += aperf;
+					storage->mperf += mperf;
+
+					ssa->Rax = storage->tsc & 0xFFFFFFFF;
+					gCtx->Rdx = (storage->tsc >> 32) & 0xFFFFFFFF;
+				}
+			}break;
+			case MSR::_MSR_APERF:
+			{
+				if (exitInfo1.MSR.isWrite)
+				{
+					auto data = MSR::APERF();
+					_mm_mfence();
+					_mm_lfence();
+
+					auto tsc = __rdtsc();
+					MSR::APERF(data);
+					tsc = (__rdtsc() - tsc);
+
+					auto aperf = MSR::APERF();
+					MSR::APERF(data);
+					aperf = (MSR::APERF() - aperf);
+
+					auto mperf = MSR::MPERF();
+					MSR::APERF(data);
+					mperf = (MSR::MPERF() - mperf);
+
+					storage->aperf = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
+
+					storage->tsc += tsc;
+					storage->aperf += aperf;
+					storage->mperf += mperf;
+				}
+				else
+				{
+					_mm_mfence();
+					_mm_lfence();
+
+					auto tsc = __rdtsc();
+					MSR::APERF();
+					tsc = (__rdtsc() - tsc);
+
+					auto aperf = MSR::APERF();
+					MSR::APERF();
+					aperf = (MSR::APERF() - aperf);
+
+					auto mperf = MSR::MPERF();
+					MSR::APERF();
+					mperf = (MSR::MPERF() - mperf);
+
+					storage->tsc += tsc;
+					storage->aperf += aperf;
+					storage->mperf += mperf;
+
+					ssa->Rax = storage->aperf & 0xFFFFFFFF;
+					gCtx->Rdx = (storage->aperf >> 32) & 0xFFFFFFFF;
+				}
+			}break;
+			case MSR::_MSR_APERF_READ_ONLY:
+			{
+				_mm_mfence();
+				_mm_lfence();
+
+				auto tsc = __rdtsc();
+				MSR::APERF();
+				tsc = (__rdtsc() - tsc);
+
+				auto aperf = MSR::APERF();
+				MSR::APERF();
+				aperf = (MSR::APERF() - aperf);
+
+				auto mperf = MSR::MPERF();
+				MSR::APERF();
+				mperf = (MSR::MPERF() - mperf);
+
+				storage->tsc += tsc;
+				storage->aperf += aperf;
+				storage->mperf += mperf;
+
+				ssa->Rax = storage->aperf & 0xFFFFFFFF;
+				gCtx->Rdx = (storage->aperf >> 32) & 0xFFFFFFFF;
+			}break;
+			case MSR::_MSR_MPERF:
+			{
+				if (exitInfo1.MSR.isWrite)
+				{
+					auto data = MSR::MPERF();
+					_mm_mfence();
+					_mm_lfence();
+
+					auto tsc = __rdtsc();
+					MSR::MPERF(data);
+					tsc = (__rdtsc() - tsc);
+
+					auto aperf = MSR::APERF();
+					MSR::MPERF(data);
+					aperf = (MSR::APERF() - aperf);
+
+					auto mperf = MSR::MPERF();
+					MSR::MPERF(data);
+					mperf = (MSR::MPERF() - mperf);
+
+					storage->aperf = gCtx->Rdx << 32 | (ssa->Rax & 0xFFFFFFFF);
+
+					storage->tsc += tsc;
+					storage->aperf += aperf;
+					storage->mperf += mperf;
+				}
+				else
+				{
+					_mm_mfence();
+					_mm_lfence();
+
+					auto tsc = __rdtsc();
+					MSR::MPERF();
+					tsc = (__rdtsc() - tsc);
+
+					auto aperf = MSR::APERF();
+					MSR::MPERF();
+					aperf = (MSR::APERF() - aperf);
+
+					auto mperf = MSR::MPERF();
+					MSR::MPERF();
+					mperf = (MSR::MPERF() - mperf);
+
+					storage->tsc += tsc;
+					storage->aperf += aperf;
+					storage->mperf += mperf;
+
+					ssa->Rax = storage->mperf & 0xFFFFFFFF;
+					gCtx->Rdx = (storage->mperf >> 32) & 0xFFFFFFFF;
+				}
+			}break;
+			case MSR::_MSR_MPERF_READ_ONLY:
+			{
+				_mm_mfence();
+				_mm_lfence();
+
+				auto tsc = __rdtsc();
+				MSR::MPERF();
+				tsc = (__rdtsc() - tsc);
+
+				auto aperf = MSR::APERF();
+				MSR::MPERF();
+				aperf = (MSR::APERF() - aperf);
+
+				auto mperf = MSR::MPERF();
+				MSR::MPERF();
+				mperf = (MSR::MPERF() - mperf);
+
+				storage->tsc += tsc;
+				storage->aperf += aperf;
+				storage->mperf += mperf;
+
+				ssa->Rax = storage->mperf & 0xFFFFFFFF;
+				gCtx->Rdx = (storage->mperf >> 32) & 0xFFFFFFFF;
+			}break;
+			default:
+				break;
 			}
-		}break;
-		default:
-			break;
 		}
+		else
+		{
+			ca->EventInjection.VECTOR = SVM_EVENTINJ_VECTOR_GP;
+			ca->EventInjection.TYPE = SVM_EVENTINJ_TYPE_EXCEPTION;
+			ca->EventInjection.EV = SVM_EVENTINJ_ERROR_CODE_INVALID;
+			ca->EventInjection.V = SVM_EVENTINJ_VALID;
+		}
+	}break;
+	default:
+		break;
 	}
+	
+	storage->tsc_exit = __rdtsc();
 	if(ca->NextRip)
 		ssa->Rip = ca->NextRip;
 	return;

@@ -140,6 +140,16 @@ UINT64 NOINLINE MSR::MPERF()
 	return __readmsr(_MSR_MPERF);
 }
 
+VOID NOINLINE MSR::APERF(UINT64 data)
+{
+	return __writemsr(_MSR_APERF, data);
+}
+
+VOID NOINLINE MSR::MPERF(UINT64 data)
+{
+	return __writemsr(_MSR_MPERF, data);
+}
+
 UINT64 MSR::APERF_READ_ONLY()
 {
 	return __readmsr(_MSR_APERF_READ_ONLY);

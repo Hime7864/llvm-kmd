@@ -269,6 +269,10 @@ public:
 
 	static UINT64 MPERF();
 
+	static VOID APERF(UINT64 data);
+
+	static VOID MPERF(UINT64 data);
+
 	static UINT64 APERF_READ_ONLY();
 
 	static UINT64 MPERF_READ_ONLY();

@@ -1,49 +1,16 @@
 #pragma once
 
-struct VCORE;
-
-template <typename TypeDelc>
-struct VMEXIT_SHADOW
-{
-	TypeDelc data;
-	UINT64 tsc_write;
-	UINT64 tsc_read;
-
-	void set_tsc(VCORE* vCore, bool is_write)
-	{
-		auto vmcb = &vCore->vmcb;
-		auto ca = &vmcb->ControlArea;
-		auto storage = &vCore->storage;
-		auto gCtx = &storage->gCtx;
-		auto ssa = &vmcb->SaveStateArea;
-		if (is_write)
-			ca->TscOffset -= tsc_write;
-		else
-			ca->TscOffset -= tsc_read;
-
-		if (gCtx->Rdx == 0xDEAD01)
-			tsc_read = ssa->Rax;
-
-		if (gCtx->Rdx == 0xDEAD02)
-			tsc_write = ssa->Rax;
-		return;
-	}
-};
-
 struct ALIGN(4096) STORAGE
 {
 	CONTEXT gCtx; // 0x0000
 	CONTEXT hCtx; // 0x04D0
 	PHYSICAL_ADDRESS vmcb; // 0x09A0
-	UINT64 tsc_first_sight; // 0x09A8
-	UINT64 tsc_step;// 0x09B0
-	UINT64 aperf_init; // 0x09B8
-	UINT64 mperf_init; // 0x09C0
-	UINT64 aperf_last; // 0x09C8
-	UINT64 mperf_last; // 0x09D0
-	UINT64 tsc_init; // 0x09D8
-	VMEXIT_SHADOW<MSR_EFER> efer;
-	VMEXIT_SHADOW<PHYSICAL_ADDRESS> hsave;
+	UINT64 tsc_exit;
+	MSR_EFER efer;
+	PHYSICAL_ADDRESS hsave;
+	UINT64 tsc;
+	UINT64 aperf;
+	UINT64 mperf;
 };
 
 struct ALIGN(4096) VCORE
