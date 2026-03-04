@@ -8,39 +8,29 @@ UINT32 SVM::vCoreCount = 0;
 UINT32 SVM::cpuMHz = 0;
 xAPIC_REGISTERS* SVM::vaApicBase = 0;
 
-void VmSync()
+void IpiVmmcall()
 {
-	for (int i = 0; i < 10; i++)
-	{
-		_mm_lfence();
-		_mm_mfence();
-		auto start = __rdtsc();
-		__asm {
-			push rax
-			push rbx
-			vmmcall
-			pop rbx
-			pop rax
-		}
-		auto end = __rdtsc();
-		auto delta = end - start;
-	}
+	__asm {vmmcall}
 	return;
 }
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
-	printf("SVM Hypervisor Driver Loaded\n");
+	printf("Loading\n");
+
 	SVM::Initialize();
 	
 	SVM::LaunchVm();
 	
 	SVM::Cleanup();
 
-	//Sleep(650);
+	printf("Online\n");
 
-	KeIpiGenericCall(VmSync, 0);
-	printf("SVM Hypervisor Driver Unloaded\n");
+	Sleep(1000);
+
+	KeIpiGenericCall(IpiVmmcall, 0);
+
+	printf("Cleanup\n");
 	return STATUS_SUCCESS;
 }
 
@@ -91,7 +81,7 @@ void SVM::ControlArea()
 	auto storage = &vCore->storage;
 
 	ca->TlbControl.GuestASID = CPUID::current_core_number() + 1;
-	ca->TlbControl.FlushEntireTLB = true;
+	ca->TlbControl.FlushGuestNonGlobalTLB = true;
 	ca->Intercept.MSR_Prot = true;
 
 	ca->NestedPagingControl.NP_Enable = 1;
@@ -99,32 +89,7 @@ void SVM::ControlArea()
 
 	ca->Intercept.VMRUN = true;
 	ca->Intercept.VMMCALL = true;
-
-	//tsc spoof
-	ca->Intercept.RDTSC = true;
-	ca->Intercept.RDTSCP = true;
-	msrPm->read(MSR::_MSR_TSC, true);
-	msrPm->read(MSR::_MSR_MPERF_READ_ONLY, true);
-	msrPm->read(MSR::_MSR_MPERF, true);
-	msrPm->write(MSR::_MSR_MPERF, true);
-	msrPm->read(MSR::_MSR_APERF_READ_ONLY, true);
-	msrPm->read(MSR::_MSR_APERF, true);
-	msrPm->write(MSR::_MSR_APERF, true);
-
-	storage->tsc = __rdtsc();
-	storage->aperf = MSR::APERF();
-	storage->mperf = MSR::MPERF();
-	storage->tsc_exit = __rdtsc();
-
-	// MSR Shadows
-	msrPm->read(MSR::_MSR_EFER, true);
-	msrPm->write(MSR::_MSR_EFER, true);
-	storage->efer = MSR::EFER();
-	storage->efer.svme = false;
-
-	msrPm->read(MSR::_MSR_HSAVE_PA, true);
-	msrPm->write(MSR::_MSR_HSAVE_PA, true);
-	storage->hsave = 0x0;
+	
 	return;
 }
 
@@ -156,7 +121,34 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	{
 	case VMEXIT_VMMCALL:
 	{
+		if (!ca->Intercept.RDTSC)
+		{
+			//tsc spoof
+			ca->Intercept.RDTSC = true;
+			ca->Intercept.RDTSCP = true;
+			msrPm->read(MSR::_MSR_TSC, true);
+			msrPm->read(MSR::_MSR_MPERF_READ_ONLY, true);
+			msrPm->read(MSR::_MSR_MPERF, true);
+			msrPm->write(MSR::_MSR_MPERF, true);
+			msrPm->read(MSR::_MSR_APERF_READ_ONLY, true);
+			msrPm->read(MSR::_MSR_APERF, true);
+			msrPm->write(MSR::_MSR_APERF, true);
 
+			storage->tsc = __rdtsc();
+			storage->aperf = MSR::APERF();
+			storage->mperf = MSR::MPERF();
+			storage->tsc_exit = __rdtsc();
+
+			// MSR Shadows
+			msrPm->read(MSR::_MSR_EFER, true);
+			msrPm->write(MSR::_MSR_EFER, true);
+			storage->efer = MSR::EFER();
+			storage->efer.svme = false;
+
+			msrPm->read(MSR::_MSR_HSAVE_PA, true);
+			msrPm->write(MSR::_MSR_HSAVE_PA, true);
+			storage->hsave = 0x0;
+		}
 	}break;
 	case VMEXIT_INTR:
 	{
@@ -167,8 +159,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	}break;
 	case VMEXIT_RDTSC:
 	{
-		_mm_mfence();
-		_mm_lfence();
+		//_mm_mfence();
+		//_mm_lfence();
 
 		auto tsc = __rdtsc();
 		__rdtsc();
@@ -191,8 +183,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 	}break;
 	case VMEXIT_RDTSCP:
 	{
-		_mm_mfence();
-		_mm_lfence();
+		//_mm_mfence();
+		//_mm_lfence();
 
 		auto tsc = __rdtsc();
 		__rdtsc();
@@ -226,8 +218,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				if (exitInfo1.MSR.isWrite)
 				{
 					auto data = MSR::EFER();
-					_mm_mfence();
-					_mm_lfence();
+					//_mm_mfence();
+					//_mm_lfence();
 
 					auto tsc = __rdtsc();
 					MSR::EFER(data);
@@ -249,8 +241,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				}
 				else
 				{
-					_mm_mfence();
-					_mm_lfence();
+					//_mm_mfence();
+					//_mm_lfence();
 
 					auto tsc = __rdtsc();
 					MSR::EFER();
@@ -277,8 +269,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				if (exitInfo1.MSR.isWrite)
 				{
 					auto data = MSR::HSAVE_PA();
-					_mm_mfence();
-					_mm_lfence();
+					//_mm_mfence();
+					//_mm_lfence();
 
 					auto tsc = __rdtsc();
 					MSR::HSAVE_PA(data);
@@ -300,8 +292,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				}
 				else
 				{
-					_mm_mfence();
-					_mm_lfence();
+					//_mm_mfence();
+					//_mm_lfence();
 
 					auto tsc = __rdtsc();
 					MSR::HSAVE_PA();
@@ -328,8 +320,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				if (exitInfo1.MSR.isWrite)
 				{
 					auto data = MSR::TSC();
-					_mm_mfence();
-					_mm_lfence();
+					//_mm_mfence();
+					//_mm_lfence();
 
 					auto tsc = __rdtsc();
 					MSR::TSC(data);
@@ -351,8 +343,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				}
 				else
 				{
-					_mm_mfence();
-					_mm_lfence();
+					//_mm_mfence();
+					//_mm_lfence();
 
 					auto tsc = __rdtsc();
 					MSR::TSC();
@@ -379,8 +371,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				if (exitInfo1.MSR.isWrite)
 				{
 					auto data = MSR::APERF();
-					_mm_mfence();
-					_mm_lfence();
+					//_mm_mfence();
+					//_mm_lfence();
 
 					auto tsc = __rdtsc();
 					MSR::APERF(data);
@@ -402,8 +394,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				}
 				else
 				{
-					_mm_mfence();
-					_mm_lfence();
+					//_mm_mfence();
+					//_mm_lfence();
 
 					auto tsc = __rdtsc();
 					MSR::APERF();
@@ -427,8 +419,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			}break;
 			case MSR::_MSR_APERF_READ_ONLY:
 			{
-				_mm_mfence();
-				_mm_lfence();
+				//_mm_mfence();
+				//_mm_lfence();
 
 				auto tsc = __rdtsc();
 				MSR::APERF();
@@ -454,8 +446,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				if (exitInfo1.MSR.isWrite)
 				{
 					auto data = MSR::MPERF();
-					_mm_mfence();
-					_mm_lfence();
+					//_mm_mfence();
+					//_mm_lfence();
 
 					auto tsc = __rdtsc();
 					MSR::MPERF(data);
@@ -477,8 +469,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 				}
 				else
 				{
-					_mm_mfence();
-					_mm_lfence();
+					//_mm_mfence();
+					//_mm_lfence();
 
 					auto tsc = __rdtsc();
 					MSR::MPERF();
@@ -502,8 +494,8 @@ void __attribute__((preserve_most)) SVM::VmExit(VCORE* vCore)
 			}break;
 			case MSR::_MSR_MPERF_READ_ONLY:
 			{
-				_mm_mfence();
-				_mm_lfence();
+				//_mm_mfence();
+				//_mm_lfence();
 
 				auto tsc = __rdtsc();
 				MSR::MPERF();
