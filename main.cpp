@@ -16,7 +16,7 @@ void IpiVmmcall()
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
-	printf("Loading\n");
+	NtImports::fn_DbgPrintEx(0, 0, "Loading\n");
 
 	SVM::Initialize();
 	
@@ -24,13 +24,13 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	
 	SVM::Cleanup();
 
-	printf("Online\n");
+	NtImports::fn_DbgPrintEx(0, 0, "Online\n");
 
 	Sleep(1000);
 
 	KeIpiGenericCall(IpiVmmcall, 0);
 
-	printf("Cleanup\n");
+	NtImports::fn_DbgPrintEx(0, 0, "Cleanup\n");
 	return STATUS_SUCCESS;
 }
 
