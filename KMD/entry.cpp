@@ -70,13 +70,12 @@ NTSTATUS resolve_sigged_imports()
 	if (!NT_SUCCESS(Utils::GetSectionInfo(kernel_base, str_hash(".text"), &kernel_text_base, &kernel_text_size)))
 		return STATUS_UNSUCCESSFUL;
 
-	NtImports::fn_MmPfnDatabase = (decltype(NtImports::fn_MmPfnDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8B 3D ? ? ? ? 48 C1 EF 09")));
+	NtImports::fn_MmPfnDatabase = (decltype(NtImports::fn_MmPfnDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8B 3D ? ? ? ? 48 C1 EF ? 49 23 ? ? 8B")));
 	NtImports::fn_MiGetSystemRegionType = (decltype(NtImports::fn_MiGetSystemRegionType))Utils::ResolveRel32(1, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("E8 ? ? ? ? 8B C8 45 84 FE")));
 	NtImports::fn_MiSystemRegionTypeDatabase = (decltype(NtImports::fn_MiSystemRegionTypeDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8D 0D ? ? ? ? 0F B6 04 08 C3")));
 
 	return STATUS_SUCCESS;
 }
-
 volatile void FreeAndExit()
 {
 	QWORD host_driver_base = 0;
@@ -111,12 +110,12 @@ volatile void FreeAndExit()
 		mov rdx, [func1]
 		mov r8, [func2]
 		call self
-		self :
+	self:
 		sub rsp, 8h
-			mov rax, r8
-			mov[rsp], rax
-			mov rax, rdx
-			jmp rax
+		mov rax, r8
+		mov[rsp], rax
+		mov rax, rdx
+		jmp rax
 	}
 }
 
@@ -125,7 +124,7 @@ void CleanupDriver()
 	HANDLE thread_handle = 0;
 	_OBJECT_ATTRIBUTES object_attribues{ };
 	InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
-	PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&FreeAndExit, KeGetCurrentThread());
+	PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&FreeAndExit,0);
 	return;
 }
 
