@@ -261,11 +261,17 @@ public:
 
 	static MSR_PSTATE_CONTROL PSTATE_CONTROL();
 
+	static VOID PSTATE_CONTROL(MSR_PSTATE_CONTROL data);
+
 	static MSR_PSTATE_STATUS PSTATE_STATUS();
 
 	static UINT64 APERF();
 
 	static UINT64 MPERF();
+
+	static VOID APERF(UINT64 data);
+
+	static VOID MPERF(UINT64 data);
 
 	static UINT64 APERF_READ_ONLY();
 

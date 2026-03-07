@@ -120,6 +120,11 @@ MSR_PSTATE_CONTROL MSR::PSTATE_CONTROL()
 	return { .AsUINT64 = __readmsr(_MSR_PSTATE_CONTROL) };
 }
 
+VOID MSR::PSTATE_CONTROL(MSR_PSTATE_CONTROL data)
+{
+	return __writemsr(_MSR_PSTATE_CONTROL, data.AsUINT64);
+}
+
 MSR_PSTATE_STATUS MSR::PSTATE_STATUS()
 {
 	return { .AsUINT64 = __readmsr(_MSR_PSTATE_STATUS) };
@@ -133,6 +138,16 @@ UINT64 NOINLINE MSR::APERF()
 UINT64 NOINLINE MSR::MPERF()
 {
 	return __readmsr(_MSR_MPERF);
+}
+
+VOID NOINLINE MSR::APERF(UINT64 data)
+{
+	return __writemsr(_MSR_APERF, data);
+}
+
+VOID NOINLINE MSR::MPERF(UINT64 data)
+{
+	return __writemsr(_MSR_MPERF, data);
 }
 
 UINT64 MSR::APERF_READ_ONLY()
