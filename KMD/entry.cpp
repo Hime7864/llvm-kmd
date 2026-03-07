@@ -95,7 +95,7 @@ volatile void FreeAndExit()
 
 	func3((PVOID)host_driver_base, (SIZE_T)range1, 0x00);
 	func3((PVOID)(host_driver_base + (range1 + 0x110)), (SIZE_T)range2, 0x00);
-	func3(func_base, (SIZE_T)0x90, 0x00);
+	func3(func_base, (SIZE_T)0xB0, 0x00);
 
 	if (cr3 == 0x1AD000ull)
 	{
