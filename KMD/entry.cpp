@@ -70,32 +70,41 @@ NTSTATUS resolve_sigged_imports()
 	if (!NT_SUCCESS(Utils::GetSectionInfo(kernel_base, str_hash(".text"), &kernel_text_base, &kernel_text_size)))
 		return STATUS_UNSUCCESSFUL;
 
-	NtImports::fn_MmPfnDatabase = (decltype(NtImports::fn_MmPfnDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8B 3D ? ? ? ? 48 C1 EF 09")));
+	NtImports::fn_MmPfnDatabase = (decltype(NtImports::fn_MmPfnDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8B 3D ? ? ? ? 48 C1 EF ? 49 23 ? ? 8B")));
 	NtImports::fn_MiGetSystemRegionType = (decltype(NtImports::fn_MiGetSystemRegionType))Utils::ResolveRel32(1, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("E8 ? ? ? ? 8B C8 45 84 FE")));
 	NtImports::fn_MiSystemRegionTypeDatabase = (decltype(NtImports::fn_MiSystemRegionTypeDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8D 0D ? ? ? ? 0F B6 04 08 C3")));
 
 	return STATUS_SUCCESS;
 }
-
-void FreeAndExit(PVOID last_thread)
+volatile void FreeAndExit()
 {
 	QWORD host_driver_base = 0;
 	QWORD host_driver_size = 0;
 	if (!NT_SUCCESS(Utils::LocateSelf(&host_driver_base, &host_driver_size)))
 		return;
 	__writecr8(0);
-	Sleep(250);
+	Sleep(200);
 	QWORD func1 = (QWORD)NtImports::fn_ExFreePool;
 	QWORD func2 = (QWORD)NtImports::fn_PsTerminateSystemThread;
 	auto func3 = NtImports::fn_RtlFillMemory;
 	auto func_base = (PVOID)FreeAndExit;
 	auto range1 = ((QWORD)func_base - host_driver_base) - 8;
 	auto range2 = (host_driver_size - (range1 + 0x110));
+	auto cr3 = __readcr3();
 
-	//func3(last_thread, (SIZE_T)0x800, 0x00);
+
 	func3((PVOID)host_driver_base, (SIZE_T)range1, 0x00);
 	func3((PVOID)(host_driver_base + (range1 + 0x110)), (SIZE_T)range2, 0x00);
 	func3(func_base, (SIZE_T)0x90, 0x00);
+
+	if (cr3 == 0x1AD000ull)
+	{
+		__asm {
+			xor ecx, ecx
+			mov rax, [func2]
+			call rax
+		}
+	}
 	__asm {
 		mov rcx, [host_driver_base]
 		mov rdx, [func1]
@@ -115,7 +124,7 @@ void CleanupDriver()
 	HANDLE thread_handle = 0;
 	_OBJECT_ATTRIBUTES object_attribues{ };
 	InitializeObjectAttributes(&object_attribues, nullptr, OBJ_KERNEL_HANDLE, 0, nullptr);
-	PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&FreeAndExit, KeGetCurrentThread());
+	PsCreateSystemThread(&thread_handle, 0, &object_attribues, 0, 0, (PKSTART_ROUTINE)&FreeAndExit,0);
 	return;
 }
 
