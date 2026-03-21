@@ -9,25 +9,25 @@ bool NAKED FWA::is_zero_page(PVOID page)
 	__asm
 	{
 		vpxor ymm0, ymm0, ymm0
-		mov eax, 4096 / 32            
-	loop:
-		vmovdqu ymm1, [rcx]           
-		vpxor ymm0, ymm0, ymm1   
-		add rcx, 32
-		vptest ymm0, ymm0         
-		jnz nonzero               
-	
-		dec eax
-		jnz loop
-	
-		mov al, 1
-		vzeroupper                
-		ret
-	
-	nonzero:
-		xor eax, eax                  
-		vzeroupper                
-		ret
+		mov eax, 4096 / 32
+		loop:
+		vmovdqu ymm1, [rcx]
+			vpxor ymm0, ymm0, ymm1
+			add rcx, 32
+			vptest ymm0, ymm0
+			jnz nonzero
+
+			dec eax
+			jnz loop
+
+			mov al, 1
+			vzeroupper
+			ret
+
+			nonzero :
+		xor eax, eax
+			vzeroupper
+			ret
 	}
 }
 
@@ -36,7 +36,10 @@ void FWA::Initialize()
 	if (page_idx || fw_range_count)
 		return;
 
+	page_idx = 10;
+
 	PHYSICAL_MEMORY_RANGE* pmr = MmGetPhysicalMemoryRanges();
+	pmr += 2;
 	do
 	{
 		if (&pmr[0] && !pmr[0].NumberOfBytes.QuadPart)
@@ -44,8 +47,8 @@ void FWA::Initialize()
 		if (&pmr[1] && !pmr[1].NumberOfBytes.QuadPart)
 			break;
 
-		auto high = pmr[1].BaseAddress.QuadPart;
-		auto low = pmr[0].BaseAddress.QuadPart + pmr[0].NumberOfBytes.QuadPart;
+		auto high = pmr[1].BaseAddress.QuadPart - 0x1000;
+		auto low = pmr[0].BaseAddress.QuadPart + pmr[0].NumberOfBytes.QuadPart + 0x1000;
 		auto size = high - low;
 
 		if (size > 0x40000000)

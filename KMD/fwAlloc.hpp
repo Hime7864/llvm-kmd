@@ -19,4 +19,3 @@ public:
 
 	static PHYSICAL_ADDRESS ReservePages(SIZE_T pages);
 };
-
