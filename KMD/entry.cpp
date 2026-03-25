@@ -40,6 +40,12 @@ FUNCTION_TABLE_ENTRY function_table[]
 	{ str_hash("KeGetCurrentThread"), &NtImports::fn_KeGetCurrentThread},
 	{ str_hash("PsGetProcessId"), &NtImports::fn_PsGetProcessId},
 	{ str_hash("MmIsIoSpaceActive"), &NtImports::fn_MmIsIoSpaceActive},
+	{ str_hash("IoCreateDevice"), &NtImports::fn_IoCreateDevice},
+	{ str_hash("IoCreateDriver"), &NtImports::fn_IoCreateDriver},
+	{ str_hash("IoCreateSymbolicLink"), &NtImports::fn_IoCreateSymbolicLink},
+	{ str_hash("IoDeleteSymbolicLink"), &NtImports::fn_IoDeleteSymbolicLink},
+	{ str_hash("IoDeleteDevice"), &NtImports::fn_IoDeleteDevice},
+	{ str_hash("IofCompleteRequest"), &NtImports::fn_IofCompleteRequest},
 };
 
 NTSTATUS resolve_imports()
@@ -137,7 +143,7 @@ NTSTATUS volatile start()
 		KeStackAttachProcess(PsInitialSystemProcess(), &apc);
 		status = resolve_sigged_imports();
 		if (NT_SUCCESS(status))
-			status = DriverEntry(nullptr, nullptr);
+			status = DriverEntry();
 		CleanupDriver();
 		KeUnstackDetachProcess(&apc);
 	}

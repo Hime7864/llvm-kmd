@@ -1,4 +1,5 @@
 #pragma once
+
 #include "basics.hpp"
 #include "cpuid.hpp"
 #include "msr.hpp"
@@ -28,4 +29,5 @@ inline void Sleep(_In_ UINT32 milliseconds)
 	KeDelayExecutionThread(KernelMode, FALSE, &interval);
 }
 
-NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath);
+NTSTATUS DriverEntry();
+

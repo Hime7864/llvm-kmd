@@ -113,7 +113,7 @@ namespace NtImports
 
     inline KAFFINITY(__stdcall* fn_KeSetSystemAffinityThread)(
         _In_ KAFFINITY Affinity
-		) = nullptr;
+        ) = nullptr;
 
     inline NTSTATUS(__stdcall* fn_PsCreateSystemThread)(
         _Out_ PHANDLE ThreadHandle,
@@ -167,11 +167,11 @@ namespace NtImports
 
     inline PMMPFN(__stdcall* fn_MmPfnDatabase)() = nullptr;
 
-	inline UINT32(__stdcall* fn_MiSystemRegionTypeDatabase)() = nullptr;
+    inline UINT32(__stdcall* fn_MiSystemRegionTypeDatabase)() = nullptr;
 
     inline UINT32(__stdcall* fn_MiGetSystemRegionType)(
         _In_ PVOID PfnEntry
-		) = nullptr;
+        ) = nullptr;
 
     inline VOID(__stdcall* fn_RtlInitUnicodeString)(
         _Out_ PUNICODE_STRING DestinationString,
@@ -204,17 +204,17 @@ namespace NtImports
         _In_opt_ PULONG Key
         ) = nullptr;
 
-	inline NTSTATUS(__stdcall* fn_ZwReadFile)(
-		_In_ HANDLE FileHandle,
-		_In_opt_ HANDLE Event,
-		_In_opt_ PIO_APC_ROUTINE ApcRoutine,
-		_In_opt_ PVOID ApcContext,
-		_Out_ PIO_STATUS_BLOCK IoStatusBlock,
-		_Out_ PVOID Buffer,
-		_In_ ULONG Length,
-		_In_opt_ PLARGE_INTEGER ByteOffset,
-		_In_opt_ PULONG Key
-		) = nullptr;
+    inline NTSTATUS(__stdcall* fn_ZwReadFile)(
+        _In_ HANDLE FileHandle,
+        _In_opt_ HANDLE Event,
+        _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+        _In_opt_ PVOID ApcContext,
+        _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+        _Out_ PVOID Buffer,
+        _In_ ULONG Length,
+        _In_opt_ PLARGE_INTEGER ByteOffset,
+        _In_opt_ PULONG Key
+        ) = nullptr;
 
     inline NTSTATUS(__stdcall* fn_ZwClose)(
         _In_ HANDLE Handle
@@ -224,10 +224,43 @@ namespace NtImports
 
     inline UINT64(__stdcall* fn_PsGetProcessId)(
         _In_ PEPROCESS Process
-		) = nullptr;
+        ) = nullptr;
 
     inline BOOLEAN(__stdcall* fn_MmIsIoSpaceActive)(
         _In_ PHYSICAL_ADDRESS PhysicalAddress,
         _In_ SIZE_T NumberOfBytes
-		) = nullptr;
+        ) = nullptr;
+
+    inline NTSTATUS(__stdcall* fn_IoCreateDevice)(
+        _In_ PDRIVER_OBJECT DriverObject,
+        _In_ UINT32 DeviceExtensionSize,
+        _In_opt_ PUNICODE_STRING DeviceName,
+        _In_ UINT32 DeviceType,
+        _In_ UINT32 DeviceCharacteristics,
+        _In_ BOOLEAN Exclusive,
+        _Out_ PDEVICE_OBJECT* DeviceObject
+        ) = nullptr;
+
+    inline NTSTATUS(__stdcall* fn_IoCreateDriver)(
+        _In_opt_ PUNICODE_STRING DriverName,
+        _In_ PDRIVER_INITIALIZE InitializationFunction
+        ) = nullptr;
+
+    inline NTSTATUS(__stdcall* fn_IoCreateSymbolicLink)(
+        _In_ PUNICODE_STRING SymbolicLinkName,
+        _In_ PUNICODE_STRING DeviceName
+        ) = nullptr;
+
+    inline NTSTATUS(__stdcall* fn_IoDeleteSymbolicLink)(
+        _In_ PUNICODE_STRING SymbolicLinkName
+        ) = nullptr;
+
+    inline VOID(__stdcall* fn_IoDeleteDevice)(
+        _In_ PDEVICE_OBJECT DeviceObject
+        ) = nullptr;
+
+    inline VOID(__stdcall* fn_IofCompleteRequest)(
+        _In_ PIRP Irp,
+        _In_ CHAR PriorityBoost
+        ) = nullptr;
 };

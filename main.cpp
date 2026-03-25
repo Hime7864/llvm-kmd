@@ -1,7 +1,7 @@
 #include <intrinsics.hpp>
 
-NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
+NTSTATUS DriverEntry()
 {
-	NtImports::fn_DbgPrintEx(0, 0, "Driver loaded successfully.\n");
+	DbgPrintEx(0, 0, "Driver loaded successfully. %i %i %i\n", 1, 2, 3);
 	return STATUS_SUCCESS;
 }
