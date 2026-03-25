@@ -1,14 +1,8 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="[Project]">
       <UniqueIdentifier>{83773264-bede-429c-9c96-b921743a9a2c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="[Project]\Header Files">
-      <UniqueIdentifier>{f692e060-4577-4877-aef2-161ad63262fc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="[Project]\Resource Files">
-      <UniqueIdentifier>{355cfa64-19a4-4aa4-9f4f-263f535f3530}</UniqueIdentifier>
     </Filter>
     <Filter Include="[Project]\Source Files">
       <UniqueIdentifier>{35ed6d8b-fe31-481f-830c-032f8b35ea6d}</UniqueIdentifier>
@@ -16,66 +10,243 @@
     <Filter Include="[Intrinsics]">
       <UniqueIdentifier>{29fe1c10-2584-4bb0-b832-4a6fd16cebbf}</UniqueIdentifier>
     </Filter>
+    <Filter Include="[Intrinsics]\Architecture">
+      <UniqueIdentifier>{a1b2c3d4-e5f6-7890-abcd-ef1234567890}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Intrinsics]\Architecture\msr">
+      <UniqueIdentifier>{b2c3d4e5-f6a7-8901-bcde-f12345678901}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Intrinsics]\Architecture\cpuid">
+      <UniqueIdentifier>{c3d4e5f6-a7b8-9012-cdef-123456789012}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Intrinsics]\CRT">
+      <UniqueIdentifier>{d4e5f6a7-b8c9-0123-def0-234567890123}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Intrinsics]\Entry">
+      <UniqueIdentifier>{e5f6a7b8-c9d0-1234-ef01-345678901234}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Intrinsics]\Utils">
+      <UniqueIdentifier>{f6a7b8c9-d0e1-2345-f012-456789012345}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Intrinsics]\Memory">
+      <UniqueIdentifier>{a7b8c9d0-e1f2-3456-0123-567890123456}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Intrinsics]\NT">
+      <UniqueIdentifier>{b8c9d0e1-f2a3-4567-1234-678901234567}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Intrinsics]\NT\struct">
+      <UniqueIdentifier>{c9d0e1f2-a3b4-5678-2345-789012345678}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Intrinsics]\NT\import">
+      <UniqueIdentifier>{d0e1f2a3-b4c5-6789-3456-890123456789}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Intrinsics]\NT\method">
+      <UniqueIdentifier>{e1f2a3b4-c5d6-7890-4567-901234567890}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Project]\Header Files">
+      <UniqueIdentifier>{f7c1d9e0-55a8-4113-b03d-3c9c82c02f72}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="[Project]\Resource Files">
+      <UniqueIdentifier>{bac25e3b-e87d-4847-8fd0-28e357477814}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
       <Filter>[Project]\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="KMD\utils.cpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClCompile Include="Intrinsics\crt_memory.cpp">
+      <Filter>[Intrinsics]\CRT</Filter>
     </ClCompile>
-    <ClCompile Include="KMD\basics.cpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClCompile Include="Intrinsics\crt_string.cpp">
+      <Filter>[Intrinsics]\CRT</Filter>
     </ClCompile>
-    <ClCompile Include="KMD\cpuid.cpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClCompile Include="Intrinsics\import_resolve.cpp">
+      <Filter>[Intrinsics]\Entry</Filter>
     </ClCompile>
-    <ClCompile Include="KMD\dTlbPoison.cpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClCompile Include="Intrinsics\driver_boot.cpp">
+      <Filter>[Intrinsics]\Entry</Filter>
     </ClCompile>
-    <ClCompile Include="KMD\entry.cpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClCompile Include="Intrinsics\utils_scan.cpp">
+      <Filter>[Intrinsics]\Utils</Filter>
     </ClCompile>
-    <ClCompile Include="KMD\fwAlloc.cpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClCompile Include="Intrinsics\utils_pe.cpp">
+      <Filter>[Intrinsics]\Utils</Filter>
     </ClCompile>
-    <ClCompile Include="KMD\msr.cpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClCompile Include="Intrinsics\utils_paging.cpp">
+      <Filter>[Intrinsics]\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Intrinsics\utils_locate.cpp">
+      <Filter>[Intrinsics]\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Intrinsics\Architecture\cpuid\vendor.cpp">
+      <Filter>[Intrinsics]\Architecture\cpuid</Filter>
+    </ClCompile>
+    <ClCompile Include="Intrinsics\Architecture\cpuid\topology.cpp">
+      <Filter>[Intrinsics]\Architecture\cpuid</Filter>
+    </ClCompile>
+    <ClCompile Include="Intrinsics\Architecture\cpuid\svm.cpp">
+      <Filter>[Intrinsics]\Architecture\cpuid</Filter>
+    </ClCompile>
+    <ClCompile Include="Intrinsics\Architecture\msr\vm_apic.cpp">
+      <Filter>[Intrinsics]\Architecture\msr</Filter>
+    </ClCompile>
+    <ClCompile Include="Intrinsics\Architecture\msr\pstate.cpp">
+      <Filter>[Intrinsics]\Architecture\msr</Filter>
+    </ClCompile>
+    <ClCompile Include="Intrinsics\Architecture\msr\timing.cpp">
+      <Filter>[Intrinsics]\Architecture\msr</Filter>
+    </ClCompile>
+    <ClCompile Include="Intrinsics\fwAlloc_zero_page.cpp">
+      <Filter>[Intrinsics]\Memory</Filter>
+    </ClCompile>
+    <ClCompile Include="Intrinsics\fwAlloc_core.cpp">
+      <Filter>[Intrinsics]\Memory</Filter>
+    </ClCompile>
+    <ClCompile Include="Intrinsics\dtlb_hosted.cpp">
+      <Filter>[Intrinsics]\Memory</Filter>
+    </ClCompile>
+    <ClCompile Include="Intrinsics\dtlb_poison_ops.cpp">
+      <Filter>[Intrinsics]\Memory</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="KMD\intrinsics.hpp">
+    <ClInclude Include="Intrinsics\intrinsics.hpp">
       <Filter>[Intrinsics]</Filter>
     </ClInclude>
-    <ClInclude Include="KMD\nt_imports.hpp">
+    <ClInclude Include="Intrinsics\basics.hpp">
       <Filter>[Intrinsics]</Filter>
     </ClInclude>
-    <ClInclude Include="KMD\nt_methods.hpp">
+    <ClInclude Include="Intrinsics\kmd_types.hpp">
       <Filter>[Intrinsics]</Filter>
     </ClInclude>
-    <ClInclude Include="KMD\nt_structs.hpp">
+    <ClInclude Include="Intrinsics\kmd_pattern.hpp">
       <Filter>[Intrinsics]</Filter>
     </ClInclude>
-    <ClInclude Include="KMD\basics.hpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClInclude Include="Intrinsics\Architecture\layout.hpp">
+      <Filter>[Intrinsics]\Architecture</Filter>
     </ClInclude>
-    <ClInclude Include="KMD\cpuid.hpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClInclude Include="Intrinsics\crt\decl.hpp">
+      <Filter>[Intrinsics]\CRT</Filter>
     </ClInclude>
-    <ClInclude Include="KMD\dTlbPoison.hpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClInclude Include="Intrinsics\crt\asm.hpp">
+      <Filter>[Intrinsics]\CRT</Filter>
     </ClInclude>
-    <ClInclude Include="KMD\entry.hpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClInclude Include="Intrinsics\cpuid.hpp">
+      <Filter>[Intrinsics]\Architecture</Filter>
     </ClInclude>
-    <ClInclude Include="KMD\fwAlloc.hpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClInclude Include="Intrinsics\msr.hpp">
+      <Filter>[Intrinsics]\Architecture</Filter>
     </ClInclude>
-    <ClInclude Include="KMD\msr.hpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClInclude Include="Intrinsics\utils.hpp">
+      <Filter>[Intrinsics]\Utils</Filter>
     </ClInclude>
-    <ClInclude Include="KMD\utils.hpp">
-      <Filter>[Intrinsics]</Filter>
+    <ClInclude Include="Intrinsics\nt\nt.hpp">
+      <Filter>[Intrinsics]\NT</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\fwd.hpp">
+      <Filter>[Intrinsics]\NT</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\enums.hpp">
+      <Filter>[Intrinsics]\NT</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\struct\base.hpp">
+      <Filter>[Intrinsics]\NT\struct</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\struct\xsave.hpp">
+      <Filter>[Intrinsics]\NT\struct</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\struct\context.hpp">
+      <Filter>[Intrinsics]\NT\struct</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\struct\mm.hpp">
+      <Filter>[Intrinsics]\NT\struct</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\struct\wait.hpp">
+      <Filter>[Intrinsics]\NT\struct</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\struct\io.hpp">
+      <Filter>[Intrinsics]\NT\struct</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\all.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\ex.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\ob.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\dbg.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\print.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\io_mdl.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\mm.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\ke.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\ps.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\rtl.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\zw.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\import\io_dev.hpp">
+      <Filter>[Intrinsics]\NT\import</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\all.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\ex.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\ob.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\dbg.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\print.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\io_mdl.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\mm.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\ke.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\ps.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\rtl.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\zw.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\nt\method\io_dev.hpp">
+      <Filter>[Intrinsics]\NT\method</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\fwAlloc.hpp">
+      <Filter>[Intrinsics]\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\dTlbPoison.hpp">
+      <Filter>[Intrinsics]\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="Intrinsics\entry.hpp">
+      <Filter>[Intrinsics]\Entry</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
