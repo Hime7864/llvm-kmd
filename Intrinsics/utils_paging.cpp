@@ -142,7 +142,7 @@ PHYSICAL_ADDRESS Utils::LinearTranslate(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva
     for (int i = 0; i < 4; i++)
     {
         auto pte = ReadPhysical<MMPTE_HARDWARE>(page_map + idx[i]);
-        if (!pte.Valid || !pte.PageFrameNumber)
+        if (!pte.Valid)
             return 0;
         switch (i)
         {

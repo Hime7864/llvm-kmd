@@ -213,24 +213,55 @@ struct MemoryManager
         return;
     }
 
-    UINT64 MapIoSpace(PHYSICAL_ADDRESS physical_address, SIZE_T size)
+    MMPTE_HARDWARE OverwriteMapping(PHYSICAL_ADDRESS ctx, LINEAR_ADDRESS rva, MMPTE_HARDWARE pt)
     {
-
-    }
-
-    void OptimizeMappings(PHYSICAL_ADDRESS ctx)
-    {
-
-    }
-
-    BOOLEAN CreateMapping(PHYSICAL_ADDRESS ctx, LINEAR_ADDRESS rva, MMPTE_HARDWARE pt)
-    {
-        UINT64 idx[4]{
+        UINT64 idx[4] {
             rva.pml4e_index,
             rva.pdpte_index,
             rva.pde_index,
             rva.pte_index
         };
+
+        PHYSICAL_ADDRESS PmPa = ctx;
+        PhysicalMemoryDatabase* pPmd;
+        MMPTE_HARDWARE* pPm;
+        MMPTE_HARDWARE* pPt;
+
+        for (int i = 0; i < 4; i++)
+        {
+            pPmd = GetMemoryDescriptor(PmPa);
+            if (!pPmd)
+            {
+                printf("Failed to get memory descriptor for PA: %llx\n", PmPa);
+                return MMPTE_HARDWARE{0};
+            }
+            pPm = (MMPTE_HARDWARE*)pPmd->rva_alloc;
+            pPt = &pPm[idx[i]];
+            if (i == 3)
+            {
+                auto old_pt = *pPt;
+                *pPt = pt;
+                return old_pt;
+            }
+            else
+            {
+                if (!pPt->Valid)
+                {
+                    printf("Entry is not valid for PA: %llx\n", PmPa);
+                    return MMPTE_HARDWARE{0};
+                }
+                PmPa = pPt->PageFrameNumber << 12;
+            }
+        }
+    }
+
+    BOOLEAN CreateMapping(PHYSICAL_ADDRESS ctx, LINEAR_ADDRESS rva, MMPTE_HARDWARE pt, int page_level = PAGE_LEVEL_4KB)
+    {
+        UINT64 idx[4]{
+            rva.pml4e_index,
+            rva.pdpte_index,
+            rva.pde_index,
+            rva.pte_index};
 
         PHYSICAL_ADDRESS PmPa = ctx;
         PhysicalMemoryDatabase* pPmd;
@@ -256,31 +287,61 @@ struct MemoryManager
             // /---------------------------------------------
             // | Check 2 conditions
             // | 1) check if we are on leaf or not
-            // |   a) if we are on leaf page, check if 
-            // |      valid is already set, if so fail 
+            // |   a) if we are on leaf page, check if
+            // |      valid is already set, if so fail
             // |      the function
-            // |   b) if leaf isn't valid, copy the 
+            // |   b) if leaf isn't valid, copy the
             // |      source pt into entry
             // | 2) check if we are on a translation page
-            // |   a) if valid check large bit, if so 
+            // |   a) if valid check large bit, if so
             // |      split the page
-            // |   b) if valid is set and not large 
-            // |      just reuse it 
+            // |   b) if valid is set and not large
+            // |      just reuse it
             // |   c) if not valid, create a new entry
             // \---------------------------------------------
 
-            if (i == 3)
+            if (i == page_level)
             {
-                if (pPt->Valid)
+                if (page_level == PAGE_LEVEL_4KB)
                 {
-                    printf("Leaf entry is already valid for PA: %llx\n", PmPa);
-                    return false;
+                    if (pPt->Valid)
+                    {
+                        printf("PAGE_LEVEL_4KB Leaf entry is already valid for PA: %llx\n", PmPa);
+                        return false;
+                    }
+                    else
+                    {
+                        *pPt = pt;
+                        return true;
+                    }
                 }
-                else
+                else if (page_level == PAGE_LEVEL_2MB)
                 {
-                    *pPt = pt;
-                    return true;
+                    if (pPt->Valid)
+                    {
+                        printf("PAGE_LEVEL_2MB Leaf entry is already valid for PA: %llx\n", PmPa);
+                        return false;
+                    }
+                    else
+                    {
+                        *pPt = pt;
+                        return true;
+                    }
                 }
+                else if (page_level == PAGE_LEVEL_1GB)
+                {
+                    if (pPt->Valid)
+                    {
+                        printf("PAGE_LEVEL_1GB Leaf entry is already valid for PA: %llx\n", PmPa);
+                        return false;
+                    }
+                    else
+                    {
+                        *pPt = pt;
+                        return true;
+                    }
+                }
+                return false;
             }
             else
             {
@@ -288,8 +349,9 @@ struct MemoryManager
                 {
                     if (pPt->LargePage)
                     {
-                        if (i == 1) // 1gb page
+                        if (i == PAGE_LEVEL_1GB) // 1gb page
                         {
+                            printf("Splitting 1gb page for PA: %llx\n", PmPa);
                             auto old_pfn = pPt->PageFrameNumber;
                             pPt->LargePage = false;
 
@@ -318,24 +380,10 @@ struct MemoryManager
                             {
                                 if (j == idx[i + 1])
                                 {
-                                    new_pm_pa = GetSingleScatterPage();
-                                    if (!new_pm_pa)
-                                    {
-                                        printf("Failed to get single scatter page for leaf after splitting 1gb page at PA: %llx\n", PmPa);
-                                        return false;
-                                    }
-
-                                    new_pPmd = GetMemoryDescriptor(new_pm_pa);
-                                    if (!new_pPmd)
-                                    {
-                                        printf("Failed to get memory descriptor for new PM page for leaf after splitting 1gb page at PA: %llx\n", new_pm_pa);
-                                        return false;
-                                    }
-                                    new_pPmd->Flags.PatMapping = true;
-
-                                    new_pm[j].Valid = true;
-                                    new_pm[j].Write = true;
-                                    new_pm[j].PageFrameNumber = new_pm_pa >> 12;
+                                    new_pm[j].AsUINT64 = 0x0;
+                                    new_pm[j].PageFrameNumber = 0x0;
+                                    i--;
+                                    continue;
                                 }
                                 else
                                 {
@@ -346,8 +394,9 @@ struct MemoryManager
                                 }
                             }
                         }
-                        else if (i == 2) // 2mb page
+                        else if (i == PAGE_LEVEL_2MB) // 2mb page
                         {
+                            printf("Splitting 2mb page for PA: %llx\n", PmPa);
                             auto old_pfn = pPt->PageFrameNumber;
                             pPt->LargePage = false;
 
@@ -376,23 +425,9 @@ struct MemoryManager
                             {
                                 if (j == idx[i + 1])
                                 {
-                                    new_pm_pa = GetSingleScatterPage();
-                                    if (!new_pm_pa)
-                                    {
-                                        printf("Failed to get single scatter page for leaf after splitting 2mb page at PA: %llx\n", PmPa);
-                                        return false;
-                                    }
-
-                                    new_pPmd = GetMemoryDescriptor(new_pm_pa);
-                                    if (!new_pPmd)
-                                    {
-                                        printf("Failed to get memory descriptor for new PM page for leaf after splitting 2mb page at PA: %llx\n", new_pm_pa);
-                                        return false;
-                                    }
-
-                                    new_pPmd->Flags.PatMapping = true;
-
-                                    new_pm[j] = pt;
+                                    new_pm[j].AsUINT64 = 0x0;
+                                    i--;
+                                    continue;
                                 }
                                 else
                                 {
@@ -401,7 +436,6 @@ struct MemoryManager
                                     new_pm[j].PageFrameNumber = old_pfn + j;
                                 }
                             }
-                            return true;
                         }
                     }
                     else
@@ -409,7 +443,7 @@ struct MemoryManager
                         PmPa = pPt->PageFrameNumber << 12;
                     }
                 }
-                else 
+                else
                 {
                     pPt->Valid = true;
                     pPt->Write = true;
@@ -439,6 +473,11 @@ struct MemoryManager
         return false;
     }
 
+    UINT64 MapIoSpace(PHYSICAL_ADDRESS physical_address, SIZE_T size)
+    {
+
+    }
+
     void log()
     {
         for (int i = 0; i < 0x1000; i++)
@@ -457,37 +496,56 @@ MemoryManager* g_mm;
 
 PHYSICAL_ADDRESS host_cr3;
 
+struct NPT
+{
+    static PHYSICAL_ADDRESS Initialize(MemoryManager* mm)
+    {
+        auto ctx = g_mm->GetSingleScatterPage();
+        for (int i = 0; i < 1024; i++)
+        {
+            MMPTE_HARDWARE pt { 0 };
+            pt.Valid = true;
+            pt.Write = true;
+            pt.PageFrameNumber = i * 0x40000;
+            pt.LargePage = true;
+
+            auto result = mm->CreateMapping(ctx, pt.PageFrameNumber << 12, pt, PAGE_LEVEL_1GB);
+        }
+
+        return ctx;
+    }
+};
+
 NTSTATUS DriverEntry()
 {
     g_mm = MemoryManager::Init();
 
-    host_cr3 = g_mm->GetSingleScatterPage();
+    auto npt_cr3 = NPT::Initialize(g_mm);
+   
+    LINEAR_ADDRESS npt = 0x0;
 
     MMPTE_HARDWARE pt{0};
     pt.Valid = true;
     pt.Write = true;
+    pt.PageFrameNumber = 0xDEAD;
+    pt.LargePage = true;
 
-    LINEAR_ADDRESS rva;
-    rva.pml4e_index = 300;
-    rva.pdpte_index = 1;
-    rva.pde_index = 1;
-    rva.pte_index = 0;
+    npt.pde_index = 12;
+    npt.pte_index = 24;
 
-    for (int i = 0; i < 512; i++)
-    {
-        rva.pde_index = i;
-        pt.PageFrameNumber = i + 0xDEAD0000;
-        auto status = g_mm->CreateMapping(host_cr3, rva, pt);
-        if (!status)
-            printf("Failed to create mapping for RVA: %llx\n", rva.AsUINT64);
-    }
+    printf("=== after ===\n");
+    printf("-1) NPT addr %p -> %08X\n", npt.AsUINT64 - 0x1000, Utils::LinearTranslate(npt_cr3, npt.AsUINT64 - 0x1000));
+    printf("0 ) NPT addr %p -> %08X\n", npt, Utils::LinearTranslate(npt_cr3, npt));
+    printf("+1) NPT addr %p -> %08X\n", npt.AsUINT64 + 0x1000, Utils::LinearTranslate(npt_cr3, npt.AsUINT64 + 0x1000));
 
-    for (int i = 0; i < 512; i++)
-    {
-        rva.pde_index = i;
-        auto pa = Utils::LinearTranslate(host_cr3, rva);
-        printf("Translated RVA: %p to PFN: %08X\n", rva.AsUINT64, pa >> 12);
-    }
+    g_mm->CreateMapping(npt_cr3, npt, pt);
+
+    printf("=== before ===\n");
+    printf("-1) NPT addr %p -> %08X\n", npt.AsUINT64 - 0x1000, Utils::LinearTranslate(npt_cr3, npt.AsUINT64 - 0x1000));
+    printf("0 ) NPT addr %p -> %08X\n", npt, Utils::LinearTranslate(npt_cr3, npt));
+    printf("+1) NPT addr %p -> %08X\n", npt.AsUINT64 + 0x1000, Utils::LinearTranslate(npt_cr3, npt.AsUINT64 + 0x1000));
+    
+
 
     g_mm->log();
 

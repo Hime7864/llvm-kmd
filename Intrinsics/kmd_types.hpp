@@ -384,6 +384,10 @@ typedef void(__stdcall* PKRUNDOWN_ROUTINE)(
 #define HUGE_PAGE_SIZE 0x40000000
 #define HUGE_PAGE_SHIFT 30
 
+#define PAGE_LEVEL_4KB 3
+#define PAGE_LEVEL_2MB 2
+#define PAGE_LEVEL_1GB 1
+
 #define PAGE_ALIGN(va) ((PVOID)((ULONG_PTR)(va) & ~(PAGE_SIZE - 1)))
 #define PAGE_ALIGN_64K(va) ((PVOID)((ULONG_PTR)(va) & ~(0x10000 - 1)))
 #define ROUND_TO_PAGES(size) (((ULONG_PTR)(size) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
