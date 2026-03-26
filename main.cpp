@@ -41,7 +41,8 @@ struct MemoryManager
             flag.Commited = true;
             flag.PageFrameNumber = Utils::LinearTranslate((UINT64)buffer + i * 0x1000) >> 12;
             flag.InitCommit = true;
-            mm->InsertPage(flag);
+            mm->InsertPage(flag, (PVOID)((UINT64)buffer + i * 0x1000), 0x1000);
+
         }
 
         for (int i = 0; i < 3800; i++)
@@ -52,7 +53,7 @@ struct MemoryManager
             flag.Valid = true;
             flag.PageFrameNumber = Utils::LinearTranslate((UINT64)buffer_scatter) >> 12;
             flag.Scattered = true;
-            mm->InsertPage(flag, buffer_scatter);
+            mm->InsertPage(flag, buffer_scatter, 0x1000);
         }
 
         auto contiguous_buffer = MmAllocateContiguousMemorySpecifyCacheNode(
@@ -78,7 +79,7 @@ struct MemoryManager
             }
             else
             {
-                mm->InsertPage(flag);
+                mm->InsertPage(flag, (PVOID)((UINT64)contiguous_buffer + i * 0x1000), 0x1000);
             }
         }
 
@@ -381,7 +382,47 @@ struct MemoryManager
                                 if (j == idx[i + 1])
                                 {
                                     new_pm[j].AsUINT64 = 0x0;
-                                    new_pm[j].PageFrameNumber = 0x0;
+
+                                    auto new_pm_pa_2 = GetSingleScatterPage();
+                                    if (!new_pm_pa_2)
+                                    {
+                                        printf("Failed to get single scatter page for splitting 1gb page at PA: %llx\n", PmPa);
+                                        return false;
+                                    }
+
+                                    new_pm[j].Valid = true;
+                                    new_pm[j].Write = true;
+                                    new_pm[j].PageFrameNumber = new_pm_pa_2 >> 12;
+
+                                    auto new_pPmd_2 = GetMemoryDescriptor(new_pm_pa_2);
+                                    if (!new_pPmd_2)
+                                    {
+                                        printf("Failed to get memory descriptor for new PM page at PA: %llx\n", new_pm_pa_2);
+                                        return false;
+                                    }
+
+                                    
+
+                                    new_pPmd_2->Flags.PatMapping = true;
+
+                                    auto new_pm_2 = (MMPTE_HARDWARE*)new_pPmd_2->rva_alloc;
+
+                                    for (int m = 0; m < 512; m++)
+                                    {
+                                        if (m == idx[i + 2])
+                                        {
+                                            new_pm_2[m].AsUINT64 = 0;
+                                        }
+                                        else
+                                        {
+                                            new_pm_2[m].AsUINT64 = 0;
+                                            new_pm_2[m].Valid = true;
+                                            new_pm_2[m].Write = true;
+                                            new_pm_2[m].LargePage = true;
+                                            new_pm_2[m].PageFrameNumber = old_pfn + j * 512 + m;
+                                        }
+                                    }
+                                    
                                     i--;
                                     continue;
                                 }
@@ -516,38 +557,72 @@ struct NPT
     }
 };
 
+struct Host
+{
+    static PHYSICAL_ADDRESS Initialize(MemoryManager* mm)
+    {
+        auto ctx = g_mm->GetSingleScatterPage();
+        for (int i = 0; i < 0x1000; i++)
+        {
+            if (mm->database[i].Flags.Valid)
+            {
+                auto rva = mm->database[i].rva_alloc;
+                MMPTE_HARDWARE pte{0};
+                pte.Valid = true;
+                pte.Write = true;
+                pte.PageFrameNumber = mm->database[i].Flags.PageFrameNumber;
+                mm->CreateMapping(ctx, (UINT64)rva, pte);
+            }
+        }
+
+        UINT64 image_base, image_size;
+
+        Utils::LocateSelf(&image_base, &image_size);
+
+        for (int i = 0; i < image_size >> 12; i++)
+        {
+            auto new_page = g_mm->GetSingleScatterPage();
+            if (!new_page)
+            {
+                printf("Failed to get single scatter page for mapping image page at PA: %llx\n", new_page);
+                return false;
+            }
+
+            auto new_pPmd = g_mm->GetMemoryDescriptor(new_page);
+            if (!new_pPmd)
+            {
+                printf("Failed to get memory descriptor for new PM page at PA: %llx\n", new_page);
+                return false;
+            }
+
+            auto rva = new_pPmd->rva_alloc;
+            RtlCopyMemory(rva, (PVOID)(image_base + i * 0x1000), 0x1000);
+
+            MMPTE_HARDWARE pte{0};
+            pte.Valid = true;
+            pte.Write = true;
+            pte.PageFrameNumber = new_page >> 12;
+            mm->CreateMapping(ctx, (UINT64)image_base + i * 0x1000, pte);
+        }
+        return ctx;
+    }
+};
+
 NTSTATUS DriverEntry()
 {
     g_mm = MemoryManager::Init();
 
     auto npt_cr3 = NPT::Initialize(g_mm);
-   
-    LINEAR_ADDRESS npt = 0x0;
-
-    MMPTE_HARDWARE pt{0};
-    pt.Valid = true;
-    pt.Write = true;
-    pt.PageFrameNumber = 0xDEAD;
-    pt.LargePage = true;
-
-    npt.pde_index = 12;
-    npt.pte_index = 24;
-
-    printf("=== after ===\n");
-    printf("-1) NPT addr %p -> %08X\n", npt.AsUINT64 - 0x1000, Utils::LinearTranslate(npt_cr3, npt.AsUINT64 - 0x1000));
-    printf("0 ) NPT addr %p -> %08X\n", npt, Utils::LinearTranslate(npt_cr3, npt));
-    printf("+1) NPT addr %p -> %08X\n", npt.AsUINT64 + 0x1000, Utils::LinearTranslate(npt_cr3, npt.AsUINT64 + 0x1000));
-
-    g_mm->CreateMapping(npt_cr3, npt, pt);
-
-    printf("=== before ===\n");
-    printf("-1) NPT addr %p -> %08X\n", npt.AsUINT64 - 0x1000, Utils::LinearTranslate(npt_cr3, npt.AsUINT64 - 0x1000));
-    printf("0 ) NPT addr %p -> %08X\n", npt, Utils::LinearTranslate(npt_cr3, npt));
-    printf("+1) NPT addr %p -> %08X\n", npt.AsUINT64 + 0x1000, Utils::LinearTranslate(npt_cr3, npt.AsUINT64 + 0x1000));
     
+    auto host_cr3 = Host::Initialize(g_mm);
 
 
-    g_mm->log();
+    UINT64 image_base, image_size;
+
+    Utils::LocateSelf(&image_base, &image_size);
+
+    auto status = Utils::RvaValid(host_cr3, image_base);
+    printf("RVA valid: %d\n", status);
 
     MemoryManager::Free(g_mm);
     return STATUS_SUCCESS;
