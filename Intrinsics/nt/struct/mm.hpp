@@ -32,6 +32,19 @@ struct _MMPTE_HARDWARE
     };
 };
 
+//0x108 bytes (sizeof)
+struct _KAFFINITY_EX
+{
+    USHORT Count;   //0x0
+    USHORT Size;    //0x2
+    ULONG Reserved; //0x4
+    union
+    {
+        ULONGLONG Bitmap[1];        //0x8
+        ULONGLONG StaticBitmap[32]; //0x8
+    };
+}; 
+
 // 0x18 bytes (sizeof)
 struct _RTL_BALANCED_NODE
 {

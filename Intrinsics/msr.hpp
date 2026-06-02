@@ -332,21 +332,32 @@ struct MSR_HWCR
             UINT64 Reserved0 : 2;
             UINT64 TlbCacheDis : 1;
             UINT64 InvdWbinvd : 1;
-            UINT64 Reserved1 : 4;
+            UINT64 Reserved1 : 2;
+            UINT64 AllowFeerOnNe : 1;
+            UINT64 ignneEm : 1;
             UINT64 MonMwaitDis : 1;
             UINT64 MonMwaitUserEn : 1;
-            UINT64 Reserved2 : 8;
+            UINT64 Reserved2 : 2;
+            UINT64 SmiSpCycDis : 1;
+            UINT64 RsmSpCycDis : 1;
+            UINT64 Reserved3 : 2;
+            UINT64 Wrap32Dis : 1;
             UINT64 McStatusWrEn : 1;
-            UINT64 Reserved3 : 1;
+            UINT64 Reserved4 : 1;
             UINT64 IoCfgGpFault : 1;
             UINT64 LockTscToCurrentP0 : 1;
-            UINT64 Reserved4 : 2;
+            UINT64 Reserved5 : 2;
             UINT64 TscFreqSel : 1;
             UINT64 CpbDis : 1;
             UINT64 EffFreqCntMwait : 1;
             UINT64 EffFreqReadOnlyLock : 1;
+            UINT64 Reserved6 : 2;
             UINT64 IRPerfEn : 1;
-            UINT64 Reserved5 : 34;
+            UINT64 Reserved7 : 2;
+            UINT64 SmmPgCfgLock: 1;
+            UINT64 DowGradeFp512ToPF256 : 1;
+            UINT64 CpuidUserDis : 1;
+            UINT64 Reserved8 : 28;
         };
     };
 };
@@ -463,6 +474,7 @@ struct MSR_PSTATE
 class MSR
 {
 public:
+    static constexpr DWORD _MSR_IRPerfCount = 0xC00000E9UL;
     static constexpr DWORD _MSR_SPEC_CTRL = 0x00000048UL;
     static constexpr DWORD _MSR_PRED_CMD = 0x00000049UL;
     static constexpr DWORD _MSR_PATCH_LEVEL = 0x0000008BUL;
@@ -635,6 +647,8 @@ public:
     static VOID PSTATE_CONTROL(MSR_PSTATE_CONTROL data);
 
     static MSR_PSTATE_STATUS PSTATE_STATUS();
+
+    static UINT64 IRPerfCount();
 
     static UINT64 APERF();
 

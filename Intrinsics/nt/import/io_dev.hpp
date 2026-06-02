@@ -49,4 +49,23 @@ inline VOID(__stdcall* fn_IoDeleteDevice)(
 inline VOID(__stdcall* fn_IofCompleteRequest)(
     _In_ PIRP Irp,
     _In_ CHAR PriorityBoost) = nullptr;
+
+inline PVOID(__stdcall* fn_KeRegisterNmiCallback)(
+    _In_ PVOID Callback,
+    _In_opt_ PVOID Context) = nullptr;
+
+inline NTSTATUS(__stdcall* fn_KeDeregisterNmiCallback)(
+    _In_ PVOID Callback) = nullptr;
+inline VOID(__stdcall* fn_HalSendNMI)(
+    _In_ _KAFFINITY_EX* Affinity) = nullptr;
+
+inline VOID(__stdcall* fn_KeAddProcessorAffinityEx)(
+    _Inout_ _KAFFINITY_EX* Affinity,
+    _In_ INT Number) = nullptr;
+
+inline VOID(__stdcall* fn_KeInitializeAffinityEx)(
+    _Out_ _KAFFINITY_EX* Affinity) = nullptr;
+
+inline VOID(__stdcall* fn_ObfDereferenceObject)(
+    _In_ PVOID Object) = nullptr;
 } // namespace NtImports

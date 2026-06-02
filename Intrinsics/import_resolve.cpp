@@ -81,6 +81,12 @@ FUNCTION_TABLE_ENTRY function_table[]{
     {str_hash("IoDeleteSymbolicLink"), &NtImports::fn_IoDeleteSymbolicLink},
     {str_hash("IoDeleteDevice"), &NtImports::fn_IoDeleteDevice},
     {str_hash("IofCompleteRequest"), &NtImports::fn_IofCompleteRequest},
+    {str_hash("KeRegisterNmiCallback"), &NtImports::fn_KeRegisterNmiCallback},
+    {str_hash("KeDeregisterNmiCallback"), &NtImports::fn_KeDeregisterNmiCallback},
+    {str_hash("HalSendNMI"), &NtImports::fn_HalSendNMI},
+    {str_hash("KeAddProcessorAffinityEx"), &NtImports::fn_KeAddProcessorAffinityEx},
+    {str_hash("KeInitializeAffinityEx"), &NtImports::fn_KeInitializeAffinityEx},
+    {str_hash("ObfDereferenceObject"), &NtImports::fn_ObfDereferenceObject},
 };
 
 NTSTATUS resolve_imports()

@@ -102,3 +102,49 @@ VOID FORCEINLINE IofCompleteRequest(
         Irp,
         PriorityBoost);
 }
+
+PVOID FORCEINLINE KeRegisterNmiCallback(
+    _In_ PVOID Callback,
+    _In_opt_ PVOID Context)
+{
+    return NtImports::fn_KeRegisterNmiCallback(
+        Callback,
+        Context);
+}
+
+NTSTATUS FORCEINLINE KeDeregisterNmiCallback(
+    _In_ PVOID Callback)
+{
+    return NtImports::fn_KeDeregisterNmiCallback(
+        Callback);
+}
+
+VOID FORCEINLINE HalSendNMI(
+    _In_ _KAFFINITY_EX* Affinity)
+{
+    return NtImports::fn_HalSendNMI(
+        Affinity);
+}
+
+VOID FORCEINLINE KeInitializeAffinityEx(
+    _Out_ _KAFFINITY_EX* Affinity)
+{
+    return NtImports::fn_KeInitializeAffinityEx(
+        Affinity);
+}
+
+VOID FORCEINLINE KeAddProcessorAffinityEx(
+    _Inout_ _KAFFINITY_EX* Affinity,
+    _In_ INT Number)
+{
+    return NtImports::fn_KeAddProcessorAffinityEx(
+        Affinity,
+        Number);
+}
+
+VOID FORCEINLINE ObfDereferenceObject(
+    _In_ PVOID Object)
+{
+    return NtImports::fn_ObfDereferenceObject(
+        Object);
+}

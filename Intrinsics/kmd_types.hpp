@@ -430,6 +430,8 @@ typedef void(__stdcall* PKRUNDOWN_ROUTINE)(
 #define STATUS_PFN_NOT_PRESENT ((NTSTATUS)0xC00001FFUL)
 #define STATUS_PTE_NOT_VALID ((NTSTATUS)0xC00002FFUL)
 
+#define NMI_CB_POOL_TAG 'BCmN'
+
 #define va_list __builtin_va_list
 #define va_start __builtin_va_start
 #define va_arg(args, type) __builtin_va_arg(args, type)

@@ -30,6 +30,12 @@ UINT64 NOINLINE MSR::APERF()
     return __readmsr(_MSR_APERF);
 }
 
+UINT64 NOINLINE MSR::IRPerfCount()
+{
+    return __readmsr(_MSR_IRPerfCount);
+}
+
+
 UINT64 NOINLINE MSR::MPERF()
 {
     return __readmsr(_MSR_MPERF);
