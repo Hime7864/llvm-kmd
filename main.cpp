@@ -77,6 +77,9 @@ NTSTATUS DriverEntry()
     UINT64 expected_smi_base = 25000;
     UINT64 expected_smi_range = 20000;
     
+    bool report_smi_storm = false;
+    bool report_unexpected = false;
+
     for (int i = 0; i < iterations; i++)
     {
         DbgPrintEx(0,0,"%i/%i\n", i + 1, iterations);
@@ -100,7 +103,14 @@ NTSTATUS DriverEntry()
             auto nmi_data = &((NMI_DATA*)g_NmiContext)[l];
             if (nmi_data->score)
             {
-                DbgPrintEx(0, 0, "Core %i: %i -> core hit %i times\n", l, nmi_data->score, nmi_data->hits);
+                if (nmi_data->hits <= 3)
+                    DbgPrintEx(0, 0, "Core %i: %i -> core hit %i times\n", l, nmi_data->score, nmi_data->hits);
+                else
+                {
+                    DbgPrintEx(0, 0, "Core %i: %i -> core hit %i times <- Smi Storming\n", l, nmi_data->score, nmi_data->hits);
+                    report_smi_storm = true;
+                }
+                    
                 if (lower_bound == 0)
                     lower_bound = nmi_data->score;
                 if (nmi_data->score < lower_bound)
@@ -109,28 +119,44 @@ NTSTATUS DriverEntry()
         }
         if (lower_bound)
         {
-            DbgPrintEx(0, 0, "Lower bound: %i\n", lower_bound);
-
             if (lower_bound < expected_smi_base + expected_smi_range && 
                 lower_bound > expected_smi_base - expected_smi_range)
             {
-                DbgPrintEx(0, 0, "Expected Result\n");
+                DbgPrintEx(0, 0, "Expected (Normal)\n");
             }
             else
             {
-                DbgPrintEx(0, 0, "Unexpected Result\n");
+                DbgPrintEx(0, 0, "Unexpected (Out of Range) <- Very likely SMM is hyjacked\n");
+                report_unexpected = true;
             }
         }
-        //Sleep(500);
-        
+        Sleep(500);
     }
-
-    DbgPrintEx(0,0,"Expected: %d\n", expected_score);
-    DbgPrintEx(0,0,"Tested: %d\n", tested_score);
     auto percentage = (double)tested_score / expected_score * 100.0;
-    DbgPrintEx(0, 0, "Percentage dropped: %i\n", 100 - (int)percentage);
+    if (100 - (int)percentage > 10)
+        DbgPrintEx(0, 0, "Nmi's effected: %i%% :`(\n", 100 - (int)percentage);
+    else if (100 - (int)percentage)
+        DbgPrintEx(0, 0, "Nmi's effected: %i%% :(\n", 100 - (int)percentage);
+    else
+        DbgPrintEx(0, 0, "Nmi's effected: %i%% :)\n", 100 - (int)percentage);
 
-
+    DbgPrintEx(0, 0, "Test finished.\n");
+    if (report_unexpected && report_smi_storm)
+    {
+        DbgPrintEx(0, 0, "100% Smm is actively being abused\n");
+    }
+    else if (report_unexpected)
+    {
+        DbgPrintEx(0, 0, "Smm very likely is hyjacked\n");
+    }
+    else if (report_smi_storm)
+    {
+        DbgPrintEx(0, 0, "Could be faulty hardware/software but #smi is being stormed\n");
+    }
+    else
+    {
+        DbgPrintEx(0, 0, "Smm doesn't seem to be hyjacked\n");
+    }
     
 
 
