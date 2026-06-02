@@ -16,6 +16,12 @@ bool NmiCallback(PVOID ctx, bool handled)
     auto coreid = CPUID::current_core_number();
     auto nmi_data = &((NMI_DATA*)ctx)[coreid];
     auto hwcr = MSR::HWCR();
+    if (!hwcr.IRPerfEn)
+    {
+        hwcr.IRPerfEn = 1;
+        MSR::HWCR(hwcr);
+    }
+    hwcr = MSR::HWCR();
     if (hwcr.IRPerfEn)
     {
         int offset = 15012;
@@ -39,7 +45,6 @@ bool NmiCallback(PVOID ctx, bool handled)
             nmi_data->counter++;
         
     }
-
     return TRUE;
 }
 
@@ -61,7 +66,7 @@ NTSTATUS DriverEntry()
     for (int i=0;i<numCores;i++)
         KeAddProcessorAffinityEx(g_NmiAffinity, i);
     
-    int iterations = 1;
+    int iterations = 10;
     int nmi_count = 50;
 
     auto expected_score = nmi_count * iterations * numCores;
@@ -78,14 +83,11 @@ NTSTATUS DriverEntry()
             Sleep(1);
         }
 
-        int score = nmi_count * numCores;
-
         for (int i = 0; i < numCores; i++)
         {
             auto nmi_data = &((NMI_DATA*)g_NmiContext)[i];
-            score -= nmi_count - nmi_data->counter;
+            tested_score += nmi_data->counter;
         }
-        tested_score += score;
 
         auto lower_bound = 0;
         for (int l = 0; l < numCores; l++)
