@@ -2,7 +2,8 @@
 
 struct NMI_DATA
 {
-    UINT64 data;
+    UINT64 counter;
+    UINT64 score;
 };
 
 PVOID g_NmiCallbackHandle;
@@ -26,7 +27,17 @@ bool NmiCallback(PVOID ctx, bool handled)
         _mm_mfence();
         _mm_lfence();
         auto ircnt_1 = MSR::IRPerfCount();
-        nmi_data->data += !((ircnt_1 - ircnt_0) - offset);
+        auto score = ((ircnt_1 - ircnt_0) - offset);
+        if (score)
+        {
+            if (!nmi_data->score)
+                nmi_data->score = score;
+            else if (score < nmi_data->score)
+                nmi_data->score = score;
+        }
+        else
+            nmi_data->counter++;
+        
     }
 
     return TRUE;
@@ -44,40 +55,62 @@ NTSTATUS DriverEntry()
     g_NmiCallbackHandle = KeRegisterNmiCallback(NmiCallback, g_NmiContext);
 
     memset(g_NmiAffinity, 0, sizeof(_KAFFINITY_EX));
+    memset(g_NmiContext, 0, nmiContextLength);
 
     KeInitializeAffinityEx(g_NmiAffinity);
     for (int i=0;i<numCores;i++)
         KeAddProcessorAffinityEx(g_NmiAffinity, i);
     
-    printf("This test will take about 20 seconds to complete.\n starting in 3 seconds...\n");
-    Sleep(3000);
+    int iterations = 1;
+    int nmi_count = 50;
 
-    for (int i = 0; i < 10; i++)
+    auto expected_score = nmi_count * iterations * numCores;
+    auto tested_score = 0;
+    
+    for (int i = 0; i < iterations; i++)
     {
-        printf("Test %i/10\n", i + 1);
+        printf("%i/%i\n", i + 1, iterations);
         memset(g_NmiContext, 0, nmiContextLength);
-
-        int nmi_count = 50;
 
         for (int i = 0; i < nmi_count; i++)
         {
             HalSendNMI(g_NmiAffinity);
-            Sleep(25);
+            Sleep(1);
         }
 
         int score = nmi_count * numCores;
-        int max_score = score;
 
         for (int i = 0; i < numCores; i++)
         {
             auto nmi_data = &((NMI_DATA*)g_NmiContext)[i];
-            score -= nmi_count - nmi_data->data;
-            printf("Core %02d: %i/%i\n", i, nmi_data->data, nmi_count);
+            score -= nmi_count - nmi_data->counter;
         }
+        tested_score += score;
 
-        printf("Score: %i/%i\n\n", score, max_score);
-        Sleep(500);
+        auto lower_bound = 0;
+        for (int l = 0; l < numCores; l++)
+        {
+            auto nmi_data = &((NMI_DATA*)g_NmiContext)[l];
+            if (nmi_data->score)
+            {
+                printf("Core %i: %i\n", l, nmi_data->score);
+                if (lower_bound == 0)
+                    lower_bound = nmi_data->score;
+                if (nmi_data->score < lower_bound)
+                    lower_bound = nmi_data->score;
+            }
+        }
+        if (lower_bound)
+        printf("Lower bound: %i\n", lower_bound);
+        //Sleep(500);
+        
     }
+
+    printf("Expected: %d\n", expected_score);
+    printf("Tested: %d\n", tested_score);
+    auto percentage = (double)tested_score / expected_score * 100.0;
+    printf("Percentage dropped: %i\n", 100 - (int)percentage);
+
 
     
 
