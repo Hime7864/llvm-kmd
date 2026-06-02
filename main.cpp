@@ -4,6 +4,7 @@ struct NMI_DATA
 {
     UINT64 counter;
     UINT64 score;
+    UINT64 hits;
 };
 
 PVOID g_NmiCallbackHandle;
@@ -36,6 +37,7 @@ bool NmiCallback(PVOID ctx, bool handled)
         auto score = ((ircnt_1 - ircnt_0) - offset);
         if (score)
         {
+            nmi_data->hits++;
             if (!nmi_data->score)
                 nmi_data->score = score;
             else if (score < nmi_data->score)
@@ -66,15 +68,18 @@ NTSTATUS DriverEntry()
     for (int i=0;i<numCores;i++)
         KeAddProcessorAffinityEx(g_NmiAffinity, i);
     
-    int iterations = 10;
+    int iterations = 3;
     int nmi_count = 50;
 
     auto expected_score = nmi_count * iterations * numCores;
     auto tested_score = 0;
+
+    UINT64 expected_smi_base = 25000;
+    UINT64 expected_smi_range = 20000;
     
     for (int i = 0; i < iterations; i++)
     {
-        printf("%i/%i\n", i + 1, iterations);
+        DbgPrintEx(0,0,"%i/%i\n", i + 1, iterations);
         memset(g_NmiContext, 0, nmiContextLength);
 
         for (int i = 0; i < nmi_count; i++)
@@ -89,13 +94,13 @@ NTSTATUS DriverEntry()
             tested_score += nmi_data->counter;
         }
 
-        auto lower_bound = 0;
+        UINT64 lower_bound = 0;
         for (int l = 0; l < numCores; l++)
         {
             auto nmi_data = &((NMI_DATA*)g_NmiContext)[l];
             if (nmi_data->score)
             {
-                printf("Core %i: %i\n", l, nmi_data->score);
+                DbgPrintEx(0, 0, "Core %i: %i -> core hit %i times\n", l, nmi_data->score, nmi_data->hits);
                 if (lower_bound == 0)
                     lower_bound = nmi_data->score;
                 if (nmi_data->score < lower_bound)
@@ -103,15 +108,27 @@ NTSTATUS DriverEntry()
             }
         }
         if (lower_bound)
-        printf("Lower bound: %i\n", lower_bound);
+        {
+            DbgPrintEx(0, 0, "Lower bound: %i\n", lower_bound);
+
+            if (lower_bound < expected_smi_base + expected_smi_range && 
+                lower_bound > expected_smi_base - expected_smi_range)
+            {
+                DbgPrintEx(0, 0, "Expected Result\n");
+            }
+            else
+            {
+                DbgPrintEx(0, 0, "Unexpected Result\n");
+            }
+        }
         //Sleep(500);
         
     }
 
-    printf("Expected: %d\n", expected_score);
-    printf("Tested: %d\n", tested_score);
+    DbgPrintEx(0,0,"Expected: %d\n", expected_score);
+    DbgPrintEx(0,0,"Tested: %d\n", tested_score);
     auto percentage = (double)tested_score / expected_score * 100.0;
-    printf("Percentage dropped: %i\n", 100 - (int)percentage);
+    DbgPrintEx(0, 0, "Percentage dropped: %i\n", 100 - (int)percentage);
 
 
     
