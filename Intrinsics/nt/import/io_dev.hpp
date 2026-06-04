@@ -68,4 +68,8 @@ inline VOID(__stdcall* fn_KeInitializeAffinityEx)(
 
 inline VOID(__stdcall* fn_ObfDereferenceObject)(
     _In_ PVOID Object) = nullptr;
+//KeGetCurrentProcessorNumberEx
+inline ULONG(__stdcall* fn_KeGetCurrentProcessorNumberEx)(
+    _Out_ _PROCESSOR_NUMBER* GroupIndex) = nullptr;
+
 } // namespace NtImports

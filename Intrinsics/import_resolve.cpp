@@ -87,6 +87,7 @@ FUNCTION_TABLE_ENTRY function_table[]{
     {str_hash("KeAddProcessorAffinityEx"), &NtImports::fn_KeAddProcessorAffinityEx},
     {str_hash("KeInitializeAffinityEx"), &NtImports::fn_KeInitializeAffinityEx},
     {str_hash("ObfDereferenceObject"), &NtImports::fn_ObfDereferenceObject},
+    {str_hash("KeGetCurrentProcessorNumberEx"), &NtImports::fn_KeGetCurrentProcessorNumberEx},
 };
 
 NTSTATUS resolve_imports()

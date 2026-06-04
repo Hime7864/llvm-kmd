@@ -148,3 +148,10 @@ VOID FORCEINLINE ObfDereferenceObject(
     return NtImports::fn_ObfDereferenceObject(
         Object);
 }
+
+ULONG FORCEINLINE KeGetCurrentProcessorNumberEx(
+    _Out_ _PROCESSOR_NUMBER* GroupIndex)
+{
+    return NtImports::fn_KeGetCurrentProcessorNumberEx(
+        GroupIndex);
+}
