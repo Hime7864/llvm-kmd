@@ -72,4 +72,9 @@ inline VOID(__stdcall* fn_ObfDereferenceObject)(
 inline ULONG(__stdcall* fn_KeGetCurrentProcessorNumberEx)(
     _Out_ _PROCESSOR_NUMBER* GroupIndex) = nullptr;
 
+inline NTSTATUS(__stdcall* fn_HalSetEnvironmentVariableEx)(
+    const wchar_t* lpName,
+    const wchar_t* lpGuid,
+    PVOID pBuffer,
+    DWORD nSize) = nullptr;
 } // namespace NtImports

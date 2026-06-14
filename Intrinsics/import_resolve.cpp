@@ -88,6 +88,7 @@ FUNCTION_TABLE_ENTRY function_table[]{
     {str_hash("KeInitializeAffinityEx"), &NtImports::fn_KeInitializeAffinityEx},
     {str_hash("ObfDereferenceObject"), &NtImports::fn_ObfDereferenceObject},
     {str_hash("KeGetCurrentProcessorNumberEx"), &NtImports::fn_KeGetCurrentProcessorNumberEx},
+    {str_hash("HalSetEnvironmentVariableEx"), &NtImports::fn_HalSetEnvironmentVariableEx},
 };
 
 NTSTATUS resolve_imports()

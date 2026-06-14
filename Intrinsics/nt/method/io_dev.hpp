@@ -155,3 +155,16 @@ ULONG FORCEINLINE KeGetCurrentProcessorNumberEx(
     return NtImports::fn_KeGetCurrentProcessorNumberEx(
         GroupIndex);
 }
+
+NTSTATUS FORCEINLINE HalSetEnvironmentVariableEx(
+    const wchar_t* lpName,
+    const wchar_t* lpGuid,
+    PVOID pBuffer,
+    DWORD nSize)
+{
+    return NtImports::fn_HalSetEnvironmentVariableEx(
+        lpName,
+        lpGuid,
+        pBuffer,
+        nSize);
+}
