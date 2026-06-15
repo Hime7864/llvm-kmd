@@ -47,7 +47,3 @@ The current `DriverEntry` is intentionally minimal and only prints a debug messa
 - No broad Windows build compatibility matrix.
 - Signature-based imports may need updates across Windows versions.
 - No automated tests are currently included.
-
-## License
-
-No license has been specified yet.
