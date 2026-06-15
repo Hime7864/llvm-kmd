@@ -41,9 +41,7 @@ The current `DriverEntry` is intentionally minimal and only prints a debug messa
 
 ## Limitations
 
-- x64-focused.
-- AMD-focused in the current MSR/CPUID coverage.
+- AMD-focused.
 - Not a complete WDK replacement.
 - No broad Windows build compatibility matrix.
 - Signature-based imports may need updates across Windows versions.
-- No automated tests are currently included.
