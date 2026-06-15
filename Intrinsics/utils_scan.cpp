@@ -1,4 +1,4 @@
-#include "intrinsics.hpp"
+#include "utils.hpp"
 
 QWORD Utils::ResolveRel32(BYTE count, QWORD address)
 {
@@ -101,11 +101,3 @@ QWORD Utils::SigScan_s(QWORD scan_start, QWORD max_scan, const char* ida_sig)
 }
 
 #undef TO_BYTE
-
-QWORD Utils::GetKernelBase()
-{
-    auto sig = Utils::SigScan(MSR::LSTAR() & ~0xFFFFFULL, 0xA00000ULL, pattern("66 89 05 ? ? ? ? 48 8D 05 ? ? ? ? 48 89"));
-    if (!sig)
-        return 0;
-    return *(QWORD*)(*(QWORD*)ResolveRel32(3, sig + 0x07) + 0x30);
-}

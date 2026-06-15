@@ -1,5 +1,7 @@
 #pragma once
 
+#include "structures.hpp"
+
 struct CPUID_RESULT
 {
     UINT32 eax;
@@ -279,3 +281,4 @@ public:
 
     static CPUID_STRUCTURED_EXTENDED_FEATURES_EBX structured_extended_features_ebx();
 };
+

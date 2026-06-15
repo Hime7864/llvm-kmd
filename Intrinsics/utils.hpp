@@ -1,5 +1,11 @@
 #pragma once
 
+#include "structures.hpp"
+#include "imports.hpp"
+#include "assembly.hpp"
+#include "msr.hpp"
+#include "crt.hpp"
+
 class Utils
 {
 public:

@@ -1,10 +1,10 @@
-#include "intrinsics.hpp"
+#include "utils.hpp"
 
 NTSTATUS Utils::ReadPhysical(PHYSICAL_ADDRESS address, PVOID buffer, SIZE_T size)
 {
     SIZE_T bytesRead = 0;
-    auto irql = __readcr8();
-    __writecr8(1);
+    auto irql = _mm_readcr8();
+    _mm_writecr8(1);
 
     auto status = MmCopyMemory(
         buffer,
@@ -30,7 +30,7 @@ NTSTATUS Utils::ReadPhysical(PHYSICAL_ADDRESS address, PVOID buffer, SIZE_T size
         }
     }
 
-    __writecr8(irql);
+    _mm_writecr8(irql);
     return status;
 }
 
@@ -79,7 +79,7 @@ PHYSICAL_ADDRESS Utils::LinearTranslatePPte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS
 
 PHYSICAL_ADDRESS Utils::LinearTranslatePPte(LINEAR_ADDRESS rva)
 {
-    return LinearTranslatePPte(__readcr3(), rva);
+    return LinearTranslatePPte(_mm_readcr3(), rva);
 }
 
 MMPTE_HARDWARE Utils::LinearTranslatePte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
@@ -127,7 +127,7 @@ MMPTE_HARDWARE Utils::LinearTranslatePte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rv
 
 MMPTE_HARDWARE Utils::LinearTranslatePte(LINEAR_ADDRESS rva)
 {
-    return LinearTranslatePte(__readcr3(), rva);
+    return LinearTranslatePte(_mm_readcr3(), rva);
 }
 
 PHYSICAL_ADDRESS Utils::LinearTranslate(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
@@ -175,7 +175,7 @@ PHYSICAL_ADDRESS Utils::LinearTranslate(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva
 
 PHYSICAL_ADDRESS Utils::LinearTranslate(LINEAR_ADDRESS rva)
 {
-    return LinearTranslate(__readcr3(), rva);
+    return LinearTranslate(_mm_readcr3(), rva);
 }
 
 NTSTATUS Utils::ReadLinear(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva, PVOID buffer, SIZE_T size)
@@ -262,12 +262,12 @@ NTSTATUS Utils::ReadLinearSafe(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva, PVOID b
 
 NTSTATUS Utils::ReadLinear(LINEAR_ADDRESS rva, PVOID buffer, SIZE_T size)
 {
-    return ReadLinear(__readcr3(), rva, buffer, size);
+    return ReadLinear(_mm_readcr3(), rva, buffer, size);
 }
 
 NTSTATUS Utils::ReadLinearSafe(LINEAR_ADDRESS rva, PVOID buffer, SIZE_T size, SIZE_T* bytes_read)
 {
-    return ReadLinearSafe(__readcr3(), rva, buffer, size, bytes_read);
+    return ReadLinearSafe(_mm_readcr3(), rva, buffer, size, bytes_read);
 }
 
 BOOLEAN Utils::RvaValid(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
@@ -277,5 +277,5 @@ BOOLEAN Utils::RvaValid(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
 
 BOOLEAN Utils::RvaValid(LINEAR_ADDRESS rva)
 {
-    return RvaValid(__readcr3(), rva);
+    return RvaValid(_mm_readcr3(), rva);
 }

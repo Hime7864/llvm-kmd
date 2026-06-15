@@ -1,18 +1,18 @@
-#include "intrinsics.hpp"
+#include "dtlb.hpp"
 
-UINT64 DTLB_POISON::HostedGetVirtual(PHYSICAL_ADDRESS address)
+UINT64 DTLB::HostedGetVirtual(PHYSICAL_ADDRESS address)
 {
     auto va = MmMapIoSpace(address, 0x1000, MmNonCached);
-    __invlpg(va);
+    _mm_invlpg(va);
     return (UINT64)va;
 }
 
-void DTLB_POISON::HostedFreeVirtual(UINT64 address)
+void DTLB::HostedFreeVirtual(UINT64 address)
 {
     return MmUnmapIoSpace((PVOID)address, 0x1000);
 }
 
-MMPTE_HARDWARE DTLB_POISON::HostedValidateTranslation(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
+MMPTE_HARDWARE DTLB::HostedValidateTranslation(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
 {
     DWORD idx[4]{
         (DWORD)rva.pml4e_index,
@@ -42,7 +42,7 @@ MMPTE_HARDWARE DTLB_POISON::HostedValidateTranslation(PHYSICAL_ADDRESS dtb, LINE
     return {0};
 }
 
-BOOLEAN DTLB_POISON::HostedCommit4kbMapping(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva, MMPTE_HARDWARE pte)
+BOOLEAN DTLB::HostedCommit4kbMapping(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva, MMPTE_HARDWARE pte)
 {
     DWORD idx[4]{
         (DWORD)rva.pml4e_index,

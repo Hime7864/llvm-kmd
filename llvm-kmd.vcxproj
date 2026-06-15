@@ -24,6 +24,7 @@
     <ProjectGuid>{c31d662a-a0aa-400c-bc40-8ba2771d3a34}</ProjectGuid>
     <RootNamespace>llvmkmd</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>llvm-kmd</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -109,9 +110,9 @@
     <ClCompile>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormat>None</DebugInformationFormat>
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -119,6 +120,8 @@
       <Optimization>Full</Optimization>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <AdditionalIncludeDirectories>$(SolutionDir)Intrinsics\</AdditionalIncludeDirectories>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -132,7 +135,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <DebugInformationFormat>None</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -149,73 +152,34 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Intrinsics\Architecture\cpuid\svm.cpp" />
-    <ClCompile Include="Intrinsics\Architecture\cpuid\topology.cpp" />
-    <ClCompile Include="Intrinsics\Architecture\cpuid\vendor.cpp" />
-    <ClCompile Include="Intrinsics\Architecture\msr\pstate.cpp" />
-    <ClCompile Include="Intrinsics\Architecture\msr\timing.cpp" />
-    <ClCompile Include="Intrinsics\Architecture\msr\vm_apic.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Intrinsics\cpuid.cpp" />
+    <ClCompile Include="Intrinsics\msr.cpp" />
     <ClCompile Include="Intrinsics\crt_memory.cpp" />
     <ClCompile Include="Intrinsics\crt_string.cpp" />
-    <ClCompile Include="Intrinsics\driver_boot.cpp" />
+    <ClCompile Include="Intrinsics\utils_scan.cpp" />
+    <ClCompile Include="Intrinsics\utils_pe.cpp" />
+    <ClCompile Include="Intrinsics\utils_paging.cpp" />
+    <ClCompile Include="Intrinsics\utils_locate.cpp" />
+    <ClCompile Include="Intrinsics\fwa.cpp" />
+    <ClCompile Include="Intrinsics\fwa_zero_page.cpp" />
     <ClCompile Include="Intrinsics\dtlb_hosted.cpp" />
     <ClCompile Include="Intrinsics\dtlb_poison_ops.cpp" />
-    <ClCompile Include="Intrinsics\fwAlloc_core.cpp" />
-    <ClCompile Include="Intrinsics\fwAlloc_zero_page.cpp" />
     <ClCompile Include="Intrinsics\import_resolve.cpp" />
-    <ClCompile Include="Intrinsics\utils_locate.cpp" />
-    <ClCompile Include="Intrinsics\utils_paging.cpp" />
-    <ClCompile Include="Intrinsics\utils_pe.cpp" />
-    <ClCompile Include="Intrinsics\utils_scan.cpp" />
-    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Intrinsics\driver_boot.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Intrinsics\Architecture\layout.hpp" />
-    <ClInclude Include="Intrinsics\basics.hpp" />
-    <ClInclude Include="Intrinsics\cpuid.hpp" />
-    <ClInclude Include="Intrinsics\crt\asm.hpp" />
-    <ClInclude Include="Intrinsics\crt\decl.hpp" />
-    <ClInclude Include="Intrinsics\dTlbPoison.hpp" />
-    <ClInclude Include="Intrinsics\entry.hpp" />
-    <ClInclude Include="Intrinsics\fwAlloc.hpp" />
-    <ClInclude Include="Intrinsics\intrinsics.hpp" />
-    <ClInclude Include="Intrinsics\kmd_pattern.hpp" />
-    <ClInclude Include="Intrinsics\kmd_types.hpp" />
-    <ClInclude Include="Intrinsics\msr.hpp" />
-    <ClInclude Include="Intrinsics\nt\nt.hpp" />
-    <ClInclude Include="Intrinsics\nt\fwd.hpp" />
-    <ClInclude Include="Intrinsics\nt\enums.hpp" />
-    <ClInclude Include="Intrinsics\nt\struct\base.hpp" />
-    <ClInclude Include="Intrinsics\nt\struct\context.hpp" />
-    <ClInclude Include="Intrinsics\nt\struct\io.hpp" />
-    <ClInclude Include="Intrinsics\nt\struct\mm.hpp" />
-    <ClInclude Include="Intrinsics\nt\struct\wait.hpp" />
-    <ClInclude Include="Intrinsics\nt\struct\xsave.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\all.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\dbg.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\ex.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\ob.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\io_dev.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\io_mdl.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\ke.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\mm.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\print.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\ps.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\rtl.hpp" />
-    <ClInclude Include="Intrinsics\nt\import\zw.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\all.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\dbg.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\ex.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\ob.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\io_dev.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\io_mdl.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\ke.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\mm.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\print.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\ps.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\rtl.hpp" />
-    <ClInclude Include="Intrinsics\nt\method\zw.hpp" />
     <ClInclude Include="Intrinsics\utils.hpp" />
+    <ClInclude Include="Intrinsics\fwa.hpp" />
+    <ClInclude Include="Intrinsics\dtlb.hpp" />
+    <ClInclude Include="Intrinsics\bootstrap.hpp" />
+    <ClInclude Include="Intrinsics\assembly.hpp" />
+    <ClInclude Include="Intrinsics\cpuid.hpp" />
+    <ClInclude Include="Intrinsics\structures.hpp" />
+    <ClInclude Include="Intrinsics\crt.hpp" />
+    <ClInclude Include="Intrinsics\imports.hpp" />
+    <ClInclude Include="Intrinsics\intrinsics.hpp" />
+    <ClInclude Include="Intrinsics\msr.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

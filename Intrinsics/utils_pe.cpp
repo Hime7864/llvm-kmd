@@ -1,4 +1,4 @@
-#include "intrinsics.hpp"
+#include "utils.hpp"
 
 QWORD Utils::GetProcAddress(QWORD module, const char* export_name)
 {

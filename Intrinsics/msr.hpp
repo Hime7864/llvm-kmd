@@ -1,5 +1,7 @@
 #pragma once
 
+#include "structures.hpp"
+
 struct MSR_VM_CR
 {
     union
@@ -471,6 +473,104 @@ struct MSR_PSTATE
     UINT64 get_performance_mhz();
 };
 
+struct MSR_CPPC_CAPABILITY_1
+{
+    union
+    {
+        UINT64 AsUINT64;
+        struct
+        {
+            UINT64 LowestPerf : 8;
+            UINT64 LowNonLinPerf : 8;
+            UINT64 NominalPerf : 8;
+            UINT64 HighestPerf : 8;
+            UINT64 Reserved : 32;
+        };
+    };
+};
+
+struct MSR_CPPC_ENABLE
+{
+    union
+    {
+        UINT64 AsUINT64;
+        struct
+        {
+            UINT64 CPPC_En : 1;
+            UINT64 : 63;
+        };
+    };
+};
+
+struct MSR_CPPC_CAPABILITY_2
+{
+    union
+    {
+        UINT64 AsUINT64;
+        struct
+        {
+            UINT64 MaxPerf : 8;
+            UINT64 Reserved : 56;
+        };
+    };
+};
+
+struct MSR_CPPC_REQUEST
+{
+    union
+    {
+        UINT64 AsUINT64;
+        struct
+        {
+            UINT64 MaxPerf : 8;
+            UINT64 MinPerf : 8;
+            UINT64 DesPerf : 8;
+            UINT64 EnergyPerfPref : 8;
+            UINT64 Reserved : 32;
+        };
+    };
+};
+
+struct MSR_CPPC_STATUS
+{
+    union
+    {
+        UINT64 AsUINT64;
+        struct
+        {
+            UINT64 Reserved0 : 1;
+            UINT64 MinEx : 1;
+            UINT64 Reserved1 : 62;
+        };
+    };
+};
+
+struct MSR_L3_QOS_ABMC_CFG
+{
+    union
+    {
+        UINT64 AsUINT64;
+        struct
+        {
+            UINT64 L3CacheLclBwFillMon : 1;
+            UINT64 L3CacheRmtBwFillMon : 1;
+            UINT64 L3CacheLclBwNtWrMon : 1;
+            UINT64 L3CacheRmtBwNtWrMon : 1;
+            UINT64 L3CacheLclSlowBwFillMon : 1;
+            UINT64 L3CacheRmtSlowBwFillMon : 1;
+            UINT64 L3CacheVicBwMon : 1;
+            UINT64 Reserved0 : 25;
+            UINT64 BwSrc : 12;
+            UINT64 Reserved1 : 3;
+            UINT64 BwSrcIsClos : 1;
+            UINT64 CounterId : 5;
+            UINT64 Reserved2 : 9;
+            UINT64 EnableCounter : 1;
+            UINT64 ConfigureCounter : 1;
+        };
+    };
+};
+
 class MSR
 {
 public:
@@ -531,6 +631,12 @@ public:
     static constexpr DWORD _MSR_MPERF = 0x000000E7UL;
     static constexpr DWORD _MSR_APERF_READ_ONLY = 0xC00000E8UL;
     static constexpr DWORD _MSR_MPERF_READ_ONLY = 0xC00000E7UL;
+    static constexpr DWORD _MSR_CPPC_CAPABILITY_1 = 0xC00102B0UL;
+    static constexpr DWORD _MSR_CPPC_ENABLE = 0xC00102B1UL;
+    static constexpr DWORD _MSR_CPPC_CAPABILITY_2 = 0xC00102B2UL;
+    static constexpr DWORD _MSR_CPPC_REQUEST = 0xC00102B3UL;
+    static constexpr DWORD _MSR_CPPC_STATUS = 0xC00102B4UL;
+    static constexpr DWORD _MSR_L3_QOS_ABMC_CFG = 0xC00003FDUL;
     static constexpr DWORD _MSR_TSC = 0x00000010UL;
     static constexpr DWORD _MSR_TSC_DEADLINE = 0x000006E0UL;
     static constexpr DWORD _MSR_TSC_ADJUST = 0x0000003BUL;
@@ -661,6 +767,18 @@ public:
     static UINT64 APERF_READ_ONLY();
 
     static UINT64 MPERF_READ_ONLY();
+
+    static MSR_CPPC_CAPABILITY_1 CPPC_CAPABILITY_1();
+
+    static MSR_CPPC_ENABLE CPPC_ENABLE();
+
+    static MSR_CPPC_CAPABILITY_2 CPPC_CAPABILITY_2();
+
+    static MSR_CPPC_REQUEST CPPC_REQUEST();
+
+    static MSR_CPPC_STATUS CPPC_STATUS();
+
+    static MSR_L3_QOS_ABMC_CFG L3_QOS_ABMC_CFG();
 
     static MSR_PSTATE PSTATE(int level);
 

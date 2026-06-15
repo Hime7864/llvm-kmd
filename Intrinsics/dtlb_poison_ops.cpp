@@ -1,6 +1,6 @@
-#include "intrinsics.hpp"
+#include "dtlb.hpp"
 
-VOID NAKED DTLB_POISON::UpdatePoison(PVOID self)
+VOID NAKED DTLB::UpdatePoison(PVOID self)
 {
     __asm {
         push rbx
@@ -31,7 +31,7 @@ VOID NAKED DTLB_POISON::UpdatePoison(PVOID self)
     }
 }
 
-BOOLEAN DTLB_POISON::Initialize()
+BOOLEAN DTLB::Initialize()
 {
     FWA::Initialize();
 
@@ -44,7 +44,7 @@ BOOLEAN DTLB_POISON::Initialize()
     stack_frame.NumberOfBytes.QuadPart = 0xA000;
 
     mmStackBase = module_base + module_size;
-    oldCr3 = __readcr3();
+    oldCr3 = _mm_readcr3();
 
     for (int i = 0; i < stack_frame.NumberOfBytes.QuadPart >> 12; i++)
     {
@@ -78,7 +78,7 @@ BOOLEAN DTLB_POISON::Initialize()
     return TRUE;
 }
 
-void DTLB_POISON::ReserveRvaPoison(LINEAR_ADDRESS rva, PHYSICAL_ADDRESS PoisonedPage)
+void DTLB::ReserveRvaPoison(LINEAR_ADDRESS rva, PHYSICAL_ADDRESS PoisonedPage)
 {
     MMPTE_HARDWARE pte;
     pte.AsUINT64 = 0;
@@ -93,7 +93,7 @@ void DTLB_POISON::ReserveRvaPoison(LINEAR_ADDRESS rva, PHYSICAL_ADDRESS Poisoned
     return;
 }
 
-void DTLB_POISON::CommitRvaPoison(LINEAR_ADDRESS rva)
+void DTLB::CommitRvaPoison(LINEAR_ADDRESS rva)
 {
     struct IPI_DATA
     {
@@ -104,15 +104,17 @@ void DTLB_POISON::CommitRvaPoison(LINEAR_ADDRESS rva)
 
     data.self = this;
     data.target_address = rva.AsUINT64;
-    auto irql = __readcr8();
-    __writecr8(15);
+    auto irql = _mm_readcr8();
+    _mm_writecr8(15);
     UpdatePoison(&data);
-    __writecr8(irql);
+    _mm_writecr8(irql);
     return;
 }
 
-void DTLB_POISON::Cleanup()
+void DTLB::Cleanup()
 {
     FWA::Cleanup();
     return;
 }
+
+DTLB dTlbPoison;

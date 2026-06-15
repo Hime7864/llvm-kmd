@@ -20,7 +20,7 @@ struct DISPATCH_RECORD
 bool is_amd_cpu()
 {
     //int cpu_info[4];
-    //__cpuid(cpu_info, 0);
+    //_mm_cpuid(cpu_info, 0);
     //return cpu_info[0] >= 0x80000000 && cpu_info[1] == 'htuA';
 
     auto cpu_info = CPUID::query(0x00000000UL);
@@ -172,7 +172,7 @@ namespace AMD
         {
             //CPUID_FeatureExtIdEbx result;
             //int cpu_info[4];
-            //__cpuidex(cpu_info, _CPUID_FeatureExtIdEbx, 0);
+            //_mm_cpuidex(cpu_info, _CPUID_FeatureExtIdEbx, 0);
             //result.AsUINT32 = cpu_info[1];
             //return result;
 
@@ -186,7 +186,7 @@ namespace AMD
         {
             //CPUID_ExtTopEnumEdx result;
             //int cpu_info[4];
-            //__cpuidex(cpu_info, _CPUID_ExtTopEnumEdx, 0);
+            //_mm_cpuidex(cpu_info, _CPUID_ExtTopEnumEdx, 0);
             //result.AsUINT32 = cpu_info[3];
             //return result;
 
@@ -204,23 +204,23 @@ namespace AMD
 
         static MSR_IPRerfCounter NOINLINE IRPerfCount()
         {
-            //return { .AsUINT64 = __readmsr(_MSR_IRPerfCount) }; mscv sucks
+            //return { .AsUINT64 = _mm_readmsr(_MSR_IRPerfCount) }; mscv sucks
             MSR_IPRerfCounter result;
-            result.AsUINT64 = __readmsr(_MSR_IRPerfCount);
+            result.AsUINT64 = _mm_readmsr(_MSR_IRPerfCount);
             return result;
         }
 
         static MSR_HWCR NOINLINE HWCR()
         {
-            //return { .AsUINT64 = __readmsr(_MSR_HWCR) }; mscv sucks
+            //return { .AsUINT64 = _mm_readmsr(_MSR_HWCR) }; mscv sucks
             MSR_HWCR result;
-            result.AsUINT64 = __readmsr(_MSR_HWCR);
+            result.AsUINT64 = _mm_readmsr(_MSR_HWCR);
             return result;
         }
 
         static void NOINLINE HWCR(MSR_HWCR value)
         {
-            __writemsr(_MSR_HWCR, value.AsUINT64);
+            _mm_writemsr(_MSR_HWCR, value.AsUINT64);
         }
     };
 
@@ -444,7 +444,7 @@ namespace AMD
 bool is_intel_cpu()
 {
     //int cpu_info[4];
-    //__cpuid(cpu_info, 0);
+    //_mm_cpuid(cpu_info, 0);
     //return cpu_info[0] >= 1 && cpu_info[1] == 'uneG';
 
     auto cpu_info = CPUID::query(0x00000000UL);
@@ -513,31 +513,31 @@ namespace Intel
         static MSR_FIXED_CTR_CTRL NOINLINE FIXED_CTR_CTRL()
         {
             MSR_FIXED_CTR_CTRL result;
-            result.AsUINT64 = __readmsr(IA32_FIXED_CTR_CTRL);
+            result.AsUINT64 = _mm_readmsr(IA32_FIXED_CTR_CTRL);
             return result;
         }
 
         static void NOINLINE FIXED_CTR_CTRL(MSR_FIXED_CTR_CTRL value)
         {
-            __writemsr(IA32_FIXED_CTR_CTRL, value.AsUINT64);
+            _mm_writemsr(IA32_FIXED_CTR_CTRL, value.AsUINT64);
         }
 
         static MSR_PERF_GLOBAL_CTRL NOINLINE PERF_GLOBAL_CTRL()
         {
             MSR_PERF_GLOBAL_CTRL result;
-            result.AsUINT64 = __readmsr(IA32_PERF_GLOBAL_CTRL);
+            result.AsUINT64 = _mm_readmsr(IA32_PERF_GLOBAL_CTRL);
             return result;
         }
 
         static void NOINLINE PERF_GLOBAL_CTRL(MSR_PERF_GLOBAL_CTRL value)
         {
-            __writemsr(IA32_PERF_GLOBAL_CTRL, value.AsUINT64);
+            _mm_writemsr(IA32_PERF_GLOBAL_CTRL, value.AsUINT64);
         }
 
         static MSR_FIXED_CTR0 NOINLINE FIXED_CTR0()
         {
             MSR_FIXED_CTR0 result;
-            result.AsUINT64 = __readmsr(IA32_FIXED_CTR0);
+            result.AsUINT64 = _mm_readmsr(IA32_FIXED_CTR0);
             return result;
         }
     };
@@ -550,7 +550,7 @@ namespace Intel
             //I hate how intel does their documentation couldn't
             //be bothered to put this in a bitfield
             //int cpu_info[4];
-            //__cpuid(cpu_info, 0xA);
+            //_mm_cpuid(cpu_info, 0xA);
             //return (cpu_info[0] & 0xFF) > 0;
 
             auto cpu_info = CPUID::query(0xA);
@@ -821,5 +821,6 @@ NTSTATUS DriverEntry()
         DbgPrintEx(0, 0, "[smm-dtc] Unsupported processor vendor.\n");
     }
 
+	DbgPrintEx(0, 0, "[smm-dtc] Detection complete.\n");
     return STATUS_SUCCESS;
 }
