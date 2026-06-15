@@ -6,12 +6,12 @@ The goal is to provide a reusable base for low-level kernel projects where impor
 
 ## Why This Exists
 
-I created this project because there is not a comfortable non-MSVC WDK-style base for the kind of kernel research projects I work on. When working with undocumented routines and structures, bringing everything into a new WDK project repeatedly becomes tedious. This repository is meant to be a personal boilerplate that I can fork when starting something new.
+I created this project because ill equipped for the kind of kernel research projects I work on. When working with undocumented routines and structures, bringing everything into a new WDK project repeatedly becomes tedious. This repository is meant to be a personal boilerplate that I can fork when starting something new.
 
-It also pulls in two smaller experiments:
+It also pulls in two smaller projects:
 
-- `DTLB`: helpers for experimenting with global PTE translations that can linger in the DTLB across CR3 switches, allowing research into physical-address targeting without relying on Windows physical-memory APIs.
-- `FWA`: helpers for working with memory outside normal Windows commitments, including locating regions such as EFI modules that survive `ExitBootServices`.
+- `DTLB`: helpers for accessing physical-address without relying on Windows physical-memory APIs.
+- `FWA`: allocator working with memory outside normal Windows commitments, using unused regions of EFI memory.
 
 The CPU support is intentionally focused on what I currently need, mostly AMD-oriented MSR and CPUID helpers. The project does not try to cover every MSR or CPUID leaf up front; new definitions can be added as future projects need them.
 
@@ -26,7 +26,7 @@ The CPU support is intentionally focused on what I currently need, mostly AMD-or
 - `Intrinsics/import_resolve.cpp`: export and signature-based import resolution.
 - `Intrinsics/utils_*`: PE parsing, signature scanning, address translation, and location helpers.
 - `Intrinsics/fwa.*`: firmware/unused physical memory allocation helpers.
-- `Intrinsics/dtlb_*`: DTLB/page-table helpers for global translation experiments.
+- `Intrinsics/dtlb_*`: DTLB/page-table helpers for accessing physical memory.
 - `Intrinsics/bootstrap.hpp` and `Intrinsics/driver_boot.cpp`: custom startup, import resolution, and cleanup flow.
 
 ## Build Notes
