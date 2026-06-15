@@ -9,87 +9,87 @@
 class Utils
 {
 public:
-    static QWORD ResolveRel32(
+    static UINT64 ResolveRel32(
         UCHAR count,
-        QWORD address);
+        UINT64 address);
 
     template <size_t N, size_t Size>
-    static QWORD SigScan(
-        QWORD scan_start,
-        QWORD max_scan,
+    static UINT64 SigScan(
+        UINT64 scan_start,
+        UINT64 max_scan,
         Pattern<N, Size> pat);
 
-    static QWORD SigScan(
-        QWORD scan_start,
-        QWORD max_scan,
+    static UINT64 SigScan(
+        UINT64 scan_start,
+        UINT64 max_scan,
         PCSTR ida_sig);
 
     template <size_t N, size_t Size>
-    static QWORD SigScan_s(
-        QWORD scan_start,
-        QWORD max_scan,
+    static UINT64 SigScan_s(
+        UINT64 scan_start,
+        UINT64 max_scan,
         Pattern<N, Size> pat);
 
-    static QWORD SigScan_s(
-        QWORD scan_start,
-        QWORD max_scan,
+    static UINT64 SigScan_s(
+        UINT64 scan_start,
+        UINT64 max_scan,
         PCSTR ida_sig);
 
-    static QWORD GetKernelBase();
+    static UINT64 GetKernelBase();
 
-    static QWORD GetProcAddress(
-        QWORD module,
+    static UINT64 GetProcAddress(
+        UINT64 module,
         PCSTR export_name);
 
-    static QWORD GetProcAddressHash(
-        QWORD module,
-        DWORD export_hash);
+    static UINT64 GetProcAddressHash(
+        UINT64 module,
+        UINT32 export_hash);
 
     static VOID GetProcAddressBuffer(
-        QWORD module,
+        UINT64 module,
         FUNCTION_TABLE_ENTRY* table,
-        DWORD count);
+        UINT32 count);
 
     static NTSTATUS GetSectionInfo(
-        QWORD module_base,
+        UINT64 module_base,
         PCSTR section_name,
-        QWORD* section_address,
-        QWORD* section_size);
+        UINT64* section_address,
+        UINT64* section_size);
 
     // Hash-based overload (mirrors how other APIs are used with str_hash("...")).
     static NTSTATUS GetSectionInfo(
-        QWORD module_base,
-        DWORD section_hash,
-        QWORD* section_address,
-        QWORD* section_size);
+        UINT64 module_base,
+        UINT32 section_hash,
+        UINT64* section_address,
+        UINT64* section_size);
 
-    static QWORD GetImageSize(
-        QWORD module_base);
+    static UINT64 GetImageSize(
+        UINT64 module_base);
 
     static BOOLEAN AddressInRange(
-        QWORD address,
-        QWORD range_base,
-        QWORD range_size);
+        UINT64 address,
+        UINT64 range_base,
+        UINT64 range_size);
 
     static BOOLEAN AddressInSection(
-        QWORD module_base,
-        QWORD address,
-        DWORD section_hash);
+        UINT64 module_base,
+        UINT64 address,
+        UINT32 section_hash);
 
     static FORCEINLINE BOOLEAN IsCanonicalAddress(
-        QWORD address);
+        UINT64 address);
 
-    static FORCEINLINE QWORD AlignDown(
-        QWORD value,
-        QWORD alignment);
+    static FORCEINLINE UINT64 AlignDown(
+        UINT64 value,
+        UINT64 alignment);
 
-    static FORCEINLINE QWORD AlignUp(
-        QWORD value,
-        QWORD alignment);
+    static FORCEINLINE UINT64 AlignUp(
+        UINT64 value,
+        UINT64 alignment);
 
     static FORCEINLINE BOOLEAN IsAligned(
-        QWORD value,
-        QWORD alignment);
+        UINT64 value,
+        UINT64 alignment);
 
     static NTSTATUS ReadPhysical(
         PHYSICAL_ADDRESS address,
@@ -177,12 +177,12 @@ public:
         LINEAR_ADDRESS rva);
 
     static NTSTATUS LocateSelf(
-        QWORD* module_base,
-        QWORD* module_size);
+        UINT64* module_base,
+        UINT64* module_size);
 };
 
 template <size_t N, size_t Size>
-__forceinline QWORD Utils::SigScan(QWORD scan_start, QWORD max_scan, Pattern<N, Size> pat)
+__forceinline UINT64 Utils::SigScan(UINT64 scan_start, UINT64 max_scan, Pattern<N, Size> pat)
 {
     UCHAR* start = (UCHAR*)scan_start;
     UCHAR* end = start + max_scan;
@@ -205,14 +205,14 @@ __forceinline QWORD Utils::SigScan(QWORD scan_start, QWORD max_scan, Pattern<N, 
         }
 
         if (matched)
-            return (QWORD)current;
+            return (UINT64)current;
     }
 
     return 0;
 }
 
 template <size_t N, size_t Size>
-__forceinline QWORD Utils::SigScan_s(QWORD scan_start, QWORD max_scan, Pattern<N, Size> pat)
+__forceinline UINT64 Utils::SigScan_s(UINT64 scan_start, UINT64 max_scan, Pattern<N, Size> pat)
 {
     UCHAR* start = (UCHAR*)scan_start;
     UCHAR* end = start + max_scan;
@@ -227,7 +227,7 @@ __forceinline QWORD Utils::SigScan_s(QWORD scan_start, QWORD max_scan, Pattern<N
                 continue;
             BYTE _data = 0;
             SIZE_T bytesRead;
-            auto status = MmCopyMemory(&_data, (QWORD)(current + i), sizeof(BYTE), MM_COPY_MEMORY_VIRTUAL, &bytesRead);
+            auto status = MmCopyMemory(&_data, (UINT64)(current + i), sizeof(BYTE), MM_COPY_MEMORY_VIRTUAL, &bytesRead);
             if (!NT_SUCCESS(status) || _data != pat.bytes[i])
             {
                 matched = false;
@@ -235,32 +235,32 @@ __forceinline QWORD Utils::SigScan_s(QWORD scan_start, QWORD max_scan, Pattern<N
             }
         }
         if (matched)
-            return (QWORD)current;
+            return (UINT64)current;
     }
     return 0;
 }
 
-FORCEINLINE BOOLEAN Utils::IsCanonicalAddress(QWORD address)
+FORCEINLINE BOOLEAN Utils::IsCanonicalAddress(UINT64 address)
 {
-    QWORD sign_extension = address >> 48;
+    UINT64 sign_extension = address >> 48;
     return sign_extension == 0 || sign_extension == 0xFFFF;
 }
 
-FORCEINLINE QWORD Utils::AlignDown(QWORD value, QWORD alignment)
+FORCEINLINE UINT64 Utils::AlignDown(UINT64 value, UINT64 alignment)
 {
     if (!alignment)
         return value;
     return value & ~(alignment - 1);
 }
 
-FORCEINLINE QWORD Utils::AlignUp(QWORD value, QWORD alignment)
+FORCEINLINE UINT64 Utils::AlignUp(UINT64 value, UINT64 alignment)
 {
     if (!alignment)
         return value;
     return (value + alignment - 1) & ~(alignment - 1);
 }
 
-FORCEINLINE BOOLEAN Utils::IsAligned(QWORD value, QWORD alignment)
+FORCEINLINE BOOLEAN Utils::IsAligned(UINT64 value, UINT64 alignment)
 {
     if (!alignment)
         return FALSE;

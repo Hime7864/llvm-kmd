@@ -1,6 +1,6 @@
 #include "utils.hpp"
 
-QWORD Utils::ResolveRel32(BYTE count, QWORD address)
+UINT64 Utils::ResolveRel32(BYTE count, UINT64 address)
 {
     if (address)
         return address + *(int*)(address + count) + count + 4;
@@ -9,7 +9,7 @@ QWORD Utils::ResolveRel32(BYTE count, QWORD address)
 
 #define TO_BYTE(c) ((c) >= '0' && (c) <= '9' ? (c) - '0' : ((c) >= 'A' && (c) <= 'F' ? (c) - 'A' + 10 : ((c) >= 'a' && (c) <= 'f' ? (c) - 'a' + 10 : 0)))
 
-QWORD Utils::SigScan(QWORD scan_start, QWORD max_scan, const char* ida_sig)
+UINT64 Utils::SigScan(UINT64 scan_start, UINT64 max_scan, const char* ida_sig)
 {
     BYTE* start = (BYTE*)scan_start;
     BYTE* end = start + max_scan;
@@ -46,13 +46,13 @@ QWORD Utils::SigScan(QWORD scan_start, QWORD max_scan, const char* ida_sig)
             pattern += 2;
         }
         if (matched)
-            return (QWORD)current;
+            return (UINT64)current;
     }
 
     return 0;
 }
 
-QWORD Utils::SigScan_s(QWORD scan_start, QWORD max_scan, const char* ida_sig)
+UINT64 Utils::SigScan_s(UINT64 scan_start, UINT64 max_scan, const char* ida_sig)
 {
     BYTE* start = (BYTE*)scan_start;
     BYTE* end = start + max_scan;
@@ -83,7 +83,7 @@ QWORD Utils::SigScan_s(QWORD scan_start, QWORD max_scan, const char* ida_sig)
 
             BYTE _data = 0;
             SIZE_T bytesRead;
-            auto status = MmCopyMemory(&_data, (QWORD)data, sizeof(BYTE), MM_COPY_MEMORY_VIRTUAL, &bytesRead);
+            auto status = MmCopyMemory(&_data, (UINT64)data, sizeof(BYTE), MM_COPY_MEMORY_VIRTUAL, &bytesRead);
 
             if (!NT_SUCCESS(status) || _data != byte)
             {
@@ -94,7 +94,7 @@ QWORD Utils::SigScan_s(QWORD scan_start, QWORD max_scan, const char* ida_sig)
             pattern += 2;
         }
         if (matched)
-            return (QWORD)current;
+            return (UINT64)current;
     }
 
     return 0;

@@ -2,17 +2,17 @@
 
 volatile void FreeAndExit()
 {
-    QWORD host_driver_base = 0;
-    QWORD host_driver_size = 0;
+    UINT64 host_driver_base = 0;
+    UINT64 host_driver_size = 0;
     if (!NT_SUCCESS(Utils::LocateSelf(&host_driver_base, &host_driver_size)))
         return;
     _mm_writecr8(0);
     Sleep(200);
-    QWORD func1 = (QWORD)nt.fn_ExFreePool;
-    QWORD func2 = (QWORD)nt.fn_PsTerminateSystemThread;
+    UINT64 func1 = (UINT64)nt.fn_ExFreePool;
+    UINT64 func2 = (UINT64)nt.fn_PsTerminateSystemThread;
     auto func3 = nt.fn_RtlFillMemory;
     auto func_base = (PVOID)FreeAndExit;
-    auto range1 = ((QWORD)func_base - host_driver_base) - 8;
+    auto range1 = ((UINT64)func_base - host_driver_base) - 8;
     auto range2 = (host_driver_size - (range1 + 0x110));
     auto cr3 = _mm_readcr3();
 

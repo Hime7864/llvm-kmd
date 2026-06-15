@@ -110,7 +110,7 @@ NTSTATUS resolve_sigged_imports()
     if (!kernel_base)
         return STATUS_UNSUCCESSFUL;
 
-    QWORD kernel_text_base, kernel_text_size;
+    UINT64 kernel_text_base, kernel_text_size;
 
     if (!NT_SUCCESS(Utils::GetSectionInfo(kernel_base, str_hash(".text"), &kernel_text_base, &kernel_text_size)))
         return STATUS_UNSUCCESSFUL;

@@ -14,11 +14,11 @@ void DTLB::HostedFreeVirtual(UINT64 address)
 
 MMPTE_HARDWARE DTLB::HostedValidateTranslation(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
 {
-    DWORD idx[4]{
-        (DWORD)rva.pml4e_index,
-        (DWORD)rva.pdpte_index,
-        (DWORD)rva.pde_index,
-        (DWORD)rva.pte_index};
+    UINT32 idx[4]{
+        (UINT32)rva.pml4e_index,
+        (UINT32)rva.pdpte_index,
+        (UINT32)rva.pde_index,
+        (UINT32)rva.pte_index};
 
     auto page_map = (MMPTE_HARDWARE*)HostedGetVirtual(dtb);
     for (int i = 0; i < 4; i++)
@@ -44,11 +44,11 @@ MMPTE_HARDWARE DTLB::HostedValidateTranslation(PHYSICAL_ADDRESS dtb, LINEAR_ADDR
 
 BOOLEAN DTLB::HostedCommit4kbMapping(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva, MMPTE_HARDWARE pte)
 {
-    DWORD idx[4]{
-        (DWORD)rva.pml4e_index,
-        (DWORD)rva.pdpte_index,
-        (DWORD)rva.pde_index,
-        (DWORD)rva.pte_index};
+    UINT32 idx[4]{
+        (UINT32)rva.pml4e_index,
+        (UINT32)rva.pdpte_index,
+        (UINT32)rva.pde_index,
+        (UINT32)rva.pte_index};
 
     auto page_map = (MMPTE_HARDWARE*)HostedGetVirtual(dtb);
 

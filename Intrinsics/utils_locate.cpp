@@ -1,14 +1,14 @@
 #include "utils.hpp"
 
-QWORD Utils::GetKernelBase()
+UINT64 Utils::GetKernelBase()
 {
     auto sig = Utils::SigScan(MSR::LSTAR() & ~0xFFFFFULL, 0xA00000ULL, pattern("66 89 05 ? ? ? ? 48 8D 05 ? ? ? ? 48 89"));
     if (!sig)
         return 0;
-    return *(QWORD*)(*(QWORD*)ResolveRel32(3, sig + 0x07) + 0x30);
+    return *(UINT64*)(*(UINT64*)ResolveRel32(3, sig + 0x07) + 0x30);
 }
 
-NTSTATUS Utils::LocateSelf(QWORD* module_base, QWORD* module_size)
+NTSTATUS Utils::LocateSelf(UINT64* module_base, UINT64* module_size)
 {
     if (!module_base)
         return STATUS_INVALID_PARAMETER;

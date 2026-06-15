@@ -235,7 +235,7 @@ NTSTATUS Utils::ReadLinearSafe(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva, PVOID b
         *bytes_read = 0;
 
     BYTE* output = (BYTE*)buffer;
-    QWORD current = rva.AsUINT64;
+    UINT64 current = rva.AsUINT64;
     SIZE_T remaining = size;
 
     while (remaining)
