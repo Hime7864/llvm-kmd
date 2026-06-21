@@ -42,9 +42,5 @@ inline void Sleep(_In_ UINT32 milliseconds)
 
 extern FUNCTION_TABLE_ENTRY function_table[];
 
-#ifdef _DEBUG
 #define printf(Format, ...) nt.fn_DbgPrintEx(0, 0, Format, __VA_ARGS__)
-#else
-#define printf(Format, ...)
-#endif
 

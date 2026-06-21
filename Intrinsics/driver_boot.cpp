@@ -12,26 +12,36 @@ volatile void FreeAndExit()
     UINT64 func2 = (UINT64)nt.fn_PsTerminateSystemThread;
     auto func3 = nt.fn_RtlFillMemory;
     auto func_base = (PVOID)FreeAndExit;
-    auto range1 = ((UINT64)func_base - host_driver_base) - 8;
-    auto range2 = (host_driver_size - (range1 + 0x110));
+    auto range1 = (UINT64)func_base - host_driver_base;
+    auto range2 = (host_driver_size - (range1 + 0x200));
     auto cr3 = _mm_readcr3();
 
     func3((PVOID)host_driver_base, (SIZE_T)range1, 0x00);
-    func3((PVOID)(host_driver_base + (range1 + 0x110)), (SIZE_T)range2, 0x00);
-    func3(func_base, (SIZE_T)0xB0, 0x00);
+    func3((PVOID)(host_driver_base + (range1 + 0x200)), (SIZE_T)range2, 0x00);
+    func3(func_base, (SIZE_T)0xA0, 0x00);
 
-    if (cr3 == 0x1AD000ull)
-    {
-        __asm {
-            xor ecx, ecx
-            mov rax, [func2]
-            call rax
-        }
-    }
+    //if (cr3 == 0x1AD000ull)
+    //{
+    //    __asm {
+    //        xor ecx, ecx
+    //        mov rax, [func2]
+    //        call rax
+    //    }
+    //}
     __asm {
+        mov r10, [func3]
+        sub rsp, 0x200h
+        mov rax, rsp
+        mov rcx, rax
+        mov rdx, 0x200
+		xor r8d, r8d
+		call r10
+		add rsp, 0x200h
         mov rcx, [host_driver_base]
         mov rdx, [func1]
         mov r8, [func2]
+        xor r9d, r9d
+		sub rsp, 100h
         call self
     self:
         sub rsp, 8h

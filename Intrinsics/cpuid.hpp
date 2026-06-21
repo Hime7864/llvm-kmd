@@ -207,6 +207,46 @@ struct CPUID_SVM_FEATURE_IDENTIFICATION
     };
 };
 
+struct CPUID_FEATURE_EXT_ID_EBX
+{
+    union
+    {
+        UINT32 AsUINT32;
+        struct
+        {
+            UINT32 CLZERO : 1;
+            UINT32 InstRetCntMsr : 1;
+            UINT32 RstrFpErrPtrs : 1;
+            UINT32 INVLPGB : 1;
+            UINT32 RDPRU : 1;
+            UINT32 Reserved0 : 1;
+            UINT32 MBE : 1;
+            UINT32 Reserved1 : 1;
+            UINT32 MCOMMIT : 1;
+            UINT32 WBNOINVD : 1;
+            UINT32 Reserved2 : 2;
+            UINT32 IBPB : 1;
+            UINT32 INT_WBINVD : 1;
+            UINT32 IBRS : 1;
+            UINT32 STIBP : 1;
+            UINT32 Reserved3 : 1;
+            UINT32 StibpAlwaysOn : 1;
+            UINT32 IbrsPreferred : 1;
+            UINT32 IbrsProvidesSameModeProtection : 1;
+            UINT32 EferLmsleUnsupported : 1;
+            UINT32 Reserved4 : 2;
+            UINT32 PPIN : 1;
+            UINT32 SSBD : 1;
+            UINT32 Reserved5 : 2;
+            UINT32 CPPC : 1;
+            UINT32 PSFD : 1;
+            UINT32 BTC_NO : 1;
+            UINT32 IBPB_RET : 1;
+            UINT32 BranchSample : 1;
+        };
+    };
+};
+
 struct CPUID_APMI
 {
     union
@@ -240,6 +280,12 @@ struct CPUID_APMI
             [Read-Only Max Performance Frequency Clock Count (MPerfReadOnly)] and MSRC000_00E8
             [Read-Only Actual Performance Frequency Clock Count (APerfReadOnly)].
             */
+            UINT32 ProcFeedbackInterface : 1;
+            UINT32 ProcPowerReporting : 1;
+            UINT32 ConnectedStandby : 1;
+            UINT32 RAPL : 1;
+            UINT32 FastCPPC : 1;
+            UINT32 Reserved : 16;
         };
     };
 };
@@ -276,6 +322,8 @@ public:
     static CPUID_EXTENDED_FEATURE_IDENTIFICATION_EDX extended_feature_identification_edx();
 
     static CPUID_ADDRESS_SIZE_INFORMATION address_size_information();
+
+    static CPUID_FEATURE_EXT_ID_EBX feature_ext_id_ebx();
 
     static CPUID_PROCESSOR_TOPOLOGY processor_topology();
 

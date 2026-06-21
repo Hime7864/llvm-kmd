@@ -459,13 +459,14 @@ struct MSR_PSTATE
         UINT64 AsUINT64;
         struct
         {
-            UINT64 CpuFid : 8;
-            UINT64 CpuDfsId : 6;
+            UINT64 CpuFid : 12;
+            UINT64 Reserved0 : 2;
             UINT64 CpuVid : 8;
             UINT64 IddValue : 8;
             UINT64 IddDiv : 2;
+            UINT64 CpuVid_high : 1;
             UINT64 : 30;
-            UINT64 PstateEn : 2;
+            UINT64 PstateEn : 1;
         };
     };
     UINT64 get_frequency_mhz();
@@ -541,6 +542,47 @@ struct MSR_CPPC_STATUS
             UINT64 Reserved0 : 1;
             UINT64 MinEx : 1;
             UINT64 Reserved1 : 62;
+        };
+    };
+};
+
+struct MSR_L3_RAPL_POWER_UNIT_0
+{
+    union
+    {
+        UINT64 AsUINT64;
+        struct
+        {
+            UINT64 PowerUnits : 4;
+            UINT64 Reserved0 : 4;
+            UINT64 EnergyStatusUnits : 5;
+            UINT64 Reserved1 : 3;
+            UINT64 TimeUnits : 4;
+            UINT64 Reserved2 : 44;
+        };
+    };
+};
+
+struct MSR_CORE_ENERGY_STAT
+{
+    union
+    {
+        UINT64 AsUINT64;
+        struct
+        {
+            UINT64 TotalEnergyConsumed : 64;
+        };
+    };
+};
+
+struct MSR_L3_PACKAGE_ENERGY_STATUS
+{
+    union
+    {
+        UINT64 AsUINT64;
+        struct
+        {
+            UINT64 TotalEnergyConsumed : 64;
         };
     };
 };
@@ -636,6 +678,9 @@ public:
     static constexpr UINT32 _MSR_CPPC_CAPABILITY_2 = 0xC00102B2UL;
     static constexpr UINT32 _MSR_CPPC_REQUEST = 0xC00102B3UL;
     static constexpr UINT32 _MSR_CPPC_STATUS = 0xC00102B4UL;
+    static constexpr UINT32 _MSR_L3_RAPL_POWER_UNIT_0 = 0xC0010299UL;
+    static constexpr UINT32 _MSR_CORE_ENERGY_STAT = 0xC001029AUL;
+    static constexpr UINT32 _MSR_L3_PACKAGE_ENERGY_STATUS = 0xC001029BUL;
     static constexpr UINT32 _MSR_L3_QOS_ABMC_CFG = 0xC00003FDUL;
     static constexpr UINT32 _MSR_TSC = 0x00000010UL;
     static constexpr UINT32 _MSR_TSC_DEADLINE = 0x000006E0UL;
@@ -772,13 +817,23 @@ public:
 
     static MSR_CPPC_ENABLE CPPC_ENABLE();
 
+	static void CPPC_ENABLE(MSR_CPPC_ENABLE enable);
+
     static MSR_CPPC_CAPABILITY_2 CPPC_CAPABILITY_2();
 
     static MSR_CPPC_REQUEST CPPC_REQUEST();
 
+    static void CPPC_REQUEST(MSR_CPPC_REQUEST request);
+
     static MSR_CPPC_STATUS CPPC_STATUS();
 
     static MSR_L3_QOS_ABMC_CFG L3_QOS_ABMC_CFG();
+
+    static MSR_L3_RAPL_POWER_UNIT_0 L3_RAPL_POWER_UNIT_0();
+
+    static MSR_CORE_ENERGY_STAT CORE_ENERGY_STAT();
+
+    static MSR_L3_PACKAGE_ENERGY_STATUS L3_PACKAGE_ENERGY_STATUS();
 
     static MSR_PSTATE PSTATE(int level);
 

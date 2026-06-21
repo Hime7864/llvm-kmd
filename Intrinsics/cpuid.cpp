@@ -8,6 +8,8 @@ CPUID_RESULT CPUID::query(UINT32 leaf, UINT32 subleaf)
     UINT64 rcx = 0;
     UINT64 rdx = 0;
 
+    int cpuInfo[4] = { 0 };
+
     _mm_cpuidex(
         leaf,
         subleaf,
@@ -86,6 +88,12 @@ CPUID_ADDRESS_SIZE_INFORMATION CPUID::address_size_information()
 {
     return {
         .AsUINT32 = query(0x80000008UL).eax};
+}
+
+CPUID_FEATURE_EXT_ID_EBX CPUID::feature_ext_id_ebx()
+{
+    return {
+        .AsUINT32 = query(0x80000008UL).ebx};
 }
 
 CPUID_PROCESSOR_TOPOLOGY CPUID::processor_topology()
