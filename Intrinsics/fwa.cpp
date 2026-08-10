@@ -4,6 +4,40 @@ PHYSICAL_MEMORY_RANGE FWA::fw_range[31];
 UINT64 FWA::fw_range_count = 0;
 UINT64 FWA::page_idx = 0;
 
+static void LogPeSections(UINT64 pe_base, UINT64 pe_phys)
+{
+    UINT32 e_lfanew = *(UINT32*)(pe_base + 0x3C);
+    UINT64 nt = pe_base + e_lfanew;
+    if (*(UINT32*)nt != 0x4550)
+        return;
+
+    UINT16 number_of_sections = *(UINT16*)(nt + 0x6);
+    UINT16 size_of_optional_header = *(UINT16*)(nt + 0x14);
+    UINT64 section_header = nt + 0x18 + size_of_optional_header;
+
+    DbgPrintEx(0, 0, "[smm-dtc] PE 0x%llx sections=%u\n", pe_phys, number_of_sections);
+
+    for (UINT16 i = 0; i < number_of_sections; ++i)
+    {
+        UINT64 sec = section_header + (i * 0x28);
+
+        char name[9] = {};
+        for (int n = 0; n < 8; ++n)
+            name[n] = ((char*)sec)[n];
+
+        UINT32 virtual_size = *(UINT32*)(sec + 0x8);
+        UINT32 virtual_addr = *(UINT32*)(sec + 0xC);
+        UINT32 raw_size = *(UINT32*)(sec + 0x10);
+        UINT32 raw_ptr = *(UINT32*)(sec + 0x14);
+        UINT32 chars = *(UINT32*)(sec + 0x24);
+
+        DbgPrintEx(0, 0,
+            "[smm-dtc]   [%u] %-8s VA=0x%x VSize=0x%x Raw=0x%x Ptr=0x%x Char=0x%x Phys=0x%llx\n",
+            i, name, virtual_addr, virtual_size, raw_size, raw_ptr, chars,
+            pe_phys + virtual_addr);
+    }
+}
+
 void FWA::Initialize()
 {
     if (page_idx || fw_range_count)
@@ -48,31 +82,19 @@ void FWA::Initialize()
                     }
                     start_rva = 0;
 
-
-                    UINT64 hdr_offset = *(BYTE*)(current + 0x3C);
+                    UINT32 e_lfanew = *(UINT32*)(current + 0x3C);
                     if (*(UINT16*)current == 0x5A4D &&                  // 'MZ' Hdr
-                        *(UINT16*)(current + hdr_offset + 4) == 0x8664) // AMD64
+                        e_lfanew < 0x1000 - 0x58 &&
+                        *(UINT16*)(current + e_lfanew + 4) == 0x8664) // AMD64
                     {
-                        auto sizeofimage = *(UINT32*)(current + hdr_offset + 0x50);
-                        
+                        auto sizeofimage = *(UINT32*)(current + e_lfanew + 0x50);
+                        UINT64 pe_phys = (current - rva) + low;
 
+                        DbgPrintEx(0, 0, "[smm-dtc] Found firmware region at 0x%llx with size 0x%x\n",
+                            pe_phys, sizeofimage);
+                        LogPeSections(current, pe_phys);
 
-                        //{
-                        //    BYTE* ptr_data = (BYTE*)((UINT64)current + 0x1700);
-                        //    DbgPrintEx(0, 0, "%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n",
-                        //        ptr_data[0], ptr_data[1], ptr_data[2], ptr_data[3], 
-                        //        ptr_data[4], ptr_data[5], ptr_data[6], ptr_data[7],
-                        //        ptr_data[8], ptr_data[9], ptr_data[10], ptr_data[11],
-                        //        ptr_data[12], ptr_data[13], ptr_data[14], ptr_data[15]
-                        //    );
-                        //}
-                        
                         current += (sizeofimage & ~0xFFF) + (sizeofimage & 0xFFF ? 0x1000 : 0) - 4096;
-
-                        //DbgPrintEx(0, 0, "[smm-dtc] Found firmware region at 0x%llx with size 0x%llx\n", (current - rva) + low, size - (current - rva));
-
-
-
                         should_exit = true;
                     }
                 }
