@@ -140,6 +140,8 @@ struct NtImports
     _In_ SIZE_T NumberOfBytes,
     _In_ MEMORY_CACHING_TYPE CacheType) = nullptr;
 
+    UINT64(__stdcall* fn_MmPteBase)() = nullptr;
+
     PMMPFN(__stdcall* fn_MmPfnDatabase)() = nullptr;
 
     UINT32(__stdcall* fn_MiSystemRegionTypeDatabase)() = nullptr;
@@ -682,6 +684,12 @@ PMMPFN FORCEINLINE MmPfnDatabase()
 {
     return *(PMMPFN*)nt.fn_MmPfnDatabase;
 }
+
+UINT64 FORCEINLINE MmPteBase()
+{
+    return *(UINT64*)nt.fn_MmPteBase;
+}
+
 
 PBYTE FORCEINLINE MiSystemRegionTypeDatabase()
 {

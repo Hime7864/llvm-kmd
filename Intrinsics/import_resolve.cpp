@@ -115,6 +115,7 @@ NTSTATUS resolve_sigged_imports()
     if (!NT_SUCCESS(Utils::GetSectionInfo(kernel_base, str_hash(".text"), &kernel_text_base, &kernel_text_size)))
         return STATUS_UNSUCCESSFUL;
 
+	nt.fn_MmPteBase = (decltype(nt.fn_MmPteBase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8B 05 ? ? ? ? 48 C1 EF ? 48 8D 4D")));
     nt.fn_MmPfnDatabase = (decltype(nt.fn_MmPfnDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8B 3D ? ? ? ? 48 C1 EF ? 49 23 ? ? 8B")));
     nt.fn_MiGetSystemRegionType = (decltype(nt.fn_MiGetSystemRegionType))Utils::ResolveRel32(1, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("E8 ? ? ? ? 8B C8 45 84 FE")));
     nt.fn_MiSystemRegionTypeDatabase = (decltype(nt.fn_MiSystemRegionTypeDatabase))Utils::ResolveRel32(3, Utils::SigScan(kernel_text_base, kernel_text_size, pattern("48 8D 0D ? ? ? ? 0F B6 04 08 C3")));
