@@ -8,106 +8,84 @@ NAKED KPRCB* KeGetCurrentPrcb()
 	}
 }
 
+UINT64 GetUltraMapping()
+{
+	auto pte_base = MmPteBase();
+	auto MmInternal = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8838);
+	auto pte_ptr = MmInternal + 0x68;
+	return pte_base + ((*(UINT64*)pte_ptr >> 9) & 0x7FFFFFFFF8ULL);
+}
+
+UINT64 ReadPhysicalMemory(UINT64 physicalAddress)
+{
+	UINT64 data = 0;
+	SIZE_T bytesCopied = 0;
+	MmCopyMemory(&data, physicalAddress, sizeof(data), MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
+	return data;
+}
+
 void log_thing(UINT64 target_pa)
 {
 
-	auto base_rva = Utils::GetKernelBase();
-	auto base_pa = MmGetPhysicalAddress((PVOID)base_rva);
-	auto switch_pfn = base_pa >> 12;
-	MMPTE_HARDWARE switch_pte;
-	switch_pte.AsUINT64 = 0x8A000001A5D68121;
-	switch_pte.PageFrameNumber = switch_pfn;
+	//ReadPhysicalMemory(target_pa);
 
-	auto pfn_database = MmPfnDatabase();
-	pfn_database[target_pa >> 12].u3.e4.CacheAttribute = 2;
-
-	auto prcb = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8838);
-	auto pStruct = prcb + 0x68;
-
-	*(UINT64*)pStruct &= ~0x1FFFFF;
-
-	auto funnypte = ((*(UINT64*)(pStruct) >> 9) & 0x7FFFFFFFF8ULL) + MmPteBase();
-	*(UINT64*)funnypte = switch_pte.AsUINT64;
-	printf("[DBG] funnypte: %p ------ PTE %p\n", funnypte, *(UINT64*)funnypte);
-
-
-	SIZE_T bytesCopied = 0;
-	UINT64 data = 0;
-	MmCopyMemory(&data, target_pa, 8, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
-	printf("[DBG] MmCopyMemory - [PA:%p] ->  %p\n", target_pa, data);
-
-	auto a1 = pStruct;
-
-	
+	auto MmInternal = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8838);
+	*(UINT64*)MmInternal = 0xDEADBEEF;
+	//printf("[KMD] thing %p\n", *(UINT64*)MmInternal);
+	//auto ultra_mapping = GetUltraMapping();
+	//printf("[KMD] UltraMapping %p\n", ultra_mapping);
+	//
+	//ReadPhysicalMemory(target_pa);
+	//
+	//printf("[KMD] thing %p\n", *(UINT64*)MmInternal);
+	//ultra_mapping = GetUltraMapping();
+	//printf("[KMD] UltraMapping %p\n", ultra_mapping);
 	
 
 	
-
-	//auto target = *(UINT64*)pStruct;
-	//printf("before: %p -> %p\n", pStruct, target);
-
-	//auto v13 = target & 0x1FFFFF;
-	//printf("v13: %p\n", v13);
-
-	//*(UINT64*)a1 = *(UINT64*)a1 - 0x1000;
-	
-	//auto base = *(UINT64*)a1 & ~0x1FFFFF;
-	//printf("change %p %p\n", *(UINT64*)a1, base);
-	//*(UINT64*)a1 = base;
-	//*(UINT64*)a1 -= 0x1000;
-
-	//*(UINT64*)a1 &= ~0x1FFFFF;
-	//UINT64 v4 = *(UINT64*)a1;
-	////*(UINT64*)a1 += 0x200000ull;
-	//UINT64 v13 = v4 & (0x200000ull - 1);
-	//UINT64 v12 = 1 << 12;
-	//UINT64 a2 = (1 << 12) + v13;
-
-	//{
-		//auto next = v12 + v4;
-		//auto funnypte = ((next >> 9) & 0x7FFFFFFFF8ULL) + MmPteBase();
-		////*(UINT64*)funnypte = switch_pte.AsUINT64;
-		////*(UINT64*)a1 += 0x200000ull;
-		//UINT64 data2 = 0;
-		//SIZE_T bytesCopied2 = 0;
-		//MmCopyMemory(&data2, target_pa, 8, MM_COPY_MEMORY_PHYSICAL, &bytesCopied2);
-		//printf("[DBG] MmCopyMemory - [PA:%p] ->  %p\n", target_pa, data2);
-		//
-		//printf("[DBG] funnypte: %p ------ PTE %p\n", funnypte, *(UINT64*)funnypte);
-		//printf("[DBG] next: %p", next);
-		//printf("[DBG] ret v4:%p a1:%p", v4, a1);
-
-
-
-	//}
-	//else
-	//{
-		//printf("[DBG] false");
-	//}
-
-
-	////printf("a1 %p->%p\n", *(UINT64*)a1, *(UINT64*)a1 & 0x1FFFFF);
-	////printf("%p <= 0x200000 &&  %p != 0\n", (*(UINT64*)a1 & 0x1FFFFF) + 0x10000, (*(UINT64*)a1 & 0x1FFFFF));
-	//if ((*(UINT64*)a1 & 0x1FFFFF) + 0x10000 <= 0x200000 && (*(UINT64*)a1 & 0x1FFFFF) != 0)
-	//{
-	//
-	//
-	//	target += (target_pa & 0xFFF);
-	//	//printf("PhysicalAddress: %p -> is valid %i\n", (PVOID)target, Utils::RvaValid(target));
-	//	printf("true ret -> %p : %p\n", a1, target);
-	//	//UINT64 data = 0;
-	//	//SIZE_T bytesCopied = 0;
-	//	//MmCopyMemory(&data, pa, 8, MM_COPY_MEMORY_PHYSICAL, &bytesCopied);
-	//	//printf("MmCopyMemory: [%p] -> %p\n", &data, data);
-	//
-	//	//auto test = *(UINT64*)((a1 + (UINT64)pa));
-	//	//printf("test: %p -> %p\n", (*(UINT64*)a1 + (UINT64)pa), test);
-	//
-	//	//printf("return %p -> %p or %p;\n", (*(UINT64*)a1 + (UINT64)pa), MmGetPhysicalAddress((PVOID)((*(UINT64*)a1 + (UINT64)pa))), MmGetPhysicalAddress((PVOID)((a1 + (UINT64)pa))));
-	//}
-	//else
-	//	printf("false\n");
+	printf("[KMD] MmInternal [%p] %p -> %p\n", ((UINT64)KeGetCurrentPrcb() + 0x8838), *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8838), GetUltraMapping());
+	auto ret = ReadPhysicalMemory(target_pa);
+	printf("[KMD] ReadPhysicalMemory [%p]->%p\n", target_pa, ret);
+	printf("[KMD] MmInternal [%p] %p -> %p\n", ((UINT64)KeGetCurrentPrcb() + 0x8838), *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8838), GetUltraMapping());
 	return;
+	//auto kernel_base_rva = Utils::GetKernelBase();
+	//printf("[KMD] GetKernelBase va-%p\n", kernel_base_rva);
+	//auto kernel_base_pa = MmGetPhysicalAddress((PVOID)kernel_base_rva);
+	//printf("[KMD] GetKernelBase pa-%p\n", kernel_base_pa);
+	//auto pte_database = MmPfnDatabase();
+	//auto pte_base = MmPteBase();
+	//
+	//MMPTE_HARDWARE switch_pte;
+	//switch_pte.AsUINT64 = 0x8A000001A5D68121;
+	//switch_pte.PageFrameNumber = kernel_base_pa >> 12;
+	//
+	//
+	//auto MmInternal = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8838);
+	//printf("[KMD] MmInternal %p\n", MmInternal);
+	//auto pUltraMapping = MmInternal + 0x68;
+	//printf("[KMD] pUltraMapping %p->%p\n", pUltraMapping, pUltraMapping);
+	//auto UltraMapping = pte_base + (((*(UINT64*)pUltraMapping) >> 9) & 0x7FFFFFFFF8ULL);
+	//printf("[KMD] UltraMapping %p\n", UltraMapping);
+	//
+	//
+	////ReferenceCount
+	//
+	//printf("ReferenceCount %i\n", pte_database[target_pa >> 12].u3.ReferenceCount);
+	//
+	//auto old_ReferenceCount = pte_database[target_pa >> 12].u3.ReferenceCount;
+	//pte_database[target_pa >> 12].u3.ReferenceCount = 3;
+	//auto original_pte = pte_database[target_pa >> 12].OriginalPte.u.Hard.AsUINT64;
+	//pte_database[target_pa >> 12].OriginalPte.u.Hard.AsUINT64 = switch_pte.AsUINT64;
+	//printf("[KMD] OriginalPte %p\n", original_pte);
+	//printf("[KMD] new pte %p\n", pte_database[target_pa >> 12].OriginalPte.u.Hard.AsUINT64);
+	//pte_database[target_pa >> 12].u3.e4.CacheAttribute = 3;
+	//printf("[KMD] ReadPhysicalMemory [%p]->%p\n", target_pa, ReadPhysicalMemory(target_pa));
+	//
+	//printf("[KMD] after pte %p\n", pte_database[target_pa >> 12].OriginalPte.u.Hard.AsUINT64);
+	//pte_database[target_pa >> 12].u3.e4.CacheAttribute = 0;
+	//pte_database[target_pa >> 12].u3.ReferenceCount = old_ReferenceCount;
+	//pte_database[target_pa >> 12].OriginalPte.u.Hard.AsUINT64 = original_pte;
+	//return;
 }
 
 NTSTATUS DriverEntry()
@@ -115,7 +93,7 @@ NTSTATUS DriverEntry()
 	auto buffer = ExAllocatePool(NonPagedPool, 0x1000);
 	(*(UINT64*)buffer) = 0xDEADBEEF;
 	auto pa = MmGetPhysicalAddress(buffer);
-	printf("[DBG] Target PA - [%p]\n", pa);
+	printf("[KMD] Requested PFN - [%p]\n", pa >> 12);
 
 
 	log_thing((UINT64)pa);
