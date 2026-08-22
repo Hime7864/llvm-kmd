@@ -241,6 +241,8 @@ struct NtImports
     UINT64(__stdcall* fn_PsGetProcessId)(
     _In_ PEPROCESS Process) = nullptr;
 
+    static inline LIST_ENTRY* fn_PsLoadedModuleList = nullptr;
+
     VOID(__stdcall* fn_RtlCopyMemory)(
     _Out_ VOID* Destination,
     _In_ CONST VOID* Source,

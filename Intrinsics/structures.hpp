@@ -201,6 +201,17 @@ DeclDataType(struct, CLIENT_ID);
 DeclDataType(struct, DESCRIPTOR_TABLE_REGISTER);
 DeclDataType(struct, SEGMENT_SELECTOR);
 
+// PE / image structures
+DeclDataType(struct, IMAGE_SECTION_HEADER);
+DeclDataType(struct, IMAGE_DOS_HEADER);
+DeclDataType(struct, IMAGE_EXPORT_DIRECTORY);
+DeclDataType(struct, IMAGE_FILE_HEADER);
+DeclDataType(struct, IMAGE_DATA_DIRECTORY);
+DeclDataType(struct, IMAGE_OPTIONAL_HEADER64);
+DeclDataType(struct, IMAGE_NT_HEADERS64);
+DeclDataType(struct, KLDR_DATA_TABLE_ENTRY);
+DeclDataType(struct, NON_PAGED_DEBUG_INFO);
+
 DeclDataType(enum, KPROCESSOR_MODE);
 DeclDataType(enum, POOL_TYPE);
 DeclDataType(enum, MEMORY_CACHING_TYPE);
@@ -1327,6 +1338,165 @@ struct _MACHINE_FRAME
     ULONGLONG Rsp;   // 0x18
     USHORT SegSs;    // 0x20
     USHORT Fill3[3]; // 0x22
+};
+
+// --- pe/image.hpp ---
+struct _IMAGE_SECTION_HEADER
+{
+    UINT8 Name[8];
+    union
+    {
+        UINT32 PhysicalAddress;
+        UINT32 VirtualSize;
+    } Misc;
+    UINT32 VirtualAddress;
+    UINT32 SizeOfRawData;
+    UINT32 PointerToRawData;
+    UINT32 PointerToRelocations;
+    UINT32 PointerToLinenumbers;
+    UINT16 NumberOfRelocations;
+    UINT16 NumberOfLinenumbers;
+    UINT32 Characteristics;
+};
+
+struct _IMAGE_DOS_HEADER
+{
+    UINT16 e_magic;
+    UINT16 e_cblp;
+    UINT16 e_cp;
+    UINT16 e_crlc;
+    UINT16 e_cparhdr;
+    UINT16 e_minalloc;
+    UINT16 e_maxalloc;
+    UINT16 e_ss;
+    UINT16 e_sp;
+    UINT16 e_csum;
+    UINT16 e_ip;
+    UINT16 e_cs;
+    UINT16 e_lfarlc;
+    UINT16 e_ovno;
+    UINT16 e_res[4];
+    UINT16 e_oemid;
+    UINT16 e_oeminfo;
+    UINT16 e_res2[10];
+    INT32 e_lfanew;
+};
+
+struct _IMAGE_EXPORT_DIRECTORY
+{
+    UINT32 Characteristics;
+    UINT32 TimeDateStamp;
+    UINT16 MajorVersion;
+    UINT16 MinorVersion;
+    UINT32 Name;
+    UINT32 Base;
+    UINT32 NumberOfFunctions;
+    UINT32 NumberOfNames;
+    UINT32 AddressOfFunctions;
+    UINT32 AddressOfNames;
+    UINT32 AddressOfNameOrdinals;
+};
+
+struct _IMAGE_FILE_HEADER
+{
+    UINT16 Machine;
+    UINT16 NumberOfSections;
+    UINT32 TimeDateStamp;
+    UINT32 PointerToSymbolTable;
+    UINT32 NumberOfSymbols;
+    UINT16 SizeOfOptionalHeader;
+    UINT16 Characteristics;
+};
+
+struct _IMAGE_DATA_DIRECTORY
+{
+    UINT32 VirtualAddress;
+    UINT32 Size;
+};
+
+struct _IMAGE_OPTIONAL_HEADER64
+{
+    UINT16 Magic;
+    UINT8 MajorLinkerVersion;
+    UINT8 MinorLinkerVersion;
+    UINT32 SizeOfCode;
+    UINT32 SizeOfInitializedData;
+    UINT32 SizeOfUninitializedData;
+    UINT32 AddressOfEntryPoint;
+    UINT32 BaseOfCode;
+    UINT64 ImageBase;
+    UINT32 SectionAlignment;
+    UINT32 FileAlignment;
+    UINT16 MajorOperatingSystemVersion;
+    UINT16 MinorOperatingSystemVersion;
+    UINT16 MajorImageVersion;
+    UINT16 MinorImageVersion;
+    UINT16 MajorSubsystemVersion;
+    UINT16 MinorSubsystemVersion;
+    UINT32 Win32VersionValue;
+    UINT32 SizeOfImage;
+    UINT32 SizeOfHeaders;
+    UINT32 CheckSum;
+    UINT16 Subsystem;
+    UINT16 DllCharacteristics;
+    UINT64 SizeOfStackReserve;
+    UINT64 SizeOfStackCommit;
+    UINT64 SizeOfHeapReserve;
+    UINT64 SizeOfHeapCommit;
+    UINT32 LoaderFlags;
+    UINT32 NumberOfRvaAndSizes;
+    IMAGE_DATA_DIRECTORY DataDirectory[16];
+};
+
+struct _IMAGE_NT_HEADERS64
+{
+    UINT32 Signature;
+    IMAGE_FILE_HEADER FileHeader;
+    IMAGE_OPTIONAL_HEADER64 OptionalHeader;
+};
+
+typedef IMAGE_NT_HEADERS64 IMAGE_NT_HEADERS;
+typedef PIMAGE_NT_HEADERS64 PIMAGE_NT_HEADERS;
+
+typedef char* NTSTRSAFE_PSTR;
+typedef const char* NTSTRSAFE_PCSTR;
+
+// 0xa0 bytes (sizeof)
+struct _KLDR_DATA_TABLE_ENTRY
+{
+    struct _LIST_ENTRY InLoadOrderLinks;             // 0x0
+    VOID* ExceptionTable;                            // 0x10
+    ULONG ExceptionTableSize;                        // 0x18
+    VOID* GpValue;                                   // 0x20
+    struct _NON_PAGED_DEBUG_INFO* NonPagedDebugInfo; // 0x28
+    VOID* DllBase;                                   // 0x30
+    VOID* EntryPoint;                                // 0x38
+    ULONG SizeOfImage;                               // 0x40
+    struct _UNICODE_STRING FullDllName;              // 0x48
+    struct _UNICODE_STRING BaseDllName;              // 0x58
+    ULONG Flags;                                     // 0x68
+    USHORT LoadCount;                                // 0x6c
+    union
+    {
+        USHORT SignatureLevel : 4; // 0x6e
+        USHORT SignatureType : 3;  // 0x6e
+        USHORT Frozen : 2;         // 0x6e
+        USHORT HotPatch : 1;       // 0x6e
+        USHORT Unused : 6;         // 0x6e
+        USHORT EntireField;        // 0x6e
+    } u1;                          // 0x6e
+    VOID* SectionPointer;          // 0x70
+    ULONG CheckSum;                // 0x78
+    ULONG CoverageSectionSize;     // 0x7c
+    VOID* CoverageSection;         // 0x80
+    VOID* LoadedImports;           // 0x88
+    union
+    {
+        VOID* Spare;                                     // 0x90
+        struct _KLDR_DATA_TABLE_ENTRY* NtDataTableEntry; // 0x90
+    };
+    ULONG SizeOfImageNotRounded; // 0x98
+    ULONG TimeDateStamp;         // 0x9c
 };
 
 // --- nt/struct/xsave.hpp ---
