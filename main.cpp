@@ -26,7 +26,7 @@ BOOLEAN GetKernelModuleBase(wchar_t* module_name, UINT64* base, UINT64* size)
     return FALSE;
 }
 
-void LocateTextSource(UINT64 source)
+UINT64 LocateTextSource(UINT64 source)
 {
     LIST_ENTRY* current_entry = nt.fn_PsLoadedModuleList->Flink;
     LIST_ENTRY* head = nt.fn_PsLoadedModuleList;
@@ -39,13 +39,16 @@ void LocateTextSource(UINT64 source)
             if ((UINT64)entry->DllBase < source && ((UINT64)entry->DllBase + (UINT64)entry->SizeOfImage) > source)
             {
 				DbgPrintEx(0, 0, "Found source in module: %wZ:%p -> %p\n", &entry->BaseDllName, entry->DllBase, source - (UINT64)entry->DllBase);
-                return;
+                return (UINT64)entry->DllBase;
             }
         }
         current_entry = current_entry->Flink;
     }
-    return;
+    return 0;
 }
+
+
+
 
 UINT64 LocateSSDT()
 {
@@ -202,7 +205,6 @@ NAKED KPRCB* KeGetCurrentPrcb()
     __asm {
         mov rax, gs:20h
         ret
-    
     }
 }
 
@@ -276,58 +278,433 @@ void SVM::CreateInterruptHandler()
 }
 */
 
+
+UINT64 pCallback_0 = 0;
+FnPtr* oCallback_0 = nullptr;
+
+UINT64 pCallback_1 = 0;
+FnPtr* oCallback_1 = nullptr;
+
 int count = 0;
 
-FnPtr* callback = nullptr;
+UINT64 data = 0;
+
+UINT64 CallbackFunction_1();
+
+UINT64 CallbackFunction_0()
+{
+    count++;
+    //data = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x10);
+
+    printf("test");
+    //*(UINT64*)pCallback_1 = (UINT64)CallbackFunction_1;
+
+
+    return oCallback_0->invoke<UINT64>();
+}
+
+UINT64 CallbackFunction_1()
+{
+    count++;
+
+    //*(UINT64*)pCallback_0 = (UINT64)CallbackFunction_0;
+
+    return oCallback_1->invoke<UINT64>();
+}
+
+/*
+UINT64 pCallback = 0;
+FnPtr* oCallback = nullptr;
+int count = 0;
+
 UINT64 CallbackFunction()
 {
     count++;
-    return callback->invoke<UINT64>();
+    return oCallback->invoke<UINT64>();
+}*/
+
+
+//HalpInterruptController  48 8B 1D ? ? ? ? 48 8B 83
+
+void Test_Kthread()
+{
+	int thread_count = 0;
+    auto process_current = (UINT64)PsInitialSystemProcess();
+    auto o_UniqueProcessId = *(UINT32*)((UINT64)nt.fn_PsGetProcessId + 0x3);
+
+    auto kernel_base = Utils::GetKernelBase();
+    UINT64 text_base, text_size;
+    Utils::GetSectionInfo(kernel_base, str_hash(".text"), &text_base, &text_size);
+
+
+    auto self_thread = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8);
+    do {
+		auto pid = *(UINT64*)(process_current + o_UniqueProcessId);
+
+        auto thread_head = *(UINT64*)(process_current + 0x370);
+		auto thread_current = (LIST_ENTRY*)thread_head;
+        
+		auto active_thread_count = *(UINT32*)(process_current + 0x380);
+        if (active_thread_count)// && *(UINT32*)(process_current + 0x338) == 0x2E6D7764)
+        {
+            do {
+                if (!MmGetPhysicalAddress(thread_current))
+                    break;
+
+                thread_count++;
+
+				auto thread = (UINT64)thread_current - 0x578;
+                
+                if (thread != self_thread)
+                {
+                    auto apc_eproc = *(UINT64*)(thread + 0xB8);
+                    if (apc_eproc == process_current)
+                    {
+                        auto ctx = *(UINT64*)(thread + 0x90);
+                        if (ctx)
+                        {
+                            if (MmGetPhysicalAddress((PVOID)(ctx + 0x180)))
+                            {
+                                auto rsp = *(UINT64*)(ctx + 0x180);
+                                if (MmGetPhysicalAddress((PVOID)rsp))
+                                {
+                                    LINEAR_ADDRESS rva = rsp;
+                                    if (rva.pml4e_index > 128)
+                                    {
+                                        //printf("Thread: %p, ctx: %p, test: %p\n", (PVOID)thread, (PVOID)ctx, (PVOID)test);
+                                        for (int i = 0; i < 70; i++)
+                                        {
+                                            if (((UINT64*)rsp)[i - 70] > text_base && ((UINT64*)rsp)[i - 70] < (text_base + text_size))
+                                            {
+                                                //printf("%i rsp: %p\n", i - 70, ((UINT64*)test)[i - 70]);
+
+                                                //oCallback = (FnPtr*)((UINT64*)rsp)[i - 70];
+                                                auto idx = i - 70;
+
+                                                //if(!pCallback_1)
+                                                //    pCallback_1 = (UINT64) & ((UINT64*)rsp)[idx];
+                                                //else if(!pCallback_0)
+                                                //pCallback_0 = (UINT64) & ((UINT64*)rsp)[idx];
+
+                                                printf("ret [%p]%p %s\n", &((UINT64*)rsp)[idx], ((UINT64*)rsp)[idx], (process_current + 0x338));
+
+
+
+                                                //printf("%p\n", &((UINT64*)rsp)[idx]);
+                                                //((UINT64*)rsp)[idx] = (UINT64)CallbackFunction;
+                                                //if (MmGetPhysicalAddress((PVOID)((UINT64*)test)[idx - 1]))
+                                                //    printf("valid [%p]%p", (PVOID)((UINT64*)test)[idx - 1], *(PVOID*)((UINT64*)test)[idx - 1]);
+                                                //printf("pop arg %p\n", ((UINT64*)test)[idx - 1]);
+                                                //return;
+                                                break;
+                                                //((UINT64*)test)[0 - i] = 0x0;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                thread_current = thread_current->Flink;
+            } while ((UINT64)thread_current != thread_head);
+        }
+        process_current = *(UINT64*)(process_current + o_UniqueProcessId + 0x8) - (o_UniqueProcessId + 0x8);
+    } while ((process_current != (UINT64)PsInitialSystemProcess()));
+    return;
 }
 
 
 NTSTATUS DriverEntry()
 {
 
-    auto k_base = Utils::GetKernelBase();
-	printf("Kernel base: %p\n", (PVOID)k_base);
-    UINT64 text_base, text_size;
-    if (NT_SUCCESS(Utils::GetSectionInfo(k_base, str_hash(".text"), &text_base, &text_size)))
+    printf("Count: %i\n", count);
+    Test_Kthread();
+
+	printf("pCallback_0: %p\n", (PVOID)pCallback_0);
+	printf("pCallback_1: %p\n", (PVOID)pCallback_1);
+
+    if (pCallback_0)
     {
-        auto sig_3 = Utils::SigScan(text_base, text_size, "48 8B 0D ? ? ? ? 44 8B 81");
-        if (sig_3)
-        {
-            sig_3 = *(UINT64*)Utils::ResolveRel32(3, sig_3);//*(UINT64*)(Utils::ResolveRel32(3, sig_3) + 0x70);
-
-            auto test = *(UINT64*)(sig_3 + 0x70);
-			printf("test: %p\n", (PVOID)test);
-            for (int i = 0; i < 20; i++)
-            {
-				printf("%02x", ((unsigned char*)test)[i]);
-            }
-
-            printf("count: %i\n", count);
-            callback = (FnPtr*)*(UINT64*)(sig_3 + 0x70);
-			*(UINT64*)(sig_3 + 0x70) = (UINT64)CallbackFunction;
-			Sleep(1000);
-            *(UINT64*)(sig_3 + 0x70) = (UINT64)callback;
-			printf("count: %i\n", count);
-
-
-			printf("thing that gets called %p\n", *(UINT64*)test);
-            LocateTextSource(sig_3 + 0x70);
-        }
+        oCallback_0 = (FnPtr*)*(UINT64*)pCallback_0;
+        *(UINT64*)pCallback_0 = (UINT64)CallbackFunction_0;
+    }
+	
+    if (pCallback_1)
+    {
+        oCallback_1 = (FnPtr*)*(UINT64*)pCallback_1;
+        //*(UINT64*)pCallback_1 = (UINT64)CallbackFunction_1;
     }
 
+	Sleep(10);
+    printf("Count: %i\n", count);
+    printf("data: %p\n", data);
+    return STATUS_SUCCESS;
+
+
+
+   // _MMPTE_HARDWARE pte;
+   // pte.AsUINT64 = 0xd27c4dee7326fbf1ull;
+	//pte.PageFrameNumber = 0x1D5E;
+   // pte.Valid = 1;
+   // pte.NoExecute = 0;
+   // pte.Dirty1 = 1;
+   //
+	//printf("pte: %p\n", (PVOID)pte.AsUINT64);
+   //
+   //
+    ////00000001D5E5D000
+    ////000000015D5E5000
+    //auto kernel_base = Utils::GetKernelBase();
+	//auto va = ExAllocatePool(NonPagedPoolNx, 0x1000);
+	//auto pa_alloc = MmGetPhysicalAddress(va);
+	//ExFreePool(va);
+    //UINT64 pa = pa_alloc & ~0xFFF + 0x10000;
+	//printf("pa: %p\n", (PVOID)pa);
+	//auto ioSpace = MmMapIoSpace(pa, 0x1000, MmNonCached);
+    //if (ioSpace)
+    //{
+    //    for (int i = 0; i < 511; i++)
+    //    {
+    //        auto pte = ((UINT64*)ioSpace)[i];
+    //        printf("worked pte: %p\n", (PVOID)pte);
+	//	}
+	//	MmUnmapIoSpace(ioSpace, 0x1000);
+    //}
+    //else
+    //{
+    //    for (int i = 0; i < 511; i++)
+    //    {
+    //        printf("failed : pte: %p\n", (PVOID)ReadPhysicalMemory(pa + i * 8));
+    //    }
+    //}
+    return STATUS_SUCCESS;
+
+    //auto kernel_base = Utils::GetKernelBase();
+    ////UINT64 text_base, text_size;
+    ////if (NT_SUCCESS(Utils::GetSectionInfo(kernel_base, str_hash(".text"), &text_base, &text_size)))
+    //{
+	//	UINT64 section_base, section_size;
+    //    if (NT_SUCCESS(Utils::GetSectionInfo(kernel_base, str_hash(".data"), &section_base, &section_size)))
+    //    {
+    //        int count2 = 0;
+    //        for (int i = 0; i < section_size; i += 8)
+    //        {
+	//			auto ptr = *(UINT64*)(section_base + i);
+    //
+    //            auto imgBase = LocateTextSource(ptr);
+    //            if (imgBase)
+    //            {
+    //                UINT64 text_base, text_size;
+    //                if (NT_SUCCESS(Utils::GetSectionInfo(imgBase, str_hash(".text"), &text_base, &text_size)))
+    //                {
+    //                    if (ptr > text_base && ptr < (text_base + text_size))
+    //                    {
+    //                        hooks[count2].address = section_base + i;
+    //                        hooks[count2].original = ptr;
+    //                        count2++;
+    //                        if (count2 > 1800)
+    //                            break;
+    //
+    //                        count = 0;
+    //                        pCallback = hooks[count2].address;
+    //                        oCallback = (FnPtr*)*(UINT64*)pCallback;
+    //                        *(UINT64*)pCallback = (UINT64)CallbackFunction;
+    //                        Sleep(10);
+    //                        *(UINT64*)pCallback = (UINT64)oCallback;
+    //                        if(count)
+    //                            printf("%04X [%p:%p] -> %p:%p\n", i, (UINT64)(section_base + i), 0x140000000 + (UINT64)(section_base + i) - imgBase, (UINT64)ptr, 0x140000000 + ptr - imgBase);
+    //                    }
+    //                }
+    //            }
+    //        }
+    //
+    //
+    //        
+	//		printf("count2: %i\n", count2);
+    //        /*
+    //        count = 0;
+    //        pCallback = hooks[1274].address;
+    //        oCallback = (FnPtr*)*(UINT64*)pCallback;
+    //        *(UINT64*)pCallback = (UINT64)CallbackFunction;
+    //        Sleep(100);
+    //        *(UINT64*)pCallback = (UINT64)oCallback;
+    //
+	//		printf("count: %i\n", count);
+    //
+    //        */
+    //
+    //        //for (int i = 0; i < count2; i++)
+    //        //{
+    //        //    count = 0;
+    //        //    pCallback = hooks[i].address;
+    //        //    oCallback = (FnPtr*)*(UINT64*)pCallback;
+    //        //    *(UINT64*)pCallback = (UINT64)CallbackFunction;
+    //        //    Sleep(10);
+    //        //    *(UINT64*)pCallback = (UINT64)oCallback;
+    //        //
+    //        //    if (count)
+    //        //    {
+	//		//		printf("idx:%i Hooked %p:%p cnt %i\n", i, hooks[i].address, 0x140000000 + hooks[i].address - kernel_base, count);
+    //        //    }
+    //        //}
+    //
+    //        //count = 0;
+    //        //pCallback = 0xFFFFF80486FC0DE8;
+    //        //oCallback = (FnPtr*)*(UINT64*)pCallback;
+    //        //*(UINT64*)pCallback = (UINT64)CallbackFunction;
+    //        //Sleep(10);
+    //        //*(UINT64*)pCallback = (UINT64)oCallback;
+    //        //
+    //        //for (int i = 0; i < 20; i++)
+    //        //{
+	//		//	printf("Rax %p Rbx %p Rcx %p Rdx %p Rsi %p\n", ctx[i].Rax, ctx[i].Rbx, ctx[i].Rcx, ctx[i].Rdx, ctx[i].Rsi);
+    //        //}
+    //
+    //    }
+    //}
+    //
+    //
+    //return STATUS_SUCCESS;
+
+
+
+
+    //UINT64 win32k_base, win32k_size;
+    //GetKernelModuleBase(L"win32k.sys", &win32k_base, &win32k_size);
+    //UINT64 win32k_text_base, win32k_text_size;
+    //Utils::GetSectionInfo(win32k_base, str_hash(".text"), &win32k_text_base, &win32k_text_size);
+    //
+    //auto sig_3 = Utils::SigScan(win32k_text_base, win32k_text_size, "48 8B 05 ? ? ? ? FF C9");
+
+
+
+    //sig_78: FFFFF801B01D9F20 00000001403D9F20
+
+	//auto ioSpace = MmMapIoSpace(0xFFFFF000, 0x1000, MmNonCached);
+    //
+	//
+    //
+    //if (ioSpace)
+    //{
+    //    //size_t bytesCopied = 0;
+    //    //
+    //    LINEAR_ADDRESS la;
+    //    la.AsUINT64 = (UINT64)ioSpace;
+	//	printf("l4e %i\n", la.pml4e_index);
+    //
+	//	auto tmp = MmMapIoSpace(ReadPhysicalMemory(_mm_readcr3() + la.pml4e_index * 8), 0x1000, MmNonCached);
+    //    if (tmp)
+    //    {
+    //        printf("worked");
+	//		MmUnmapIoSpace(tmp, 0x1000);
+    //    }
+    //    else
+	//		printf("failed");
+    //    
+    //
+	//	auto pa = Utils::LinearTranslate(ioSpace);
+	//	printf("pa: %p\n", (PVOID)pa);
+	//	//printf("pa: %p\n", (PVOID)pa);
+    //
+    //    //ReadPhysicalMemory(_mm_readcr3() + la.pml4e_index * 8);
+    //
+    //   //for (int i = 0; i < 511; i++)
+    //   //    ((UINT64*)ioSpace)[i] = i; //ReadPhysicalMemory(_mm_readcr3() + i * 8);
+    //    
+    //    auto pte = ((UINT64*)ioSpace)[510];
+    //    printf("pte: %p\n", (PVOID)pte);
+    //
+	//	//printf("status: %i\n", status);
+	//	MmUnmapIoSpace(ioSpace, 0x1000);
+    //}
+
+    //auto k_base = Utils::GetKernelBase();
+	////printf("Kernel base: %p\n", (PVOID)k_base);
+    //UINT64 text_base, text_size;
+    //if (NT_SUCCESS(Utils::GetSectionInfo(k_base, str_hash(".text"), &text_base, &text_size)))
+    //{
+    //    //auto sig_3 = Utils::SigScan(text_base, text_size, "48 8B 1D ? ? ? ? 48 8B 83");
+    //    //if (sig_3)
+    //    //{
+    //    //    sig_3 = *(UINT64*)Utils::ResolveRel32(3, sig_3);
+    //    //    pCallback = (sig_3 + 0x78);
+    //    //    oCallback = (FnPtr*)*(UINT64*)pCallback;
+    //    //    //*(UINT64*)pCallback = (UINT64)CallbackFunction;
+    //    //    Sleep(10);
+    //    //    *(UINT64*)pCallback = (UINT64)oCallback;
+    //    //    for (int i = 0; i < 200; i++)
+    //    //    {
+    //    //        if (batch_list[i])
+    //    //        {
+    //    //            printf("%p\n", batch_list[i]);
+    //    //            //auto ptr = *(UINT64*)(batch_list[i] + 0x220);
+    //    //            //if(ptr)
+    //    //            //    printf("%p %i %s:%i\n", batch_list[i], *(BYTE*)(batch_list[i] + 0x71), (ptr + 0x338), *(UINT64*)(ptr + 0x1D0));
+    //    //        }
+    //    //            
+    //    //    }
+    //    //    //
+    //        //printf("Rax: %p\n", ctx.Rax);
+    //        //printf("Rbx: %p\n", ctx.Rbx);
+    //        //printf("Rcx: %p\n", ctx.Rcx);
+    //        //printf("Rdx: %p\n", ctx.Rdx);
+    //        //printf("Rsi: %p\n", ctx.Rsi);
+    //        //for (UINT64 i = 0x0; i < 0x300; i += 0x8)
+    //        //            if(*(UINT64*)(sig_3 + i) - k_base < 0x140000000)
+    //        //    	        printf("sig_%02X: %p %p\n", i, *(UINT64*)(sig_3 + i), 0x140000000 + *(UINT64*)(sig_3 + i) - k_base);
+    //    //}
+    //    auto sig_3 = Utils::SigScan(text_base, text_size, "48 8B 0D ? ? ? ? 44 8B 81");
+    //    if (sig_3)
+    //    {
+    //        sig_3 = *(UINT64*)Utils::ResolveRel32(3, sig_3);//*(UINT64*)(Utils::ResolveRel32(3, sig_3) + 0x70);
+    //    //
+    //    //
+    //    //    for(UINT64 i = 0x0;i<0x300;i+=0x8)
+    //    //        if(*(UINT64*)(sig_3 + i) - k_base < 0x140000000)
+	//	//	        printf("sig_%02X: %p %p\n", i, *(UINT64*)(sig_3 + i), 0x140000000 + *(UINT64*)(sig_3 + i) - k_base);
+    //    //
+    //    //    printf("%p\n", *(UINT64*)0xFFFFF801B0DC3720);
+    //    //
+    //    //    //printf("%p\n", *(UINT64*)0xFFFFF800EFF0F150);
+    //    //
+	//		pCallback = (sig_3 + 0x70);
+	//		oCallback = (FnPtr*)*(UINT64*)pCallback;
+	//		*(UINT64*)pCallback = (UINT64)CallbackFunction;
+    //
+	//		Sleep(10);
+    //        for (int i = 0; i < count; i++)
+    //        {
+    //            if (batch_list[i])
+    //            {
+    //                auto ptr = *(UINT64*)(batch_list[i] + 0x220);
+    //                if(ptr)
+    //                    printf("%p %i %s:%i\n", batch_list[i], *(BYTE*)(batch_list[i] + 0x71), (ptr + 0x338), *(UINT64*)(ptr + 0x1D0));
+    //            }
+    //                
+    //        }
+    //    //    
+    //    //
+    //    //    //printf("count: %i\n", count);
+    //    //    //callback = (FnPtr*)*(UINT64*)(sig_3 + 0x70);
+	//	//	//*(UINT64*)(sig_3 + 0x70) = (UINT64)CallbackFunction;
+	//	//	////Sleep(1000);
+    //    //    //*(UINT64*)(sig_3 + 0x70) = (UINT64)callback;
+	//	//	//printf("count: %i\n", count);
+    //    //    //
+    //    //    //auto sig_0 = Utils::ResolveRel32(3, Utils::SigScan(text_base, text_size, "48 8D 15 ? ? ? ? 49 8B 45"));
+	//	//	//printf("old callback: %p\n", (PVOID)callback);
+    //    //    //printf("sig_0: %p\n", (PVOID)sig_0);
+    //    //    //
+    //    //    //
+    //    //    //
+	//	//	//printf("thing that gets called %p\n", *(UINT64*)test);
+    //    //    //LocateTextSource(sig_3 + 0x70);
+    //    }
+    //}
+
     
-
-    auto id = KeGetCurrentProcessorNumberEx(nullptr);
-	auto core_count = KeQueryActiveProcessorCount(0);
-    id = (id + 1) % core_count;
-
-    auto test = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x10);
-	printf("Prcb: %p\n", (PVOID)test);
-
 	//auto callback = KeRegisterNmiCallback(NmiCallback, nullptr);
 
 
