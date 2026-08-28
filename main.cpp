@@ -47,8 +47,111 @@ UINT64 LocateTextSource(UINT64 source)
     return 0;
 }
 
+bool find_export(UINT64 module, UINT64 export_address, const char** out_name)
+{
+    if (!module)
+        return 0;
+    UINT64 e_lfanew = *(UINT32*)(module + 0x3C);
+    UINT64 pe_header = module + e_lfanew;
 
+    if (*(UINT32*)pe_header != 0x4550)
+        return 0;
 
+    UINT64 optional_header = pe_header + 0x18;
+    UINT32 export_rva = *(UINT32*)(optional_header + 0x70);
+    if (!export_rva)
+        return 0;
+
+    UINT64 export_table = module + export_rva;
+    UINT32 number_of_names = *(UINT32*)(export_table + 0x18);
+    UINT32 address_of_functions = *(UINT32*)(export_table + 0x1C);
+    UINT32 address_of_names = *(UINT32*)(export_table + 0x20);
+    UINT32 address_of_name_ordinals = *(UINT32*)(export_table + 0x24);
+
+    for (UINT32 i = 0; i < number_of_names; i++)
+    {
+        UINT32 name_rva = *(UINT32*)(module + address_of_names + i * 4);
+        if(out_name)
+            *out_name = (const char*)(module + name_rva);
+        UINT16 ordinal = *(UINT16*)(module + address_of_name_ordinals + i * 2);
+        UINT32 function_rva = *(UINT32*)(module + address_of_functions + ordinal * 4);
+        if (module + function_rva == export_address)
+        {
+            return true;
+        }
+            
+    }
+    return false;
+}
+
+void dtc_win32k_hook()
+{
+    UINT64 win32kfull_base, win32kfull_size;
+    if (!GetKernelModuleBase(L"win32kfull.sys", &win32kfull_base, &win32kfull_size))
+        return;
+
+    UINT64 win32k_base, win32k_size;
+    if (!GetKernelModuleBase(L"win32k.sys", &win32k_base, &win32k_size))
+        return;
+
+    UINT64 win32k_text_base, win32k_text_size;
+    UINT64 init_win32k_text_base, init_win32k_text_size;
+    if (NT_SUCCESS(Utils::GetSectionInfo(win32k_base, str_hash(".text"), &win32k_text_base, &win32k_text_size)))
+    {
+        init_win32k_text_base = win32k_text_base;
+        init_win32k_text_size = win32k_text_size;
+        for (;;)
+        {
+            auto sig_0 = Utils::SigScan(win32k_text_base, win32k_text_size, "48 8D 0D ? ? ? ? 48");
+            if (sig_0)
+            {
+                auto diff = sig_0 - win32k_text_base;
+                if (diff < win32k_text_size)
+                {
+                    win32k_text_base = sig_0 + 1;
+                    win32k_text_size -= diff - 1;
+
+                    auto lea_address = Utils::ResolveRel32(3, sig_0);
+
+                    auto sig_1 = Utils::SigScan((UINT64)win32k_text_base - 1, win32k_text_size + 1, "48 8B 05 ? ? ? ? 48 8B 4C 24 20");
+                    if (sig_1)
+                    {
+                        sig_1 = *(UINT64*)Utils::ResolveRel32(3, sig_1);
+                        auto sig_2 = Utils::SigScan((UINT64)sig_1, (win32k_text_base + win32k_text_size) - (UINT64)sig_1, "48 8B ? ? ? ? ? 48 85 C0");
+                        if (sig_2)
+                        {
+
+                            auto sig_3 = Utils::SigScan(init_win32k_text_base, init_win32k_text_size, "48 8B 05 ? ? ? ? FF C9");
+                            if (sig_3)
+                            {
+                                auto offset = *(int*)(sig_2 + 3);
+                                sig_3 = *(UINT64*)Utils::ResolveRel32(3, sig_3);
+                                sig_3 = *(UINT64*)sig_3;
+                                sig_3 = *(UINT64*)(sig_3 + 0x88ULL);
+                                sig_3 = *(UINT64*)(sig_3 + 0x150ULL);
+
+                                auto pssdt = sig_3 + offset;
+                                auto target = *(UINT64*)pssdt;
+
+                                if (!find_export(win32kfull_base, target, nullptr) && target)
+                                {
+                                    printf("%s", lea_address);
+                                    printf("Win32k Hooked -> [%p]%p\n", (PVOID)pssdt, (PVOID)target);
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                    break;
+            }
+            else
+                break;
+        }
+    }
+    
+    return;
+}
 
 UINT64 LocateSSDT()
 {
@@ -76,7 +179,8 @@ UINT64 LocateSSDT()
                             win32k_text_size -= diff - 1;
 
 							auto lea_address = Utils::ResolveRel32(3, sig_0);
-                            if (lea_address == string)
+                            printf("%s\n", lea_address);
+                            //if (lea_address == string)
                             {
                                 auto sig_1 = Utils::SigScan((UINT64)win32k_text_base - 1, win32k_text_size + 1, "48 8B 05 ? ? ? ? 48 8B 4C 24 20");
                                 if (sig_1)
@@ -97,13 +201,6 @@ UINT64 LocateSSDT()
                                             auto pssdt = sig_3 + offset; 
 
 											auto target = *(UINT64*)pssdt;
-
-                                            for (int i = 0; i < 20; i++)
-                                            {
-                                                printf("%02x", ((unsigned char*)target)[i]);
-                                            }
-
-
 											printf("Target: %p\n", (PVOID)target);
 											LocateTextSource(target);
 
@@ -126,73 +223,6 @@ UINT64 LocateSSDT()
                     }
                     else
                         break;
-                }
-            }
-            return 0;
-            UINT64 start = win32k_base;
-            UINT64 size = win32k_size;
-            
-            for (UINT64 i = 0; i < 2000; i++)
-            {
-                auto sig_0 = Utils::SigScan_s(start, size, "48 8D 0D ? ? ? ? 48");
-                if (sig_0)
-                {
-                    start = sig_0 + 1;
-                    size = win32k_size - (start - win32k_base);
-                    auto rel = string - sig_0;
-                    auto rel_offset = *(int*)(sig_0 + 3) + 7;
-                    if (rel == rel_offset)
-                    {
-                        auto sig_1 = Utils::SigScan_s((UINT64)sig_0, 0x200, "48 8B 05 ? ? ? ? 48 8B 4C 24 20");
-                        if (sig_1)
-                        {
-                            if (Utils::RvaValid(sig_1 + 3) && Utils::RvaValid((sig_1 + *(int*)(sig_1 + 3) + 7)))
-                            {
-                                auto rel2 = *(UINT64*)(sig_1 + *(int*)(sig_1 + 3) + 7);
-                                auto sig_2 = Utils::SigScan_s((UINT64)rel2, 0x200, "48 8B 05 ? ? ? ? 48 85 C0");
-                                if (sig_2)
-                                {
-                                    if (Utils::RvaValid(sig_2 + 3) && Utils::RvaValid((sig_2 + *(int*)(sig_2 + 3) + 7)))
-                                    {
-                                        //DbgPrintEx(0, 0, "{ Detected Windows 10 (%i) }\n", i);
-                                        //auto pssdt = (sig_2 + *(int*)(sig_2 + 3) + 7);
-                                        //DbgPrintEx(0, 0, "%p: mov rax, cs:qword_%p\n", (PVOID)sig_2, pssdt);
-                                        //o_NtUserCompositionInputSinkViewInstanceIdFromPoint = (QWORD)(pssdt);
-                                        //_NtUserCompositionInputSinkViewInstanceIdFromPoint = (FnPtr*)*(QWORD*)(pssdt);
-                                        //*(QWORD*)(pssdt) = (QWORD)NtUserCompositionInputSinkViewInstanceIdFromPoint;
-                                        //DbgPrintEx(0, 0, "Swapped %p for %p\n", (PVOID)_NtUserCompositionInputSinkViewInstanceIdFromPoint, (PVOID)NtUserCompositionInputSinkViewInstanceIdFromPoint);
-                                        //DbgPrintEx(0, 0, "Successful\n");
-    									return 1;
-                                    }
-                                }
-                            }
-    
-                            if (Utils::RvaValid(sig_1 + 3) && Utils::RvaValid((sig_1 + *(int*)(sig_1 + 3) + 7)))
-                            {
-                                auto rel2 = *(UINT64*)(sig_1 + *(int*)(sig_1 + 3) + 7);
-                                auto sig_2 = Utils::SigScan_s((UINT64)rel2, 0x200, "48 8B 80 ? ? ? ? 48 85 C0");
-                                if (sig_2)
-                                {
-                                    if (Utils::RvaValid(sig_2 + 3))
-                                    {
-                                        //DbgPrintEx(0, 0, "{ Detected Windows 11 (%i) }\n", i);
-                                        //auto offset = *(int*)(sig_2 + 3);
-                                        //DbgPrintEx(0, 0, "%p: mov rax, [rax+%xh]\n", (PVOID)sig_1, offset);
-                                        //auto s_gSessionGlobalSlots = *(UINT64*)Utils::ResolveRel32(3, Utils::SigScan_s(win32k_base, win32k_size, "48 8B 05 ? ? ? ? FF C9"));
-                                        //
-                                        //auto pssdt = *(QWORD*)(*(QWORD*)(*(QWORD*)s_gSessionGlobalSlots + 0x88ULL) + 0x150ULL) + (UINT64)offset;
-                                        //
-                                        //o_NtUserCompositionInputSinkViewInstanceIdFromPoint = (QWORD)(pssdt);
-                                        //_NtUserCompositionInputSinkViewInstanceIdFromPoint = (FnPtr*)*(QWORD*)(pssdt);
-                                        //*(QWORD*)(pssdt) = (QWORD)NtUserCompositionInputSinkViewInstanceIdFromPoint;
-                                        //DbgPrintEx(0, 0, "Swapped %p for %p\n", (PVOID)_NtUserCompositionInputSinkViewInstanceIdFromPoint, (PVOID)NtUserCompositionInputSinkViewInstanceIdFromPoint);
-                                        //DbgPrintEx(0, 0, "Successful\n");
-                                        return 2;
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -279,6 +309,77 @@ void SVM::CreateInterruptHandler()
 */
 
 
+
+//HalpInterruptController  48 8B 1D ? ? ? ? 48 8B 83
+
+UINT64 pCallback_scheduler = 0;
+FnPtr* oCallback_scheduler = nullptr;
+UINT64 idle_eproc = 0;
+UINT64 ssa_bnk[100];
+
+
+UINT64 CallbackFunction_scheduler(UINT64 a1, UINT64 a2, UINT64 a3, UINT64 a4)
+{
+    auto next_thread = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x10);
+    if (next_thread)
+    {
+        auto eproc = *(UINT64*)(next_thread + 0x220);
+        if (*(UINT64*)(eproc + 0x338) == 0x656C6449)
+        {
+            idle_eproc = eproc;
+            *(UINT64*)pCallback_scheduler = (UINT64)oCallback_scheduler;
+        }
+    }
+    return oCallback_scheduler->invoke<UINT64>(a1, a2, a3, a4);
+}
+
+UINT64 get_scheduler_eproc()
+{
+    idle_eproc = 0;
+    auto k_base = Utils::GetKernelBase();
+    UINT64 text_base, text_size;
+    if (NT_SUCCESS(Utils::GetSectionInfo(k_base, str_hash(".text"), &text_base, &text_size)))
+    {
+        auto sig_3 = Utils::SigScan(text_base, text_size, "48 8B 1D ? ? ? ? 48 8B 83");
+        if (sig_3)
+        {
+            sig_3 = *(UINT64*)Utils::ResolveRel32(3, sig_3);
+            pCallback_scheduler = (sig_3 + 0x78);
+            oCallback_scheduler = (FnPtr*)*(UINT64*)pCallback_scheduler;
+            *(UINT64*)pCallback_scheduler = (UINT64)CallbackFunction_scheduler;
+        }
+    }
+    while(!idle_eproc)
+		Sleep(1);
+    return idle_eproc;
+}
+
+UINT64 get_dwm_eproc()
+{
+    int thread_count = 0;
+    auto process_current = (UINT64)PsInitialSystemProcess();
+    auto o_UniqueProcessId = *(UINT32*)((UINT64)nt.fn_PsGetProcessId + 0x3);
+
+    auto kernel_base = Utils::GetKernelBase();
+    UINT64 text_base, text_size;
+    Utils::GetSectionInfo(kernel_base, str_hash(".text"), &text_base, &text_size);
+
+    do {
+        if (*(UINT32*)(process_current + 0x338) == 0x2E6D7764)
+        {
+			return process_current;
+        }
+        process_current = *(UINT64*)(process_current + o_UniqueProcessId + 0x8) - (o_UniqueProcessId + 0x8);
+    } while ((process_current != (UINT64)PsInitialSystemProcess()));
+
+    return 0;
+}  
+
+
+UINT64 FindExecution_text_base, FindExecution_text_size;
+UINT64 FindExecution_idle_eproc = 0;
+UINT64 FindExecution_dwm_eproc = 0;
+
 UINT64 pCallback_0 = 0;
 FnPtr* oCallback_0 = nullptr;
 
@@ -287,48 +388,175 @@ FnPtr* oCallback_1 = nullptr;
 
 int count = 0;
 
-UINT64 data = 0;
+void FindExecution_Head();
+void FindExecution_Tail();
 
-UINT64 CallbackFunction_1();
+bool lock_0, lock_1;
 
-UINT64 CallbackFunction_0()
+UINT64 CallbackFunction_0(UINT64 a1, UINT64 a2, UINT64 a3, UINT64 a4)
 {
-    count++;
-    //data = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x10);
 
-    printf("test");
-    //*(UINT64*)pCallback_1 = (UINT64)CallbackFunction_1;
+    for (int l = 0; l < KeQueryActiveProcessorCount(0); l++)
+    {
+        auto rsp = *(UINT64*)(ssa_bnk[l] - 0x68);
+		printf("Core %i: %p\n", l, (PVOID) *(UINT64*)(ssa_bnk[l] - 0x8));
+        *(UINT64*)(ssa_bnk[l] - 0x8) = 0x0;
+        if (MmGetPhysicalAddress((PVOID)rsp))
+        {
+            int level = 500;
+            for (int i = 0; i < level; i++)
+            {
+                if (MmGetPhysicalAddress((PVOID) & ((UINT64*)rsp)[i - level]))
+                {
+                    if (((UINT64*)rsp)[i - level] > FindExecution_text_base && ((UINT64*)rsp)[i - level] < (FindExecution_text_base + FindExecution_text_size))
+                    {
+                        printf("%03i found: %p\n", i, (PVOID)((UINT64*)rsp)[i - level]);
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
-
-    return oCallback_0->invoke<UINT64>();
+    printf("S-Head :)");
+    //_mm_writecr8(15);
+    //
+    //for (int i = 0; i < 100000; i++)
+    //    _mm_pause();
+    //
+    //_mm_writecr8(0);
+    //printf("E-Head :)");
+    return oCallback_0->invoke<UINT64>(a1, a2, a3, a4);
 }
 
-UINT64 CallbackFunction_1()
+UINT64 CallbackFunction_1(UINT64 a1, UINT64 a2, UINT64 a3, UINT64 a4)
 {
-    count++;
+    printf("S-Tail :)");
+    _mm_writecr8(15);
 
-    //*(UINT64*)pCallback_0 = (UINT64)CallbackFunction_0;
+    lock_0 = true;
+    while (lock_0)
+    {
+        for(int i=0;i<10000;i++)
+			_mm_pause();
+        _mm_lfence();
+        _mm_mfence();
+        FindExecution_Head();
+    }
+    lock_1 = false;
 
-    return oCallback_1->invoke<UINT64>();
+    _mm_writecr8(0);
+    printf("E-Tail :)");
+    return oCallback_1->invoke<UINT64>(a1, a2, a3, a4);
 }
 
-/*
-UINT64 pCallback = 0;
-FnPtr* oCallback = nullptr;
-int count = 0;
-
-UINT64 CallbackFunction()
+void FindExecution_Head() 
 {
-    count++;
-    return oCallback->invoke<UINT64>();
-}*/
 
+    auto current_thread = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8);
 
-//HalpInterruptController  48 8B 1D ? ? ? ? 48 8B 83
+    auto thread_head = *(UINT64*)(FindExecution_idle_eproc + 0x370);
+    auto thread_current = (LIST_ENTRY*)thread_head;;
+    do {
+        if (!MmGetPhysicalAddress(thread_current))
+            break;
+
+        if (current_thread != (UINT64)thread_current)
+        {
+            auto thread = (UINT64)thread_current - 0x578;
+
+            if (MmGetPhysicalAddress((PVOID)(thread + 0x58)))
+            {
+                auto rsp = *(UINT64*)(thread + 0x58);
+                if (MmGetPhysicalAddress((PVOID)rsp))
+                {
+                    LINEAR_ADDRESS rva = rsp;
+                    if (rva.pml4e_index > 128)
+                    {
+                        int level = 150;
+                        for (int i = 0; i < level; i++)
+                        {
+                            if (MmGetPhysicalAddress((PVOID)((UINT64*)rsp)[i - level]))
+                            {
+                                if (((UINT64*)rsp)[i - level] > FindExecution_text_base && ((UINT64*)rsp)[i - level] < (FindExecution_text_base + FindExecution_text_size))
+                                {
+                                    pCallback_0 = (UINT64) & ((UINT64*)rsp)[i - level];
+                                    oCallback_0 = (FnPtr*)*(UINT64*)pCallback_0;
+                                    *(UINT64*)pCallback_0 = (UINT64)CallbackFunction_0;
+                                    printf("Found head: %p\n", (PVOID)pCallback_0);
+                                    //break;
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+        }
+        thread_current = thread_current->Blink;
+    } while ((UINT64)thread_current != thread_head);
+    return;
+}
+
+void FindExecution_Tail()
+{
+    auto current_thread = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8);
+
+    auto thread_head = *(UINT64*)(FindExecution_dwm_eproc + 0x370);
+    auto thread_current = (LIST_ENTRY*)thread_head;
+    do {
+        if (!MmGetPhysicalAddress(thread_current))
+            break;
+        if (current_thread != (UINT64)thread_current)
+        {
+            auto thread = (UINT64)thread_current - 0x578;
+
+            if (MmGetPhysicalAddress((PVOID)(thread + 0x90)))
+            {
+                auto ctx = *(UINT64*)(thread + 0x90);
+                if (ctx)
+                {
+                    if (MmGetPhysicalAddress((PVOID)(ctx + 0x180)))
+                    {
+                        auto rsp = *(UINT64*)(ctx + 0x180);
+                        //auto rsp = *(UINT64*)(thread + 0x58);
+                        if (MmGetPhysicalAddress((PVOID)rsp))
+                        {
+                            LINEAR_ADDRESS rva = rsp;
+                            if (rva.pml4e_index > 128)
+                            {
+                                int level = 80;
+                                for (int i = 0; i < level; i++)
+                                {
+                                    if (MmGetPhysicalAddress((PVOID)((UINT64*)rsp)[i - level]))
+                                    {
+                                        if (((UINT64*)rsp)[i - level] > FindExecution_text_base && ((UINT64*)rsp)[i - level] < (FindExecution_text_base + FindExecution_text_size))
+                                        {
+                                            pCallback_1 = (UINT64) & ((UINT64*)rsp)[i - level];
+                                            oCallback_1 = (FnPtr*)*(UINT64*)pCallback_1;
+                                            *(UINT64*)pCallback_1 = (UINT64)CallbackFunction_1;
+                                            //printf("Found tail: %p\n", (PVOID)pCallback_1);
+                                            return;
+                                        }
+
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+        }
+        thread_current = thread_current->Flink;
+    } while ((UINT64)thread_current != thread_head);
+    return;
+}
 
 void Test_Kthread()
 {
-	int thread_count = 0;
+    int thread_count = 0;
     auto process_current = (UINT64)PsInitialSystemProcess();
     auto o_UniqueProcessId = *(UINT32*)((UINT64)nt.fn_PsGetProcessId + 0x3);
 
@@ -339,12 +567,12 @@ void Test_Kthread()
 
     auto self_thread = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8);
     do {
-		auto pid = *(UINT64*)(process_current + o_UniqueProcessId);
+        auto pid = *(UINT64*)(process_current + o_UniqueProcessId);
 
         auto thread_head = *(UINT64*)(process_current + 0x370);
-		auto thread_current = (LIST_ENTRY*)thread_head;
-        
-		auto active_thread_count = *(UINT32*)(process_current + 0x380);
+        auto thread_current = (LIST_ENTRY*)thread_head;
+
+        auto active_thread_count = *(UINT32*)(process_current + 0x380);
         if (active_thread_count)// && *(UINT32*)(process_current + 0x338) == 0x2E6D7764)
         {
             do {
@@ -353,8 +581,8 @@ void Test_Kthread()
 
                 thread_count++;
 
-				auto thread = (UINT64)thread_current - 0x578;
-                
+                auto thread = (UINT64)thread_current - 0x578;
+
                 if (thread != self_thread)
                 {
                     auto apc_eproc = *(UINT64*)(thread + 0xB8);
@@ -366,25 +594,29 @@ void Test_Kthread()
                             if (MmGetPhysicalAddress((PVOID)(ctx + 0x180)))
                             {
                                 auto rsp = *(UINT64*)(ctx + 0x180);
+                                //auto rsp = *(UINT64*)(ctx + 0x58);
                                 if (MmGetPhysicalAddress((PVOID)rsp))
                                 {
                                     LINEAR_ADDRESS rva = rsp;
                                     if (rva.pml4e_index > 128)
                                     {
                                         //printf("Thread: %p, ctx: %p, test: %p\n", (PVOID)thread, (PVOID)ctx, (PVOID)test);
-                                        for (int i = 0; i < 70; i++)
+                                        for (int i = 0; i < 200; i++)
                                         {
-                                            if (((UINT64*)rsp)[i - 70] > text_base && ((UINT64*)rsp)[i - 70] < (text_base + text_size))
+                                            if (((UINT64*)rsp)[i - 200] > text_base && ((UINT64*)rsp)[i - 200] < (text_base + text_size))
                                             {
                                                 //printf("%i rsp: %p\n", i - 70, ((UINT64*)test)[i - 70]);
 
                                                 //oCallback = (FnPtr*)((UINT64*)rsp)[i - 70];
-                                                auto idx = i - 70;
+                                                auto idx = i - 200;
 
                                                 //if(!pCallback_1)
                                                 //    pCallback_1 = (UINT64) & ((UINT64*)rsp)[idx];
                                                 //else if(!pCallback_0)
-                                                //pCallback_0 = (UINT64) & ((UINT64*)rsp)[idx];
+
+                                                pCallback_0 = (UINT64) & ((UINT64*)rsp)[idx];
+                                                oCallback_0 = (FnPtr*)*(UINT64*)pCallback_0;
+                                                *(UINT64*)pCallback_0 = (UINT64)CallbackFunction_0;
 
                                                 printf("ret [%p]%p %s\n", &((UINT64*)rsp)[idx], ((UINT64*)rsp)[idx], (process_current + 0x338));
 
@@ -395,7 +627,7 @@ void Test_Kthread()
                                                 //if (MmGetPhysicalAddress((PVOID)((UINT64*)test)[idx - 1]))
                                                 //    printf("valid [%p]%p", (PVOID)((UINT64*)test)[idx - 1], *(PVOID*)((UINT64*)test)[idx - 1]);
                                                 //printf("pop arg %p\n", ((UINT64*)test)[idx - 1]);
-                                                //return;
+                                                return;
                                                 break;
                                                 //((UINT64*)test)[0 - i] = 0x0;
                                             }
@@ -416,30 +648,301 @@ void Test_Kthread()
 }
 
 
+
+UINT64 pCallback_3 = 0;
+FnPtr* oCallback_3 = nullptr;
+
+UINT64 CallbackFunction_3(UINT64 a1, UINT64 a2, UINT64 a3, UINT64 a4)
+{
+    auto next_thread = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x10);
+    if (next_thread)
+    {
+        auto eproc = *(UINT64*)(next_thread + 0x220);
+        if (*(UINT64*)(eproc + 0x338) == 0x656C6449)
+        {
+            printf("thread %p : %d\n", next_thread, CPUID::current_core_number()); 
+        }
+    }
+    return oCallback_3->invoke<UINT64>(a1, a2, a3, a4);
+}
+
+UINT64 nigger()
+{
+    idle_eproc = 0;
+    auto k_base = Utils::GetKernelBase();
+    UINT64 text_base, text_size;
+    if (NT_SUCCESS(Utils::GetSectionInfo(k_base, str_hash(".text"), &text_base, &text_size)))
+    {
+        auto sig_3 = Utils::SigScan(text_base, text_size, "48 8B 1D ? ? ? ? 48 8B 83");
+        if (sig_3)
+        {
+            sig_3 = *(UINT64*)Utils::ResolveRel32(3, sig_3);
+            pCallback_3 = (sig_3 + 0x78);
+            oCallback_3 = (FnPtr*)*(UINT64*)pCallback_3;
+            *(UINT64*)pCallback_3    = (UINT64)CallbackFunction_3;
+            Sleep(1000);
+            *(UINT64*)pCallback_3 = (UINT64)oCallback_3;
+        }
+    }
+    while (!idle_eproc)
+        Sleep(1);
+    return idle_eproc;
+}
+
+
+UINT64 pCallback_scheduler_log = 0;
+FnPtr* oCallback_scheduler_log = nullptr;
+
+UINT64 CallbackFunction_scheduler_log(UINT64 a1, UINT64 a2, UINT64 a3, UINT64 a4)
+{
+    auto next_thread = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x10);
+    if (next_thread)
+    {
+        auto eproc = *(UINT64*)(next_thread + 0x220);
+        if (*(UINT64*)(eproc + 0x338) == 0x656C6449)
+        {
+			printf("thread %p : %d\n", next_thread, CPUID::current_core_number());
+        }
+    }
+    return oCallback_scheduler_log->invoke<UINT64>(a1, a2, a3, a4);
+}
+
+void scheduler_log()
+{
+    auto k_base = Utils::GetKernelBase();
+    UINT64 text_base, text_size;
+    if (NT_SUCCESS(Utils::GetSectionInfo(k_base, str_hash(".text"), &text_base, &text_size)))
+    {
+        auto sig_3 = Utils::SigScan(text_base, text_size, "48 8B 1D ? ? ? ? 48 8B 83");
+        if (sig_3)
+        {
+            sig_3 = *(UINT64*)Utils::ResolveRel32(3, sig_3);
+            pCallback_scheduler_log = (sig_3 + 0x78);
+            oCallback_scheduler_log = (FnPtr*)*(UINT64*)pCallback_scheduler_log;
+            *(UINT64*)pCallback_scheduler_log = (UINT64)CallbackFunction_scheduler_log;
+            Sleep(1000);
+            *(UINT64*)pCallback_scheduler_log = (UINT64)oCallback_scheduler_log;
+        }
+    }
+    return;
+}
+
+
+
+void IdleThreadIpi()
+{
+    auto next_thread = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x18);
+	auto eproc = *(UINT64*)(next_thread + 0x220);
+
+    auto rsp_k = *(UINT64*)(next_thread + 0x58);
+	//printf("rsp_k: %p\n", (PVOID)rsp_k);
+    auto ctx = *(UINT64*)(next_thread + 0x90);
+    auto ssa = *(UINT64*)(next_thread + 0x60);
+
+    auto rsp = *(UINT64*)(ssa - 0x68);
+	auto idx = KeGetCurrentProcessorNumberEx(nullptr);
+    ssa_bnk[idx] = (ssa - 0x68);
+
+    //printf("ssa %p : rsp %p\n", (PVOID)(ssa - 0x68), (PVOID)rsp);
+    return;
+	
+    if (MmGetPhysicalAddress((PVOID)rsp))
+    {
+        int level = 500;
+        for (int i = 0; i < level; i++)
+        {
+            if (MmGetPhysicalAddress((PVOID)&((UINT64*)rsp)[i - level]))
+            {
+                if (((UINT64*)rsp)[i - level] > FindExecution_text_base && ((UINT64*)rsp)[i - level] < (FindExecution_text_base + FindExecution_text_size))
+                {
+				    //printf("%03i %p found: %p\n", i, next_thread, (PVOID)((UINT64*)rsp)[i - level]);
+                    return;
+                }
+            }
+        }
+    }
+    return;
+}
+
+
+
+void populate_ssa()
+{
+    KeIpiGenericCall(IdleThreadIpi, 0);
+    return;
+}
+
+
 NTSTATUS DriverEntry()
 {
 
-    printf("Count: %i\n", count);
-    Test_Kthread();
+    Utils::GetSectionInfo(Utils::GetKernelBase(), str_hash(".text"), &FindExecution_text_base, &FindExecution_text_size);
+    printf("text_base: %p, text_size: %p\n", (PVOID)FindExecution_text_base, (PVOID)FindExecution_text_size);
+    FindExecution_idle_eproc = get_scheduler_eproc();
 
-	printf("pCallback_0: %p\n", (PVOID)pCallback_0);
-	printf("pCallback_1: %p\n", (PVOID)pCallback_1);
+    populate_ssa();
 
-    if (pCallback_0)
+    for (int i = 0; i < 10; i++)
     {
-        oCallback_0 = (FnPtr*)*(UINT64*)pCallback_0;
-        *(UINT64*)pCallback_0 = (UINT64)CallbackFunction_0;
+        FindExecution_Head();
+        Sleep(10);
     }
-	
-    if (pCallback_1)
-    {
-        oCallback_1 = (FnPtr*)*(UINT64*)pCallback_1;
-        //*(UINT64*)pCallback_1 = (UINT64)CallbackFunction_1;
-    }
+    
 
-	Sleep(10);
-    printf("Count: %i\n", count);
-    printf("data: %p\n", data);
+   
+
+    
+    
+
+
+    return STATUS_SUCCESS;
+    scheduler_log();
+    return STATUS_SUCCESS;
+    //scheduler_log();
+    //Utils::GetSectionInfo(Utils::GetKernelBase(), str_hash(".text"), &FindExecution_text_base, &FindExecution_text_size);
+	//printf("text_base: %p, text_size: %p\n", (PVOID)FindExecution_text_base, (PVOID)FindExecution_text_size);
+    //FindExecution_idle_eproc = get_scheduler_eproc();
+
+    FindExecution_Head();
+
+    return STATUS_SUCCESS;
+    //scheduler_log();
+
+    //(0xFFFFA60D5EBBDC20);
+
+    //Utils::GetSectionInfo(Utils::GetKernelBase(), str_hash(".text"), &FindExecution_text_base, &FindExecution_text_size);
+    //FindExecution_idle_eproc = get_scheduler_eproc();
+	//FindExecution_dwm_eproc = get_dwm_eproc();
+    //FindExecution_Head();
+    ////FindExecution_Tail();
+
+
+    //if(eproc)
+	//    printf("Idle eproc: %p %s\n", eproc, (eproc + 0x338));
+    //return STATUS_SUCCESS;
+    //auto process_current = (UINT64)PsInitialSystemProcess();
+    //auto o_UniqueProcessId = *(UINT32*)((UINT64)nt.fn_PsGetProcessId + 0x3);
+    //
+    //auto kernel_base = Utils::GetKernelBase();
+    //UINT64 text_base, text_size;
+    //Utils::GetSectionInfo(kernel_base, str_hash(".text"), &text_base, &text_size);
+    //
+    //auto self_thread = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8);
+    //do {
+    //    auto thread_head = *(UINT64*)(process_current + 0x370);
+    //    auto thread_current = (LIST_ENTRY*)thread_head;
+    //    auto DTB = *(UINT64*)((UINT64)process_current + 0x28);
+    //    printf("%p %s\n", *(UINT64*)(process_current + 0x338), (process_current + 0x338));
+    //    
+    //    process_current = *(UINT64*)(process_current + o_UniqueProcessId + 0x8) - (o_UniqueProcessId + 0x8);
+    //} while ((process_current != (UINT64)PsInitialSystemProcess()));
+
+
+
+
+
+    //return STATUS_SUCCESS;
+
+
+    //auto kernel_base = Utils::GetKernelBase();
+    //Utils::GetSectionInfo(kernel_base, str_hash(".text"), &text_base_ntoskrl, &text_size_ntoskrl);
+    //
+    ////printf("before Count: %i\n", count);
+    ////
+    ////Test_Kthread();
+    ////
+    ////Sleep(10);
+	////printf("Count: %i\n", count);
+    ////0x8768
+    //
+	//auto rsp = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x8768);
+    //int deep = 2000;
+    //for (int i = 0; i < deep; i++)
+    //{
+    //    if (((UINT64*)rsp)[i - deep] > text_base_ntoskrl && ((UINT64*)rsp)[i - deep] < (text_base_ntoskrl + text_size_ntoskrl))
+    //    {
+	//		printf("found: %p\n", (PVOID)((UINT64*)rsp)[i - deep]);
+    //        //count = 0;
+	//		//pCallback = (UINT64) & ((UINT64*)rsp)[i - deep];
+    //        //oCallback = (FnPtr*)*(UINT64*)pCallback;
+    //        //*(UINT64*)pCallback = (UINT64)CallbackFunction;
+    //        break;
+    //    }
+    //}
+
+	//printf("stack: %p\n", (PVOID)stack);
+
+
+
+    //auto k_base = Utils::GetKernelBase();
+    //printf("Kernel base: %p\n", (PVOID)k_base);
+    //UINT64 text_base, text_size;
+    //if (NT_SUCCESS(Utils::GetSectionInfo(k_base, str_hash(".text"), &text_base, &text_size)))
+    //{
+    //    auto sig_3 = Utils::SigScan(text_base, text_size, "E8 ? ? ? ? 8A D8 83 C9");
+    //    if (sig_3)
+    //    {
+    //        sig_3 = *(UINT64*)Utils::ResolveRel32(1, sig_3);
+    //        pCallback = sig_3;
+    //        oCallback = (FnPtr*)*(UINT64*)pCallback;
+    //        count = 0;
+    //        printf("count: %i\n", (PVOID)count);
+    //        *(UINT64*)pCallback = (UINT64)CallbackFunction;
+    //        Sleep(10);
+    //        *(UINT64*)pCallback = (UINT64)oCallback;
+    //        printf("count: %i\n", (PVOID)count);
+    //
+    //    }
+    //}
+    
+    //upper_half();
+    //dtc_win32k_hook();
+
+    //auto k_base = Utils::GetKernelBase();
+    //printf("Kernel base: %p\n", (PVOID)k_base);
+    //UINT64 text_base, text_size;
+    //if (NT_SUCCESS(Utils::GetSectionInfo(k_base, str_hash(".text"), &text_base, &text_size)))
+    //{
+    //    auto sig_3 = Utils::SigScan(text_base, text_size, "48 8B 1D ? ? ? ? 48 8B 83");
+    //    if (sig_3)
+    //    {
+    //        sig_3 = *(UINT64*)Utils::ResolveRel32(3, sig_3);
+    //        pCallback = (sig_3 + 0x78);
+    //        oCallback = (FnPtr*)*(UINT64*)pCallback;
+    //        *(UINT64*)pCallback = (UINT64)CallbackFunction;
+    //        Sleep(10);
+    //        *(UINT64*)pCallback = (UINT64)oCallback;
+    //
+    //        for (int i = 0; i < 500; i++)
+    //        {
+    //            if(data[i])
+	//				printf("%p %s\n", data[i], (UINT64)(*(UINT64*)(data[i] + 0x220) + 0x338));
+    //        }
+    //
+    //    }
+    //}
+
+    //printf("Count: %i\n", count);
+    //Test_Kthread();
+
+	//printf("pCallback_0: %p\n", (PVOID)pCallback_0);
+	//printf("pCallback_1: %p\n", (PVOID)pCallback_1);
+    ////
+    //if (pCallback_0)
+    //{
+    //    oCallback_0 = (FnPtr*)*(UINT64*)pCallback_0;
+    //    *(UINT64*)pCallback_0 = (UINT64)CallbackFunction_0;
+    //}
+	////
+    ////if (pCallback_1)
+    ////{
+    ////    oCallback_1 = (FnPtr*)*(UINT64*)pCallback_1;
+    ////    //*(UINT64*)pCallback_1 = (UINT64)CallbackFunction_1;
+    ////}
+    //
+	//Sleep(1000);
+    //printf("Count: %i\n", count);
+    //printf("data: %p\n", data);
     return STATUS_SUCCESS;
 
 
