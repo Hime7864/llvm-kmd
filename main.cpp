@@ -728,65 +728,230 @@ void scheduler_log()
 }
 
 
-
-void IdleThreadIpi()
+void ipi_GetIdleThreadStack(UINT64* buffer)
 {
     auto next_thread = *(UINT64*)((UINT64)KeGetCurrentPrcb() + 0x18);
-	auto eproc = *(UINT64*)(next_thread + 0x220);
-
-    auto rsp_k = *(UINT64*)(next_thread + 0x58);
-	//printf("rsp_k: %p\n", (PVOID)rsp_k);
-    auto ctx = *(UINT64*)(next_thread + 0x90);
-    auto ssa = *(UINT64*)(next_thread + 0x60);
-
-    auto rsp = *(UINT64*)(ssa - 0x68);
-	auto idx = KeGetCurrentProcessorNumberEx(nullptr);
-    ssa_bnk[idx] = (ssa - 0x68);
-
-    //printf("ssa %p : rsp %p\n", (PVOID)(ssa - 0x68), (PVOID)rsp);
+    auto idx = KeGetCurrentProcessorNumberEx(nullptr);
+    buffer[idx] = *(UINT64*)(next_thread + 0x58);
     return;
-	
-    if (MmGetPhysicalAddress((PVOID)rsp))
+}
+
+void GetIdleThreadStack(UINT64* buffer)
+{
+    KeIpiGenericCall(ipi_GetIdleThreadStack, buffer);
+    return;
+}
+
+UINT64 pCallback = 0;
+FnPtr* oCallback = nullptr;
+
+UINT64 CallbackFunction(UINT64 a1, UINT64 a2, UINT64 a3, UINT64 a4)
+{
+    printf("%p %p %p %p", a1, a2, a3, a4);
+    return oCallback->invoke<UINT64>(a1, a2, a3, a4);
+}
+
+void LocateCallback(UINT64* ptr, int cnt)
+{
+    //auto funny = Utils::SigScan(FindExecution_text_base, FindExecution_text_size, "48 8B C4 48 89 58 ? 56 57 41 54 41 56 41 57 48 83 EC ? 48 8B D9");
+    //auto funny = Utils::SigScan(FindExecution_text_base, FindExecution_text_size, "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC ? 33 C0 0F 57 C0 0F 11 44 24 ? 33 F6");
+    auto funny = Utils::SigScan(
+        FindExecution_text_base,
+        FindExecution_text_size, 
+        "48 83 C4 ? C3 CC 83 F8 ? 74 ? 4C 8B 44 24"
+    );
+
+    auto funny2 = Utils::SigScan(
+        FindExecution_text_base,
+        FindExecution_text_size,
+        "48 83 C4 ? C3 CC 45 33 C9 48 C7 44 24 ? ? ? ? ? 45 33 C0"
+    );
+
+    auto funny3 = Utils::SigScan(
+        FindExecution_text_base,
+        FindExecution_text_size,
+        "48 81 C4 ? ? ? ? 41 5F 41 5E 41 5D 41 5C 5F 5E 5B 5D C3 CC 38 96"
+	);
+
+    auto funny4 = Utils::SigScan(
+        FindExecution_text_base,
+        FindExecution_text_size,
+        "44 38 6D ? 74 ? 41 B7"
+	);
+
+    auto funny5 = Utils::SigScan(
+        FindExecution_text_base,
+        FindExecution_text_size,
+        "8B 84 24 ? ? ? ? 4C 8B 6C 24 ? 4C 8B 64 24"
+    );
+
+
+    //48 83 C4 ? C3 CC 45 33 C9 48 C7 44 24 ? ? ? ? ? 45 33 C0
+    
+    printf("funny: %p\n", (PVOID)funny);
+
+	auto k_base = Utils::GetKernelBase();
+
+
+
+    for (int l = 0; l < cnt; l++)
     {
-        int level = 500;
-        for (int i = 0; i < level; i++)
+        auto rsp = ptr[l];
+        if (MmGetPhysicalAddress((PVOID)rsp))
         {
-            if (MmGetPhysicalAddress((PVOID)&((UINT64*)rsp)[i - level]))
+
+			auto entry = (UINT64*)rsp;
+			int depth = 1000;
+
+            for (int i = 0; i < depth; i++)
             {
-                if (((UINT64*)rsp)[i - level] > FindExecution_text_base && ((UINT64*)rsp)[i - level] < (FindExecution_text_base + FindExecution_text_size))
+				auto ptr = &entry[i - depth];
+                if (MmGetPhysicalAddress((PVOID)ptr))
                 {
-				    //printf("%03i %p found: %p\n", i, next_thread, (PVOID)((UINT64*)rsp)[i - level]);
-                    return;
+                    if (*ptr > FindExecution_text_base && *ptr < (FindExecution_text_base + FindExecution_text_size))
+                    {
+
+
+                        if (*ptr != funny && *ptr != funny2 && *ptr != funny3 && *ptr != funny4 && *ptr != funny5)
+                        {
+                            printf("Core %i: lvl %i | %p %p\n", l, i, (PVOID)ptr, (PVOID)((*ptr - k_base) + 0x140000000));
+                            *ptr = (UINT64)ptr;
+                        }
+                        else
+                        {
+                            if (*ptr == funny)
+                                printf("Log 1\n");
+							if (*ptr == funny2)
+								printf("Log 2\n");
+                            if (*ptr == funny3)
+								printf("Log 3\n");
+							if (*ptr == funny4)
+								printf("Log 4\n");
+                            if (*ptr == funny5)
+								printf("Log 5\n");
+                        }
+						
+                    }
+				}
+            }
+
+
+
+            //int level = 0x30000;
+            //for (int i = 0; i < level; i++)
+            //{
+            //    auto idx = i - level;
+            //    if(idx > 0x8000)
+            //        break;
+            //    if (MmGetPhysicalAddress((PVOID) & ((UINT64*)rsp)[idx]))
+            //    {
+            //        if (((UINT64*)rsp)[idx] && ((UINT64*)rsp)[idx] > FindExecution_text_base && ((UINT64*)rsp)[idx] < (FindExecution_text_base + FindExecution_text_size))
+            //        {
+            //            if ((UINT64)((UINT64*)rsp)[idx] == funny)
+            //            {
+            //                pCallback = (UINT64) & ((UINT64*)rsp)[idx];
+            //                oCallback = (FnPtr*)*(UINT64*)pCallback;
+            //                printf("Found callback: %p oCallback %p\n", (PVOID)pCallback, (PVOID)oCallback);
+            //                return;
+            //            }
+            //        }   //
+            //    }
+            //}
+		}
+    }
+
+
+
+    return;
+
+
+
+
+    oCallback = (FnPtr*)0x0;
+    //for (int x = 0; x < 10; x++)
+    {
+        //printf("GetIdleThreadStack %i\n", x);
+        bool found = false;
+        for (int l = 0; l < cnt; l++)
+        {
+            if(l == KeGetCurrentProcessorNumberEx(nullptr))
+				continue;
+            auto rsp = ptr[l];
+            //printf("   base stack core %i: %p\n", l, (PVOID)rsp);
+            if (MmGetPhysicalAddress((PVOID)rsp))
+            {
+                rsp = *(UINT64*)rsp;
+                int level = 0x30000;
+                for (int i = 0; i < level; i++)
+                {
+                    auto idx = i - level;
+                    if(idx > 0x8000)
+                        break;
+                    if (MmGetPhysicalAddress((PVOID) & ((UINT64*)rsp)[idx]))
+                    {
+
+                        //if(funny == (((UINT64*)rsp)[idx]))
+							//printf("Found funny: %p\n", (PVOID)((UINT64*)rsp)[idx]);
+                        if (((UINT64*)rsp)[idx] && ((UINT64*)rsp)[idx] > FindExecution_text_base && ((UINT64*)rsp)[idx] < (FindExecution_text_base + FindExecution_text_size))
+                        {
+                            //pCallback = (UINT64) & ((UINT64*)rsp)[idx];
+                            //oCallback = (FnPtr*)*(UINT64*)pCallback;
+                        
+                            
+                            if ((UINT64)oCallback == funny)
+                            {
+                                found = true;
+                                printf("!!! %i Found callback: %p oCallback %p\n", i, (PVOID)pCallback, (PVOID)oCallback);
+                                //*(UINT64*)pCallback = (UINT64)CallbackFunction;
+                                //Sleep(100);
+                                //*(UINT64*)pCallback = (UINT64)oCallback;
+                                //printf("!!! %i Found callback: %p oCallback %p\n", i, (PVOID)pCallback, (PVOID)oCallback);
+                                //return;
+                            }
+								
+                            //*(UINT64*)pCallback = (UINT32)pCallback;
+                            //else
+							//    printf("%i callback: %p oCallback %p\n", i, (PVOID)pCallback, (PVOID)oCallback);
+                        }   //
+                    }
                 }
+                if(found)
+                    break;
             }
         }
+       // Sleep(10);
     }
     return;
 }
-
-
-
-void populate_ssa()
-{
-    KeIpiGenericCall(IdleThreadIpi, 0);
-    return;
-}
-
 
 NTSTATUS DriverEntry()
 {
+    auto cnt = KeQueryActiveProcessorCount(0);
+	auto ptr = (UINT64*)ExAllocatePool(NonPagedPoolNx, cnt * sizeof(UINT64));
+    GetIdleThreadStack(ptr);
 
     Utils::GetSectionInfo(Utils::GetKernelBase(), str_hash(".text"), &FindExecution_text_base, &FindExecution_text_size);
+    
+    printf("base %p\n", Utils::GetKernelBase());
     printf("text_base: %p, text_size: %p\n", (PVOID)FindExecution_text_base, (PVOID)FindExecution_text_size);
-    FindExecution_idle_eproc = get_scheduler_eproc();
+    LocateCallback(ptr, cnt);
+    
+    ExFreePool(ptr);
 
-    populate_ssa();
+    return STATUS_SUCCESS;
 
-    for (int i = 0; i < 10; i++)
-    {
-        FindExecution_Head();
-        Sleep(10);
-    }
+
+    //Utils::GetSectionInfo(Utils::GetKernelBase(), str_hash(".text"), &FindExecution_text_base, &FindExecution_text_size);
+    //printf("text_base: %p, text_size: %p\n", (PVOID)FindExecution_text_base, (PVOID)FindExecution_text_size);
+    //FindExecution_idle_eproc = get_scheduler_eproc();
+    //
+    //populate_ssa();
+    //
+    //for (int i = 0; i < 10; i++)
+    //{
+    //    FindExecution_Head();
+    //    Sleep(10);
+    //}
     
 
    
@@ -795,9 +960,9 @@ NTSTATUS DriverEntry()
     
 
 
-    return STATUS_SUCCESS;
-    scheduler_log();
-    return STATUS_SUCCESS;
+    //return STATUS_SUCCESS;
+    //scheduler_log();
+   // return STATUS_SUCCESS;
     //scheduler_log();
     //Utils::GetSectionInfo(Utils::GetKernelBase(), str_hash(".text"), &FindExecution_text_base, &FindExecution_text_size);
 	//printf("text_base: %p, text_size: %p\n", (PVOID)FindExecution_text_base, (PVOID)FindExecution_text_size);
