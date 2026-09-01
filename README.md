@@ -6,7 +6,7 @@ The goal is to provide a reusable base for low-level kernel projects where impor
 
 ## Why This Exists
 
-I created this project because ill equipped for the kind of kernel research projects I work on. When working with undocumented routines and structures, bringing everything into a new WDK project repeatedly becomes tedious. This repository is meant to be a personal boilerplate that I can fork when starting something new.
+I created this project because WDK is by design ill equipped for the kind of kernel research projects I work on. When working with undocumented routines and structures, bringing everything into a new WDK project repeatedly becomes tedious let alone being forced to use MSCV. This repository is meant to be a personal boilerplate that I can fork when starting something new.
 
 It also pulls in two smaller projects:
 
