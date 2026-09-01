@@ -1,47 +1,86 @@
 # llvm-kmd
 
-`llvm-kmd` is a small x64 Windows kernel-mode boilerplate built around Clang/LLVM-style development rather than the normal MSVC/WDK workflow.
+x64 Windows kernel boilerplate for ClangCL, not the usual MSVC/WDK template.
 
-The goal is to provide a reusable base for low-level kernel projects where importing undocumented functions, structures, CPU intrinsics, and utility code into a fresh WDK project would otherwise mean repeating the same setup work each time.
+Fork this when starting a new kernel research project. Put the actual work in `DriverEntry`, keep the import table, CRT, CPU helpers, FWA, and DTLB instead of rebuilding that setup each time.
 
-## Why This Exists
+> Lab and VM use only. This is not a signed production driver. Incorrect kernel-mode code can crash or corrupt the machine.
 
-I created this project because WDK is by design ill equipped for the kind of kernel research projects I work on. When working with undocumented routines and structures, bringing everything into a new WDK project repeatedly becomes tedious let alone being forced to use MSCV. This repository is meant to be a personal boilerplate that I can fork when starting something new.
+## Boot flow
 
-It also pulls in two smaller projects:
+The linker entry is `start`, not `DriverEntry`.
 
-- `DTLB`: helpers for accessing physical-address without relying on Windows physical-memory APIs.
-- `FWA`: allocator working with memory outside normal Windows commitments, using unused regions of EFI memory.
+```
+start → resolve_imports → resolve_sigged_imports → DriverEntry → CleanupDriver
+```
 
-The CPU support is intentionally focused on what I currently need, mostly AMD-oriented MSR and CPUID helpers. The project does not try to cover every MSR or CPUID leaf up front; new definitions can be added as future projects need them.
+Export-based NT APIs are filled first, then a few version-fragile internals are located by signature. `DriverEntry` runs attached to `PsInitialSystemProcess`. After it returns, `CleanupDriver` wipes the image and exits.
 
-## Project Layout
+## Requirements
 
-- `main.cpp`: current driver entry point.
-- `Intrinsics/assembly.hpp`: low-level CPU instruction wrappers.
-- `Intrinsics/cpuid.*`: CPUID feature helpers.
-- `Intrinsics/msr.*`: MSR helpers and definitions.
-- `Intrinsics/crt.*`: minimal CRT routines for freestanding kernel-style code.
-- `Intrinsics/imports.hpp`: kernel import table and wrapper functions.
-- `Intrinsics/import_resolve.cpp`: export and signature-based import resolution.
-- `Intrinsics/utils_*`: PE parsing, signature scanning, address translation, and location helpers.
-- `Intrinsics/fwa.*`: firmware/unused physical memory allocation helpers.
-- `Intrinsics/dtlb_*`: DTLB/page-table helpers for accessing physical memory.
-- `Intrinsics/bootstrap.hpp` and `Intrinsics/driver_boot.cpp`: custom startup, import resolution, and cleanup flow.
+- Visual Studio 2022
+- ClangCL toolset
+- **x64 only.** The Win32 configurations in the project file are unused leftovers.
 
-## Build Notes
+This is not a WDK driver template. It does not use the WDK import table; it resolves its own.
 
-The Visual Studio project is configured for x64 ClangCL builds and emits a `.sys` target for x64 configurations. This is not a standard WDK driver template, and it intentionally avoids relying on normal WDK imports in favor of its own import table and supporting definitions.
+## Build
 
-This repository is best treated as a research and boilerplate base. Kernel-mode code can crash or corrupt the system if used incorrectly, so test only in controlled environments such as VMs or dedicated test machines.
+Open `llvm-kmd.sln`, select **x64** Debug or Release, and build. The output is `llvm-kmd.sys`.
 
-## Current State
+## Using it
 
-The current `DriverEntry` is intentionally minimal and only prints a debug message. Most of the value in the repository is the supporting runtime and low-level helper code rather than a finished driver feature.
+Include the umbrella header and implement `DriverEntry`:
+
+```cpp
+#include <intrinsics.hpp>
+
+NTSTATUS DriverEntry()
+{
+    return STATUS_SUCCESS;
+}
+```
+
+`printf` maps to `DbgPrintEx` once imports have resolved. The stub in `main.cpp` is intentionally empty; the value of the repo is the runtime around it.
+
+## Layout
+
+**Boot**
+
+- `Intrinsics/bootstrap.hpp`, `Intrinsics/driver_boot.cpp` — custom startup, import resolve, and wipe/exit
+- `main.cpp` — `DriverEntry`
+
+**Imports**
+
+- `Intrinsics/imports.hpp` — `NtImports` function pointers
+- `Intrinsics/import_resolve.cpp` — export table plus signature-based internals
+- `Intrinsics/structures.hpp` — NT types used without WDK headers
+
+**CPU**
+
+- `Intrinsics/assembly.hpp` — instruction wrappers
+- `Intrinsics/cpuid.*`, `Intrinsics/msr.*` — AMD-oriented leaves and MSRs, added as needed
+
+**Memory**
+
+- `Intrinsics/fwa.*` — allocator over unused EFI/firmware physical ranges
+- `Intrinsics/dtlb_*` — PTE poison / hosted translation for physical access without Windows mapping APIs
+
+**CRT and helpers**
+
+- `Intrinsics/crt.*` — freestanding string/memory routines
+- `Intrinsics/utils_*` — PE parse, signature scan, paging, self-location
+- `Intrinsics/intrinsics.hpp` — single include for driver code
+
+## Extending
+
+- **Exported NT API:** add a pointer to `NtImports` and a `{str_hash("Name"), &nt.fn_Name}` row in `function_table`.
+- **Version-fragile internal:** resolve it in `resolve_sigged_imports()` with a `.text` signature. Retune when the build changes.
+- **MSR / CPUID:** add the leaf or register you actually need. The set is not meant to be complete.
 
 ## Limitations
 
-- AMD-focused.
-- Not a complete WDK replacement.
-- No broad Windows build compatibility matrix.
-- Signature-based imports may need updates across Windows versions.
+- AMD-focused; Intel coverage is whatever happened to be useful.
+- Not a WDK replacement and not tested across a Windows build matrix.
+- Signature-based imports break across versions and need retuning.
+- x64 ClangCL only.
