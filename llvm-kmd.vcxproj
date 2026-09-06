@@ -162,7 +162,6 @@
     <ClCompile Include="Intrinsics\utils_paging.cpp" />
     <ClCompile Include="Intrinsics\utils_locate.cpp" />
     <ClCompile Include="Intrinsics\fwa.cpp" />
-    <ClCompile Include="Intrinsics\fwa_zero_page.cpp" />
     <ClCompile Include="Intrinsics\dtlb_hosted.cpp" />
     <ClCompile Include="Intrinsics\dtlb_poison_ops.cpp" />
     <ClCompile Include="Intrinsics\import_resolve.cpp" />
