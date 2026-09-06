@@ -105,18 +105,18 @@ public:
         return buffer;
     }
 
-    static PHYSICAL_ADDRESS LinearTranslatePPte(
+    static PHYSICAL_ADDRESS GetPtePtr(
         PHYSICAL_ADDRESS dtb,
         LINEAR_ADDRESS rva);
 
-    static PHYSICAL_ADDRESS LinearTranslatePPte(
+    static PHYSICAL_ADDRESS GetPtePtr(
         LINEAR_ADDRESS rva);
 
-    static MMPTE_HARDWARE LinearTranslatePte(
+    static MMPTE_HARDWARE GetPte(
         PHYSICAL_ADDRESS dtb,
         LINEAR_ADDRESS rva);
 
-    static MMPTE_HARDWARE LinearTranslatePte(
+    static MMPTE_HARDWARE GetPte(
         LINEAR_ADDRESS rva);
 
     static PHYSICAL_ADDRESS LinearTranslate(

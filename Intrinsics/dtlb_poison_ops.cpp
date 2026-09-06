@@ -33,14 +33,12 @@ VOID NAKED DTLB::UpdatePoison(PVOID self)
 
 BOOLEAN DTLB::Initialize()
 {
-    FWA::Initialize();
-
     UINT64 module_base, module_size;
     Utils::LocateSelf(&module_base, &module_size);
 
-    mmCr3 = FWA::ReservePages(1);
+    mmCr3 = FWA::GetPages(1);
 
-    stack_frame.BaseAddress.QuadPart = FWA::ReservePages(10);
+    stack_frame.BaseAddress.QuadPart = FWA::GetPages(10);
     stack_frame.NumberOfBytes.QuadPart = 0xA000;
 
     mmStackBase = module_base + module_size;
@@ -61,7 +59,7 @@ BOOLEAN DTLB::Initialize()
 
     for (int i = 0; i < module_size >> 12; i++)
     {
-        auto new_page = FWA::ReservePages(1);
+        auto new_page = FWA::GetPages(1);
         MMPTE_HARDWARE pte;
         pte.AsUINT64 = 0;
         pte.Valid = true;
@@ -113,7 +111,7 @@ void DTLB::CommitRvaPoison(LINEAR_ADDRESS rva)
 
 void DTLB::Cleanup()
 {
-    FWA::Cleanup();
+    FWA::ZeroAndExit();
     return;
 }
 

@@ -4,112 +4,112 @@
 
 struct NtImports
 {
-    PVOID(__stdcall* fn_ExAllocatePool)(
+    PVOID(__fastcall* fn_ExAllocatePool)(
     _In_ ULONG PoolType,
     _In_ SIZE_T NumberOfBytes) = nullptr;
 
-    PVOID(__stdcall* fn_ExAllocatePoolWithTag)(
+    PVOID(__fastcall* fn_ExAllocatePoolWithTag)(
     _In_ ULONG PoolType,
     _In_ SIZE_T NumberOfBytes,
     _In_ ULONG Tag) = nullptr;
 
-    PVOID(__stdcall* fn_ExAllocatePool2)(
+    PVOID(__fastcall* fn_ExAllocatePool2)(
     _In_ POOL_FLAGS Flags,
     _In_ SIZE_T NumberOfBytes,
     _In_ ULONG Tag) = nullptr;
 
-    VOID(__stdcall* fn_ExFreePool)(
+    VOID(__fastcall* fn_ExFreePool)(
     _In_ PVOID P) = nullptr;
 
-    VOID(__stdcall* fn_ExFreePoolWithTag)(
+    VOID(__fastcall* fn_ExFreePoolWithTag)(
     _In_ PVOID P,
     _In_ ULONG Tag) = nullptr;
 
-    LONG(__stdcall* fn_ObReferenceObject)(
+    LONG(__fastcall* fn_ObReferenceObject)(
     _In_ PVOID Object) = nullptr;
 
-    LONG(__stdcall* fn_ObDereferenceObject)(
+    LONG(__fastcall* fn_ObDereferenceObject)(
     _In_ PVOID Object) = nullptr;
 
-    ULONG(__stdcall* fn_DbgPrintEx)(
+    ULONG(__fastcall* fn_DbgPrintEx)(
     _In_ ULONG ComponentId,
     _In_ ULONG Level,
     _In_ PCSTR Format,
     _In_opt_...) = nullptr;
 
-    ULONG(__stdcall* fn_vDbgPrintEx)(
+    ULONG(__fastcall* fn_vDbgPrintEx)(
     _In_ ULONG ComponentId,
     _In_ ULONG Level,
     _In_ PCSTR Format,
     _In_ va_list ArgList) = nullptr;
 
-    int(__stdcall* fn_sprintf)(
+    int(__fastcall* fn_sprintf)(
     _Out_ char* Buffer,
     _In_ PCSTR Format,
     _In_opt_...) = nullptr;
 
-    int(__stdcall* fn_vsprintf)(
+    int(__fastcall* fn_vsprintf)(
     _Out_ char* Buffer,
     _In_ PCSTR Format,
     _In_ va_list ArgList) = nullptr;
 
-    int(__stdcall* fn_swprintf)(
+    int(__fastcall* fn_swprintf)(
     _Out_ wchar_t* Buffer,
     _In_ PCWSTR Format,
     _In_opt_...) = nullptr;
 
-    int(__stdcall* fn_vswprintf)(
+    int(__fastcall* fn_vswprintf)(
     _Out_ wchar_t* Buffer,
     _In_ PCWSTR Format,
     _In_ va_list ArgList) = nullptr;
 
-    PMDL(__stdcall* fn_IoAllocateMdl)(
+    PMDL(__fastcall* fn_IoAllocateMdl)(
     _In_opt_ PVOID VirtualAddress,
     _In_ ULONG Length,
     _In_ BOOLEAN SecondaryBuffer,
     _In_ BOOLEAN ChargeQuota,
     _Inout_opt_ PIRP Irp) = nullptr;
 
-    VOID(__stdcall* fn_IoFreeMdl)(
+    VOID(__fastcall* fn_IoFreeMdl)(
     _In_ PMDL Mdl) = nullptr;
 
-    PHYSICAL_ADDRESS(__stdcall* fn_MmGetPhysicalAddress)(
+    PHYSICAL_ADDRESS(__fastcall* fn_MmGetPhysicalAddress)(
     _In_ PVOID BaseAddress) = nullptr;
 
-    PVOID(__stdcall* fn_MmGetVirtualForPhysical)(
+    PVOID(__fastcall* fn_MmGetVirtualForPhysical)(
     _In_ PHYSICAL_ADDRESS PhysicalAddress) = nullptr;
 
-    NTSTATUS(__stdcall* fn_MmCopyMemory)(
+    NTSTATUS(__fastcall* fn_MmCopyMemory)(
     _Out_ PVOID Target,
     _In_ UINT64 Source,
     _In_ SIZE_T Length,
     _In_ ULONG Flags,
     _Out_opt_ PSIZE_T NumberOfBytesCopied) = nullptr;
 
-    PVOID(__stdcall* fn_MmMapIoSpace)(
+    PVOID(__fastcall* fn_MmMapIoSpace)(
     _In_ PHYSICAL_ADDRESS PhysicalAddress,
     _In_ SIZE_T NumberOfBytes,
     _In_ ULONG Protect) = nullptr;
 
-    VOID(__stdcall* fn_MmUnmapIoSpace)(
+    VOID(__fastcall* fn_MmUnmapIoSpace)(
     _In_ PVOID BaseAddress,
     _In_ SIZE_T NumberOfBytes) = nullptr;
 
-    BOOLEAN(__stdcall* fn_MmIsAddressValid)(
+    BOOLEAN(__fastcall* fn_MmIsAddressValid)(
     _In_ PVOID VirtualAddress) = nullptr;
 
-    PVOID(__stdcall* fn_MmGetSystemRoutineAddress)(
+    PVOID(__fastcall* fn_MmGetSystemRoutineAddress)(
     _In_ PUNICODE_STRING SystemRoutineName) = nullptr;
 
-    VOID(__stdcall* fn_MmProbeAndLockPages)(
+    VOID(__fastcall* fn_MmProbeAndLockPages)(
     _Inout_ PMDL MemoryDescriptorList,
     _In_ KPROCESSOR_MODE AccessMode,
     _In_ LOCK_OPERATION Operation) = nullptr;
 
-    VOID(__stdcall* fn_MmUnlockPages)(
+    VOID(__fastcall* fn_MmUnlockPages)(
     _Inout_ PMDL MemoryDescriptorList) = nullptr;
 
-    PVOID(__stdcall* fn_MmMapLockedPagesSpecifyCache)(
+    PVOID(__fastcall* fn_MmMapLockedPagesSpecifyCache)(
     _In_ PMDL MemoryDescriptorList,
     _In_ KPROCESSOR_MODE AccessMode,
     _In_ MEMORY_CACHING_TYPE CacheType,
@@ -117,17 +117,17 @@ struct NtImports
     _In_ ULONG BugCheckOnFailure,
     _In_ ULONG Priority) = nullptr;
 
-    VOID(__stdcall* fn_MmUnmapLockedPages)(
+    VOID(__fastcall* fn_MmUnmapLockedPages)(
     _In_ PVOID BaseAddress,
     _In_ PMDL MemoryDescriptorList) = nullptr;
 
-    NTSTATUS(__stdcall* fn_MmProtectMdlSystemAddress)(
+    NTSTATUS(__fastcall* fn_MmProtectMdlSystemAddress)(
     _In_ PMDL MemoryDescriptorList,
     _In_ ULONG NewProtect) = nullptr;
 
-    PPHYSICAL_MEMORY_RANGE(__stdcall* fn_MmGetPhysicalMemoryRanges)() = nullptr;
+    PPHYSICAL_MEMORY_RANGE(__fastcall* fn_MmGetPhysicalMemoryRanges)() = nullptr;
 
-    PVOID(__stdcall* fn_MmAllocateContiguousMemorySpecifyCacheNode)(
+    PVOID(__fastcall* fn_MmAllocateContiguousMemorySpecifyCacheNode)(
     _In_ SIZE_T NumberOfBytes,
     _In_ PHYSICAL_ADDRESS LowestAcceptableAddress,
     _In_ PHYSICAL_ADDRESS HighestAcceptableAddress,
@@ -135,88 +135,91 @@ struct NtImports
     _In_ MEMORY_CACHING_TYPE CacheType,
     _In_ ULONG PreferredNode) = nullptr;
 
-    VOID(__stdcall* fn_MmFreeContiguousMemorySpecifyCache)(
+    VOID(__fastcall* fn_MmFreeContiguousMemorySpecifyCache)(
     _In_ PVOID BaseAddress,
     _In_ SIZE_T NumberOfBytes,
     _In_ MEMORY_CACHING_TYPE CacheType) = nullptr;
 
-    UINT64(__stdcall* fn_MmPteBase)() = nullptr;
+    UINT64(__fastcall* fn_MmPteBase)() = nullptr;
 
-    PMMPFN(__stdcall* fn_MmPfnDatabase)() = nullptr;
+    PMMPFN(__fastcall* fn_MmPfnDatabase)() = nullptr;
 
-    UINT32(__stdcall* fn_MiSystemRegionTypeDatabase)() = nullptr;
+    UINT32(__fastcall* fn_MiSystemRegionTypeDatabase)() = nullptr;
 
-    UINT32(__stdcall* fn_MiGetSystemRegionType)(
+    UINT32(__fastcall* fn_MiGetSystemRegionType)(
     _In_ PVOID PfnEntry) = nullptr;
 
-    BOOLEAN(__stdcall* fn_MmIsIoSpaceActive)(
+    BOOLEAN(__fastcall* fn_MmIsIoSpaceActive)(
     _In_ PHYSICAL_ADDRESS PhysicalAddress,
     _In_ SIZE_T NumberOfBytes) = nullptr;
 
-    ULONG(__stdcall* fn_KeQueryActiveProcessorCount)(
+    ULONG(__fastcall* fn_KeQueryActiveProcessorCount)(
     ULONG GroupNumber) = nullptr;
 
-    UINT64(__stdcall* fn_RtlCaptureContext)(
+    PKPRCB(__fastcall* fn_KeQueryPrcbAddress)(
+    _In_ ULONG Number) = nullptr;
+
+    UINT64(__fastcall* fn_RtlCaptureContext)(
     _Inout_ PCONTEXT ContextRecord) = nullptr;
 
-    VOID(__stdcall* fn_KeStackAttachProcess)(
+    VOID(__fastcall* fn_KeStackAttachProcess)(
     _In_ PEPROCESS PROCESS,
     _Inout_ PKAPC_STATE ApcState) = nullptr;
 
-    VOID(__stdcall* fn_KeUnstackDetachProcess)(
+    VOID(__fastcall* fn_KeUnstackDetachProcess)(
     _In_ PKAPC_STATE ApcState) = nullptr;
 
-    NTSTATUS(__stdcall* fn_KeDelayExecutionThread)(
+    NTSTATUS(__fastcall* fn_KeDelayExecutionThread)(
     _In_ KPROCESSOR_MODE WaitMode,
     _In_ BOOLEAN Alertable,
     _In_ PLARGE_INTEGER Interval) = nullptr;
 
-    VOID(__stdcall* fn_KeInitializeEvent)(
+    VOID(__fastcall* fn_KeInitializeEvent)(
     _Out_ PKEVENT Event,
     _In_ EVENT_TYPE Type,
     _In_ BOOLEAN State) = nullptr;
 
-    LONG(__stdcall* fn_KeSetEvent)(
+    LONG(__fastcall* fn_KeSetEvent)(
     _Inout_ PKEVENT Event,
     _In_ KPRIORITY Increment,
     _In_ BOOLEAN Wait) = nullptr;
 
-    LONG(__stdcall* fn_KeResetEvent)(
+    LONG(__fastcall* fn_KeResetEvent)(
     _Inout_ PKEVENT Event) = nullptr;
 
-    VOID(__stdcall* fn_KeClearEvent)(
+    VOID(__fastcall* fn_KeClearEvent)(
     _Inout_ PKEVENT Event) = nullptr;
 
-    NTSTATUS(__stdcall* fn_KeWaitForSingleObject)(
+    NTSTATUS(__fastcall* fn_KeWaitForSingleObject)(
     _In_ PVOID Object,
     _In_ KWAIT_REASON WaitReason,
     _In_ KPROCESSOR_MODE WaitMode,
     _In_ BOOLEAN Alertable,
     _In_opt_ PLARGE_INTEGER Timeout) = nullptr;
 
-    KAFFINITY(__stdcall* fn_KeSetSystemAffinityThread)(
+    KAFFINITY(__fastcall* fn_KeSetSystemAffinityThread)(
     _In_ KAFFINITY Affinity) = nullptr;
 
-    PVOID(__stdcall* fn_KeIpiGenericCall)(
+    PVOID(__fastcall* fn_KeIpiGenericCall)(
     _In_ PVOID BroadcastFunction,
     _In_ PVOID Context) = nullptr;
 
-    VOID(__stdcall* fn_KeAcquireSpinLock)(
+    VOID(__fastcall* fn_KeAcquireSpinLock)(
     _Inout_ PKSPIN_LOCK SpinLock,
     _Out_ PKIRQL OldIrql) = nullptr;
 
-    VOID(__stdcall* fn_KeReleaseSpinLock)(
+    VOID(__fastcall* fn_KeReleaseSpinLock)(
     _Inout_ PKSPIN_LOCK SpinLock,
     _In_ KIRQL NewIrql) = nullptr;
 
-    KIRQL(__stdcall* fn_KeRaiseIrqlToDpcLevel)() = nullptr;
+    KIRQL(__fastcall* fn_KeRaiseIrqlToDpcLevel)() = nullptr;
 
-    VOID(__stdcall* fn_KeLowerIrql)(
+    VOID(__fastcall* fn_KeLowerIrql)(
     _In_ KIRQL NewIrql) = nullptr;
 
-    PETHREAD(__stdcall* fn_KeGetCurrentThread)() = nullptr;
+    PETHREAD(__fastcall* fn_KeGetCurrentThread)() = nullptr;
 
-    NTSTATUS(__stdcall* fn_PsCreateSystemThread)(
+    NTSTATUS(__fastcall* fn_PsCreateSystemThread)(
     _Out_ PHANDLE ThreadHandle,
     _In_ ULONG DesiredAccess,
     _In_opt_ POBJECT_ATTRIBUTES ObjectAttributes,
@@ -225,56 +228,56 @@ struct NtImports
     _In_ PKSTART_ROUTINE StartRoutine,
     _In_opt_ PVOID StartContext) = nullptr;
 
-    NTSTATUS(__stdcall* fn_PsTerminateSystemThread)(
+    NTSTATUS(__fastcall* fn_PsTerminateSystemThread)(
     _In_ NTSTATUS ExitStatus) = nullptr;
 
-    NTSTATUS(__stdcall* fn_PsLookupProcessByProcessId)(
+    NTSTATUS(__fastcall* fn_PsLookupProcessByProcessId)(
     _In_ HANDLE ProcessId,
     _Out_ PEPROCESS* Process) = nullptr;
 
-    PEPROCESS(__stdcall* fn_PsInitialSystemProcess)() = nullptr;
+    PEPROCESS(__fastcall* fn_PsInitialSystemProcess)() = nullptr;
 
-    PEPROCESS(__stdcall* fn_PsGetCurrentProcess)() = nullptr;
+    PEPROCESS(__fastcall* fn_PsGetCurrentProcess)() = nullptr;
 
-    HANDLE(__stdcall* fn_PsGetCurrentProcessId)() = nullptr;
+    HANDLE(__fastcall* fn_PsGetCurrentProcessId)() = nullptr;
 
-    UINT64(__stdcall* fn_PsGetProcessId)(
+    UINT64(__fastcall* fn_PsGetProcessId)(
     _In_ PEPROCESS Process) = nullptr;
 
     static inline LIST_ENTRY* fn_PsLoadedModuleList = nullptr;
 
-    VOID(__stdcall* fn_RtlCopyMemory)(
+    VOID(__fastcall* fn_RtlCopyMemory)(
     _Out_ VOID* Destination,
     _In_ CONST VOID* Source,
     _In_ SIZE_T Length) = nullptr;
 
-    VOID(__stdcall* fn_RtlFillMemory)(
+    VOID(__fastcall* fn_RtlFillMemory)(
     _Out_ VOID* Destination,
     _In_ SIZE_T Length,
     _In_ BYTE Fill) = nullptr;
 
-    VOID(__stdcall* fn_RtlInitUnicodeString)(
+    VOID(__fastcall* fn_RtlInitUnicodeString)(
     _Out_ PUNICODE_STRING DestinationString,
     _In_opt_ PCWSTR SourceString) = nullptr;
 
-    LONG(__stdcall* fn_RtlCompareUnicodeString)(
+    LONG(__fastcall* fn_RtlCompareUnicodeString)(
     _In_ PUNICODE_STRING String1,
     _In_ PUNICODE_STRING String2,
     _In_ BOOLEAN CaseInSensitive) = nullptr;
 
-    BOOLEAN(__stdcall* fn_RtlEqualUnicodeString)(
+    BOOLEAN(__fastcall* fn_RtlEqualUnicodeString)(
     _In_ PUNICODE_STRING String1,
     _In_ PUNICODE_STRING String2,
     _In_ BOOLEAN CaseInSensitive) = nullptr;
 
-    VOID(__stdcall* fn_RtlCopyUnicodeString)(
+    VOID(__fastcall* fn_RtlCopyUnicodeString)(
     _Inout_ PUNICODE_STRING DestinationString,
     _In_opt_ CONST UNICODE_STRING* SourceString) = nullptr;
 
-    VOID(__stdcall* fn_RtlFreeUnicodeString)(
+    VOID(__fastcall* fn_RtlFreeUnicodeString)(
     _Inout_ PUNICODE_STRING UnicodeString) = nullptr;
 
-    NTSTATUS(__stdcall* fn_ZwOpenFile)(
+    NTSTATUS(__fastcall* fn_ZwOpenFile)(
     _Out_ PHANDLE FileHandle,
     _In_ ACCESS_MASK DesiredAccess,
     _In_ POBJECT_ATTRIBUTES ObjectAttributes,
@@ -282,7 +285,7 @@ struct NtImports
     _In_ ULONG ShareAccess,
     _In_ ULONG OpenOptions) = nullptr;
 
-    NTSTATUS(__stdcall* fn_ZwCreateFile)(
+    NTSTATUS(__fastcall* fn_ZwCreateFile)(
     _Out_ PHANDLE FileHandle,
     _In_ ACCESS_MASK DesiredAccess,
     _In_ POBJECT_ATTRIBUTES ObjectAttributes,
@@ -295,7 +298,7 @@ struct NtImports
     _In_opt_ PVOID EaBuffer,
     _In_ ULONG EaLength) = nullptr;
 
-    NTSTATUS(__stdcall* fn_ZwWriteFile)(
+    NTSTATUS(__fastcall* fn_ZwWriteFile)(
     _In_ HANDLE FileHandle,
     _In_opt_ HANDLE Event,
     _In_opt_ PIO_APC_ROUTINE ApcRoutine,
@@ -306,7 +309,7 @@ struct NtImports
     _In_opt_ PLARGE_INTEGER ByteOffset,
     _In_opt_ PULONG Key) = nullptr;
 
-    NTSTATUS(__stdcall* fn_ZwReadFile)(
+    NTSTATUS(__fastcall* fn_ZwReadFile)(
     _In_ HANDLE FileHandle,
     _In_opt_ HANDLE Event,
     _In_opt_ PIO_APC_ROUTINE ApcRoutine,
@@ -317,14 +320,14 @@ struct NtImports
     _In_opt_ PLARGE_INTEGER ByteOffset,
     _In_opt_ PULONG Key) = nullptr;
 
-    NTSTATUS(__stdcall* fn_ZwQueryInformationFile)(
+    NTSTATUS(__fastcall* fn_ZwQueryInformationFile)(
     _In_ HANDLE FileHandle,
     _Out_ PIO_STATUS_BLOCK IoStatusBlock,
     _Out_writes_bytes_(Length) PVOID FileInformation,
     _In_ ULONG Length,
     _In_ FILE_INFORMATION_CLASS FileInformationClass) = nullptr;
 
-    NTSTATUS(__stdcall* fn_ZwDeviceIoControlFile)(
+    NTSTATUS(__fastcall* fn_ZwDeviceIoControlFile)(
     _In_ HANDLE FileHandle,
     _In_opt_ HANDLE Event,
     _In_opt_ PIO_APC_ROUTINE ApcRoutine,
@@ -336,10 +339,10 @@ struct NtImports
     _Out_writes_bytes_opt_(OutputBufferLength) PVOID OutputBuffer,
     _In_ ULONG OutputBufferLength) = nullptr;
 
-    NTSTATUS(__stdcall* fn_ZwClose)(
+    NTSTATUS(__fastcall* fn_ZwClose)(
     _In_ HANDLE Handle) = nullptr;
 
-    NTSTATUS(__stdcall* fn_IoCreateDevice)(
+    NTSTATUS(__fastcall* fn_IoCreateDevice)(
     _In_ PDRIVER_OBJECT DriverObject,
     _In_ UINT32 DeviceExtensionSize,
     _In_opt_ PUNICODE_STRING DeviceName,
@@ -348,64 +351,64 @@ struct NtImports
     _In_ BOOLEAN Exclusive,
     _Out_ PDEVICE_OBJECT* DeviceObject) = nullptr;
 
-    NTSTATUS(__stdcall* fn_IoCreateDriver)(
+    NTSTATUS(__fastcall* fn_IoCreateDriver)(
     _In_opt_ PUNICODE_STRING DriverName,
     _In_ PDRIVER_INITIALIZE InitializationFunction) = nullptr;
 
-    PIRP(__stdcall* fn_IoAllocateIrp)(
+    PIRP(__fastcall* fn_IoAllocateIrp)(
     _In_ CCHAR StackSize,
     _In_ BOOLEAN ChargeQuota) = nullptr;
 
-    VOID(__stdcall* fn_IoFreeIrp)(
+    VOID(__fastcall* fn_IoFreeIrp)(
     _In_ PIRP Irp) = nullptr;
 
-    PIO_WORKITEM(__stdcall* fn_IoAllocateWorkItem)(
+    PIO_WORKITEM(__fastcall* fn_IoAllocateWorkItem)(
     _In_ PDEVICE_OBJECT DeviceObject) = nullptr;
 
-    VOID(__stdcall* fn_IoQueueWorkItem)(
+    VOID(__fastcall* fn_IoQueueWorkItem)(
     _In_ PIO_WORKITEM IoWorkItem,
     _In_ PIO_WORKITEM_ROUTINE WorkerRoutine,
     _In_ WORK_QUEUE_TYPE QueueType,
     _In_opt_ PVOID Context) = nullptr;
 
-    VOID(__stdcall* fn_IoFreeWorkItem)(
+    VOID(__fastcall* fn_IoFreeWorkItem)(
     _In_ PIO_WORKITEM IoWorkItem) = nullptr;
 
-    NTSTATUS(__stdcall* fn_IoCreateSymbolicLink)(
+    NTSTATUS(__fastcall* fn_IoCreateSymbolicLink)(
     _In_ PUNICODE_STRING SymbolicLinkName,
     _In_ PUNICODE_STRING DeviceName) = nullptr;
 
-    NTSTATUS(__stdcall* fn_IoDeleteSymbolicLink)(
+    NTSTATUS(__fastcall* fn_IoDeleteSymbolicLink)(
     _In_ PUNICODE_STRING SymbolicLinkName) = nullptr;
 
-    VOID(__stdcall* fn_IoDeleteDevice)(
+    VOID(__fastcall* fn_IoDeleteDevice)(
     _In_ PDEVICE_OBJECT DeviceObject) = nullptr;
 
-    VOID(__stdcall* fn_IofCompleteRequest)(
+    VOID(__fastcall* fn_IofCompleteRequest)(
     _In_ PIRP Irp,
     _In_ CHAR PriorityBoost) = nullptr;
 
-    PVOID(__stdcall* fn_KeRegisterNmiCallback)(
+    PVOID(__fastcall* fn_KeRegisterNmiCallback)(
     _In_ PVOID Callback,
     _In_opt_ PVOID Context) = nullptr;
 
-    NTSTATUS(__stdcall* fn_KeDeregisterNmiCallback)(
+    NTSTATUS(__fastcall* fn_KeDeregisterNmiCallback)(
     _In_ PVOID Callback) = nullptr;
 
-    VOID(__stdcall* fn_HalSendNMI)(
+    VOID(__fastcall* fn_HalSendNMI)(
     _In_ _KAFFINITY_EX* Affinity) = nullptr;
 
-    VOID(__stdcall* fn_KeAddProcessorAffinityEx)(
+    VOID(__fastcall* fn_KeAddProcessorAffinityEx)(
     _Inout_ _KAFFINITY_EX* Affinity,
     _In_ INT Number) = nullptr;
 
-    VOID(__stdcall* fn_KeInitializeAffinityEx)(
+    VOID(__fastcall* fn_KeInitializeAffinityEx)(
     _Out_ _KAFFINITY_EX* Affinity) = nullptr;
 
-    VOID(__stdcall* fn_ObfDereferenceObject)(
+    VOID(__fastcall* fn_ObfDereferenceObject)(
     _In_ PVOID Object) = nullptr;
 
-    ULONG(__stdcall* fn_KeGetCurrentProcessorNumberEx)(
+    ULONG(__fastcall* fn_KeGetCurrentProcessorNumberEx)(
     _Out_ _PROCESSOR_NUMBER* GroupIndex) = nullptr;
 };
 
@@ -719,6 +722,13 @@ ULONG FORCEINLINE KeQueryActiveProcessorCount(
 {
     return nt.fn_KeQueryActiveProcessorCount(
         GroupNumber);
+}
+
+PKPRCB FORCEINLINE KeQueryPrcbAddress(
+    _In_ ULONG Number)
+{
+    return nt.fn_KeQueryPrcbAddress(
+        Number);
 }
 
 UINT64 FORCEINLINE RtlCaptureContext(

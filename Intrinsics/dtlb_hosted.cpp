@@ -63,7 +63,7 @@ BOOLEAN DTLB::HostedCommit4kbMapping(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva, M
         }
         if (!entry->Valid)
         {
-            auto new_page = FWA::ReservePages(1);
+            auto new_page = FWA::GetPages(1);
             entry->AsUINT64 = 0;
             entry->Valid = true;
             entry->Dirty1 = true;

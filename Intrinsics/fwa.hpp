@@ -7,20 +7,25 @@
 class FWA
 {
 private:
-    static PHYSICAL_MEMORY_RANGE fw_range[31];
-    static UINT64 fw_range_count;
-    static UINT64 page_idx;
+    static BOOLEAN init;
+    static PHYSICAL_MEMORY_RANGE gRanges[128];
+    static UINT32 gInBlockIdx[128];
+    static UINT32 gRangeCnt;
+    static UINT32 gTotalPages;
+    static UINT32 gTotalUseage;
 
-    static bool NAKED is_zero_page(PVOID page);
+    volatile static bool NAKED IsPageZero(UINT64 page);
 
+    volatile static UINT32 GetDriverSize(UINT64 base);
+
+    volatile static void Setup();
 public:
-    static void Initialize();
 
-    static void Cleanup(bool zeroMemory = false);
+    volatile static void ZeroAndExit();
 
-    static UINT32 pages_free();
+    static UINT32 TotalUsed();
 
-    static UINT32 pages_total();
+    static UINT32 TotalPages();
 
-    static PHYSICAL_ADDRESS ReservePages(SIZE_T pages);
+    volatile static PHYSICAL_ADDRESS GetPages(UINT32 pages);
 };

@@ -34,7 +34,7 @@ NTSTATUS Utils::ReadPhysical(PHYSICAL_ADDRESS address, PVOID buffer, SIZE_T size
     return status;
 }
 
-PHYSICAL_ADDRESS Utils::LinearTranslatePPte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
+PHYSICAL_ADDRESS Utils::GetPtePtr(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
 {
     UINT64 idx[4]{
         8ull * rva.pml4e_index,
@@ -77,12 +77,12 @@ PHYSICAL_ADDRESS Utils::LinearTranslatePPte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS
     return {0};
 }
 
-PHYSICAL_ADDRESS Utils::LinearTranslatePPte(LINEAR_ADDRESS rva)
+PHYSICAL_ADDRESS Utils::GetPtePtr(LINEAR_ADDRESS rva)
 {
-    return LinearTranslatePPte(_mm_readcr3(), rva);
+    return GetPtePtr(_mm_readcr3(), rva);
 }
 
-MMPTE_HARDWARE Utils::LinearTranslatePte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
+MMPTE_HARDWARE Utils::GetPte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)
 {
     UINT64 idx[4]{
         8ull * rva.pml4e_index,
@@ -125,9 +125,9 @@ MMPTE_HARDWARE Utils::LinearTranslatePte(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rv
     return {0};
 }
 
-MMPTE_HARDWARE Utils::LinearTranslatePte(LINEAR_ADDRESS rva)
+MMPTE_HARDWARE Utils::GetPte(LINEAR_ADDRESS rva)
 {
-    return LinearTranslatePte(_mm_readcr3(), rva);
+    return GetPte(_mm_readcr3(), rva);
 }
 
 PHYSICAL_ADDRESS Utils::LinearTranslate(PHYSICAL_ADDRESS dtb, LINEAR_ADDRESS rva)

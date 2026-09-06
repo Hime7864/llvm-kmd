@@ -22,6 +22,7 @@ FUNCTION_TABLE_ENTRY function_table[]{
     {str_hash("IoAllocateMdl"), &nt.fn_IoAllocateMdl},
     {str_hash("IoFreeMdl"), &nt.fn_IoFreeMdl},
     {str_hash("KeQueryActiveProcessorCount"), &nt.fn_KeQueryActiveProcessorCount},
+    {str_hash("KeQueryPrcbAddress"), &nt.fn_KeQueryPrcbAddress},
     {str_hash("KeInitializeEvent"), &nt.fn_KeInitializeEvent},
     {str_hash("KeSetEvent"), &nt.fn_KeSetEvent},
     {str_hash("KeResetEvent"), &nt.fn_KeResetEvent},

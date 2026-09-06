@@ -1,184 +1,178 @@
 #include "fwa.hpp"
 
-PHYSICAL_MEMORY_RANGE FWA::fw_range[31];
-UINT64 FWA::fw_range_count = 0;
-UINT64 FWA::page_idx = 0;
+BOOLEAN FWA::init = false;
+PHYSICAL_MEMORY_RANGE FWA::gRanges[128];
+UINT32 FWA::gInBlockIdx[128];
+UINT32 FWA::gRangeCnt;
+UINT32 FWA::gTotalPages;
+UINT32 FWA::gTotalUseage;
 
-void FWA::Initialize()
+volatile bool NAKED FWA::IsPageZero(UINT64 page)
 {
-    if (page_idx || fw_range_count)
+    __asm
+    {
+        vpxor ymm0, ymm0, ymm0
+        mov eax, 4096 / 32
+        loop:
+        vmovdqu ymm1, [rcx]
+            vpxor ymm0, ymm0, ymm1
+            add rcx, 32
+            vptest ymm0, ymm0
+            jnz nonzero
+
+            dec eax
+            jnz loop
+
+            mov al, 1
+            vzeroupper
+            ret
+
+            nonzero :
+        xor eax, eax
+            vzeroupper
+            ret
+    }
+}
+
+volatile UINT32 NOINLINE FWA::GetDriverSize(UINT64 base)
+{
+    UINT64 hdr_offset = *(BYTE*)(base + 0x3C);
+    if (*(UINT16*)base == 0x5A4D &&                  // 'MZ' Hdr
+        *(UINT16*)(base + hdr_offset + 4) == 0x8664) // AMD64
+    {
+        auto sizeofimage = *(UINT32*)(base + hdr_offset + 0x50);
+        
+        if (sizeofimage & 0xFFF)
+            sizeofimage = (sizeofimage & ~0xFFF) + 0x1000;
+        return sizeofimage;
+    }
+    return 0;
+}
+
+volatile void FWA::Setup()
+{
+    if (init)
         return;
 
-    PHYSICAL_MEMORY_RANGE* pmr = MmGetPhysicalMemoryRanges();
-    pmr += 2;
+    gRangeCnt = 0;
+    gTotalPages = 0;
+    gTotalUseage = 0;
+
+    bool found_efi = false;
+
+    auto range = MmGetPhysicalMemoryRanges();
+    range += 2;
     do
     {
-        if (&pmr[0] && !pmr[0].NumberOfBytes.QuadPart)
+        if (&range[0] && !range[0].NumberOfBytes.QuadPart)
             break;
-        if (&pmr[1] && !pmr[1].NumberOfBytes.QuadPart)
+        if (&range[1] && !range[1].NumberOfBytes.QuadPart)
             break;
 
-        auto high = pmr[1].BaseAddress.QuadPart - 0x1000;
-        auto low = pmr[0].BaseAddress.QuadPart + pmr[0].NumberOfBytes.QuadPart + 0x1000;
+        auto high = range[1].BaseAddress.QuadPart - 0x1000;
+        auto low = range[0].BaseAddress.QuadPart + range[0].NumberOfBytes.QuadPart + 0x1000;
         auto size = high - low;
 
-        if (size > 0x40000000)
-            size = 0x40000000;
 
-        auto rva = (UINT64)MmMapIoSpace(low, size, MmNonCached);
-        if (rva)
+        UINT64 pa_head = 0;
+        for (UINT64 current = low; current < high; current += 0x1000)
         {
-            UINT64 start_rva = 0x0;
-            bool should_exit = false;
-            for (UINT64 current = rva; current < rva + size; current += 4096)
+            auto io = (UINT64)MmMapIoSpace(current, 0x1000, MmNonCached);
+            if (io)
             {
-                _mm_invlpg((PVOID)current);
-                if (is_zero_page((PVOID)current))
+                _mm_invlpg((PVOID)io);
+                auto driver_size = GetDriverSize(io);
+                if (driver_size)
+                    found_efi = true;
+                if (found_efi)
                 {
-                    if (!start_rva)
-                        start_rva = current;
-                }
-                else
-                {
-                    if (fw_range_count < 31 && start_rva && (current - start_rva) > 0x200000)
+                    if (!IsPageZero(io))
                     {
-                        fw_range[fw_range_count].BaseAddress.QuadPart = (start_rva - rva) + low;
-                        fw_range[fw_range_count].NumberOfBytes.QuadPart = current - start_rva;
-                        fw_range_count++;
+                        if (pa_head != 0)
+                        {
+                            if (gRangeCnt < 128)
+                            {
+                                gRanges[gRangeCnt].BaseAddress.QuadPart = pa_head;
+                                gRanges[gRangeCnt].NumberOfBytes.QuadPart = current - pa_head;
+                                gTotalPages += (current - pa_head) >> 12;
+                                gInBlockIdx[gRangeCnt] = 0;
+                                gRangeCnt++;
+                            }
+                        }
+
+                        if(driver_size)
+                            current += driver_size - 0x1000;
+
+                        pa_head = 0;
+                        continue;
                     }
-                    start_rva = 0;
 
-
-                    UINT64 hdr_offset = *(BYTE*)(current + 0x3C);
-                    if (*(UINT16*)current == 0x5A4D &&                  // 'MZ' Hdr
-                        *(UINT16*)(current + hdr_offset + 4) == 0x8664) // AMD64
-                    {
-                        auto sizeofimage = *(UINT32*)(current + hdr_offset + 0x50);
-                        
-
-
-                        //{
-                        //    BYTE* ptr_data = (BYTE*)((UINT64)current + 0x1700);
-                        //    DbgPrintEx(0, 0, "%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n",
-                        //        ptr_data[0], ptr_data[1], ptr_data[2], ptr_data[3], 
-                        //        ptr_data[4], ptr_data[5], ptr_data[6], ptr_data[7],
-                        //        ptr_data[8], ptr_data[9], ptr_data[10], ptr_data[11],
-                        //        ptr_data[12], ptr_data[13], ptr_data[14], ptr_data[15]
-                        //    );
-                        //}
-                        
-                        current += (sizeofimage & ~0xFFF) + (sizeofimage & 0xFFF ? 0x1000 : 0) - 4096;
-
-                        //DbgPrintEx(0, 0, "[smm-dtc] Found firmware region at 0x%llx with size 0x%llx\n", (current - rva) + low, size - (current - rva));
-
-
-
-                        should_exit = true;
-                    }
+                    if (!pa_head)
+                        pa_head = current;
                 }
+                MmUnmapIoSpace((PVOID)io, 0x1000);
             }
-            MmUnmapIoSpace((PVOID)rva, size);
-            if (should_exit)
-                return;
         }
-        pmr++;
+
+        if (found_efi)
+        {
+            init = true;
+            return;
+        }
+
+        range++;
     } while (true);
     return;
 }
 
-void FWA::Cleanup(bool zeroMemory)
+volatile void FWA::ZeroAndExit()
 {
-    if (!fw_range_count)
+    if (!init)
         return;
-    UINT64 idx = 0;
-    for (int i = 0; i < fw_range_count; i++)
+    init = false;
+    for (int i = 0; i < gRangeCnt; i++)
     {
-        auto range_base = fw_range[i].BaseAddress.QuadPart;
-        auto range_size = fw_range[i].NumberOfBytes.QuadPart;
-
-        if (idx + (range_size >> 12) > page_idx)
+        auto io = MmMapIoSpace(gRanges[i].BaseAddress.QuadPart, gInBlockIdx[i] << 12, MmNonCached);
+        if (io)
         {
-            auto block_offset = page_idx - idx;
-            auto pages_left_in_block = (range_size >> 12) - block_offset;
-
-            auto va = MmMapIoSpace(range_base, block_offset << 12, MmNonCached);
-            if (va)
-            {
-                if (zeroMemory)
-                    RtlFillMemory((PVOID)va, block_offset << 12, 0);
-                MmUnmapIoSpace((PVOID)va, block_offset << 12);
-
-                page_idx = 0;
-                fw_range_count = 0;
-                return;
-            }
-            return;
-        }
-        else
-        {
-            auto va = MmMapIoSpace(range_base, range_size, MmNonCached);
-            if (va)
-            {
-                if (zeroMemory)
-                    RtlFillMemory((PVOID)va, (SIZE_T)range_size, 0);
-                MmUnmapIoSpace((PVOID)va, range_size);
-            }
-            idx += (range_size >> 12);
+            RtlFillMemory(io, gInBlockIdx[i] << 12, 0);
+            MmUnmapIoSpace(io, gInBlockIdx[i] << 12);
         }
     }
-    page_idx = 0;
-    fw_range_count = 0;
     return;
 }
 
-UINT32 FWA::pages_free()
+UINT32 FWA::TotalUsed()
 {
-    if (!fw_range_count)
+    FWA::Setup();
+    if (!init)
         return 0;
-    UINT32 total_pages = 0;
-    for (int i = 0; i < fw_range_count; i++)
-    {
-        total_pages += (UINT32)(fw_range[i].NumberOfBytes.QuadPart >> 12);
-    }
-    return total_pages - (UINT32)page_idx;
+    return gTotalUseage;
 }
 
-UINT32 FWA::pages_total()
+UINT32 FWA::TotalPages()
 {
-    if (!fw_range_count)
+    FWA::Setup();
+    if (!init)
         return 0;
-    UINT32 total_pages = 0;
-    for (int i = 0; i < fw_range_count; i++)
-    {
-        total_pages += (UINT32)(fw_range[i].NumberOfBytes.QuadPart >> 12);
-    }
-    return total_pages;
+    return gTotalPages;
 }
 
-PHYSICAL_ADDRESS FWA::ReservePages(SIZE_T pages)
+volatile PHYSICAL_ADDRESS FWA::GetPages(UINT32 pages)
 {
-    if (!fw_range_count)
+    FWA::Setup();
+    if (!init)
         return 0;
-    UINT64 idx = 0;
-    for (int i = 0; i < fw_range_count; i++)
+    for (int i = 0; i < gRangeCnt; i++)
     {
-        auto range_base = fw_range[i].BaseAddress.QuadPart;
-        auto range_size = fw_range[i].NumberOfBytes.QuadPart;
-
-        if (idx + (range_size >> 12) > page_idx) // in this block
+        auto block_head = gRanges[i].BaseAddress.QuadPart + (gInBlockIdx[i] << 12);
+        auto block_pages = (gRanges[i].NumberOfBytes.QuadPart - (gInBlockIdx[i] << 12)) >> 12;
+        if (block_pages >= pages)
         {
-            auto block_offset = page_idx - idx;
-            auto pages_left_in_block = (range_size >> 12) - block_offset;
-            if (pages_left_in_block > pages)
-            {
-                page_idx += pages;
-                return range_base + (block_offset << 12);
-            }
-            page_idx += pages_left_in_block;
-            idx += (range_size >> 12);
+            gInBlockIdx[i] += pages;
+            gTotalUseage += pages;
+            return (PHYSICAL_ADDRESS)block_head;
         }
-        else
-            idx += (range_size >> 12);
     }
     return 0;
 }

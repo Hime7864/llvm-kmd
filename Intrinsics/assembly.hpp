@@ -466,6 +466,27 @@ extern "C"
         }
     }
 
+    NAKED inline UINT64 _mm_readrflags()
+    {
+        __asm {
+            pushfq
+            pop rax
+            ret
+        }
+    }
+
+    // RFLAGS.IF (bit 9): 1 = maskable interrupts enabled, 0 = disabled.
+    NAKED inline BOOLEAN _mm_if_enabled()
+    {
+        __asm {
+            pushfq
+            pop rax
+            shr rax, 9
+            and eax, 1
+            ret
+        }
+    }
+
     NAKED inline VOID _mm_vmmcall()
     {
         __asm {
